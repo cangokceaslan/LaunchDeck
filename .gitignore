@@ -1,0 +1,15 @@
+AGENTS.md
+appd.sh
+
+node_modules/
+out/
+dist/
+release/
+.npm-cache/
+*.log
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
+.env
+!.env.example

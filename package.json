@@ -1,0 +1,64 @@
+{
+  "name": "launchdeck",
+  "version": "1.0.0",
+  "description": "Firebase App Distribution için güvenli masaüstü release yöneticisi",
+  "main": "./out/main/index.js",
+  "author": "ISTON",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "package": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "bootstrap": "5.3.8",
+    "plist": "5.0.0",
+    "react": "19.2.7",
+    "react-bootstrap": "2.10.10",
+    "react-dom": "19.2.7",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "26.1.1",
+    "@types/plist": "3.0.5",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "43.1.1",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "javascript-obfuscator": "5.4.7",
+    "typescript": "7.0.2",
+    "vite": "7.3.6"
+  },
+  "build": {
+    "appId": "com.iston.launchdeck",
+    "productName": "LaunchDeck",
+    "directories": {
+      "buildResources": "resources",
+      "output": "release"
+    },
+    "files": ["out/**/*", "package.json"],
+    "asarUnpack": ["node_modules/better-sqlite3/**/*"],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "resources/launch-icon.png",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "icon": "resources/launch-icon.png",
+      "target": ["nsis"]
+    },
+    "linux": {
+      "icon": "resources/launch-icon.png",
+      "category": "Development",
+      "target": ["AppImage", "deb"]
+    }
+  }
+}
