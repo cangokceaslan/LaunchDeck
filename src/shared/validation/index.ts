@@ -3,6 +3,25 @@ import { z } from 'zod';
 const nonEmptyPathSchema = z.string().trim().min(1).max(4096);
 const identifierSchema = z.string().trim().min(1).max(256);
 
+export const androidConfigurationSchema = z.object({
+  artifactPath: nonEmptyPathSchema,
+  firebaseAppId: identifierSchema,
+  googleServicesJsonPath: nonEmptyPathSchema,
+  gradleTask: z.string().trim().min(1).max(160),
+  projectPath: nonEmptyPathSchema,
+});
+
+export const iosConfigurationSchema = z.object({
+  artifactPath: nonEmptyPathSchema,
+  configuration: z.string().trim().min(1).max(120),
+  exportMethod: z.enum(['release-testing', 'enterprise', 'development']),
+  firebaseAppId: identifierSchema,
+  googleServiceInfoPlistPath: nonEmptyPathSchema,
+  projectPath: nonEmptyPathSchema,
+  scheme: z.string().trim().min(1).max(160),
+  workspaceOrProjectPath: nonEmptyPathSchema,
+});
+
 export const pipelineHookSchema = z.object({
   args: z.array(z.string().max(4096)).max(64),
   cwdPath: nonEmptyPathSchema,
@@ -16,30 +35,11 @@ export const pipelineHookSchema = z.object({
 
 export const createApplicationRequestSchema = z
   .object({
-    android: z
-      .object({
-        artifactPath: nonEmptyPathSchema,
-        firebaseAppId: identifierSchema,
-        googleServicesJsonPath: nonEmptyPathSchema,
-        gradleTask: z.string().trim().min(1).max(160),
-        projectPath: nonEmptyPathSchema,
-      })
-      .nullable(),
+    android: androidConfigurationSchema.omit({ firebaseAppId: true }).nullable(),
     distributionGroups: z.array(identifierSchema).min(1).max(50),
-    firebaseProjectId: identifierSchema,
+    firebaseProjectId: z.string().trim().max(256),
     hooks: z.array(pipelineHookSchema).max(24),
-    ios: z
-      .object({
-        artifactPath: nonEmptyPathSchema,
-        configuration: z.string().trim().min(1).max(120),
-        exportMethod: z.enum(['release-testing', 'enterprise', 'development']),
-        firebaseAppId: identifierSchema,
-        googleServiceInfoPlistPath: nonEmptyPathSchema,
-        projectPath: nonEmptyPathSchema,
-        scheme: z.string().trim().min(1).max(160),
-        workspaceOrProjectPath: nonEmptyPathSchema,
-      })
-      .nullable(),
+    ios: iosConfigurationSchema.omit({ firebaseAppId: true }).nullable(),
     name: z.string().trim().min(2).max(80),
     serviceAccountPath: nonEmptyPathSchema,
   })

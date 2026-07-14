@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import JavaScriptObfuscator from 'javascript-obfuscator';
+import path from 'node:path';
 import type { Plugin } from 'vite';
 
 const createProductionObfuscationPlugin = (): Plugin => ({
@@ -35,8 +36,8 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin(), createProductionObfuscationPlugin()],
     resolve: {
       alias: {
-        '@main': new URL('./src/main', import.meta.url).pathname,
-        '@shared': new URL('./src/shared', import.meta.url).pathname,
+        '@main': path.resolve('src/main'),
+        '@shared': path.resolve('src/shared'),
       },
     },
   },
@@ -45,22 +46,22 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin(), createProductionObfuscationPlugin()],
     resolve: {
       alias: {
-        '@preload': new URL('./src/preload', import.meta.url).pathname,
-        '@shared': new URL('./src/shared', import.meta.url).pathname,
+        '@preload': path.resolve('src/preload'),
+        '@shared': path.resolve('src/shared'),
       },
     },
   },
   renderer: {
     build: buildOptions,
-    plugins: [react(), createProductionObfuscationPlugin()],
+    plugins: [react({}), createProductionObfuscationPlugin()],
     resolve: {
       alias: {
-        '@components': new URL('./src/renderer/components', import.meta.url).pathname,
-        '@hooks': new URL('./src/renderer/hooks', import.meta.url).pathname,
-        '@renderer': new URL('./src/renderer', import.meta.url).pathname,
-        '@screens': new URL('./src/renderer/screens', import.meta.url).pathname,
-        '@shared': new URL('./src/shared', import.meta.url).pathname,
-        '@themes': new URL('./src/renderer/themes', import.meta.url).pathname,
+        '@components': path.resolve('src/renderer/components'),
+        '@hooks': path.resolve('src/renderer/hooks'),
+        '@renderer': path.resolve('src/renderer'),
+        '@screens': path.resolve('src/renderer/screens'),
+        '@shared': path.resolve('src/shared'),
+        '@themes': path.resolve('src/renderer/themes'),
       },
     },
   },

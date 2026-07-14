@@ -34,12 +34,15 @@ export type IosConfiguration = {
   workspaceOrProjectPath: string;
 };
 
+export type AndroidSetupConfiguration = Omit<AndroidConfiguration, 'firebaseAppId'>;
+export type IosSetupConfiguration = Omit<IosConfiguration, 'firebaseAppId'>;
+
 export type CreateApplicationRequest = {
-  android: AndroidConfiguration | null;
+  android: AndroidSetupConfiguration | null;
   distributionGroups: string[];
   firebaseProjectId: string;
   hooks: PipelineHook[];
-  ios: IosConfiguration | null;
+  ios: IosSetupConfiguration | null;
   name: string;
   serviceAccountPath: string;
 };

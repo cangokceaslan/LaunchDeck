@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
     "composite": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
@@ -15,12 +14,12 @@
     "target": "ES2023",
     "types": ["vite/client"],
     "paths": {
-      "@components/*": ["src/renderer/components/*"],
-      "@hooks/*": ["src/renderer/hooks/*"],
-      "@renderer/*": ["src/renderer/*"],
-      "@screens/*": ["src/renderer/screens/*"],
-      "@shared/*": ["src/shared/*"],
-      "@themes/*": ["src/renderer/themes/*"]
+      "@components/*": ["./src/renderer/components/*"],
+      "@hooks/*": ["./src/renderer/hooks/*"],
+      "@renderer/*": ["./src/renderer/*"],
+      "@screens/*": ["./src/renderer/screens/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@themes/*": ["./src/renderer/themes/*"]
     }
   },
   "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/shared/**/*.ts", "src/types/**/*.d.ts"]
