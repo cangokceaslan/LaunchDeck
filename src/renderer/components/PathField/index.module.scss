@@ -1,0 +1,12 @@
+.group {
+  margin-bottom: var(--space-4);
+
+  .pathInput {
+    min-width: 0;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

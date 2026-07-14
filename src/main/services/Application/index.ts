@@ -9,6 +9,7 @@ import {
   readStringProperty,
   resolveExistingBundlePath,
   resolveExistingDirectory,
+  resolveExecutableFile,
   resolveExistingFile,
 } from '@main/utils/FileSystem';
 import type {
@@ -91,11 +92,21 @@ const inspectGoogleServiceInfoPlist = async (filePath: string): Promise<Firebase
 
 const resolveHooks = async (hooks: PipelineHook[]): Promise<PipelineHook[]> =>
   Promise.all(
-    hooks.map(async (hook) => ({
-      ...hook,
-      cwdPath: await resolveExistingDirectory(hook.cwdPath),
-      executablePath: await resolveExistingFile(hook.executablePath),
-    })),
+    hooks.map(async (hook) => {
+      const executablePath = await resolveExecutableFile(hook.executablePath);
+      if (
+        process.platform === 'win32' &&
+        (executablePath.toLowerCase().endsWith('.bat') || executablePath.toLowerCase().endsWith('.cmd'))
+      ) {
+        throw new Error('Windows özel pipeline adımları .exe çalıştırılabilir dosyası olmalıdır.');
+      }
+      return {
+        ...hook,
+        args: hook.args.filter((argument) => argument !== ''),
+        cwdPath: await resolveExistingDirectory(hook.cwdPath),
+        executablePath,
+      };
+    }),
   );
 
 const resolveAndroid = async (

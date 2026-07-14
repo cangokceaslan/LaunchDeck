@@ -1,0 +1,165 @@
+.progressPanel {
+  .progressHeader {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-6);
+
+    .eyebrow {
+      color: var(--color-primary-strong);
+      font-size: 0.72rem;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      margin: var(--space-1) 0 0;
+    }
+  }
+
+  .progressSummary {
+    margin-bottom: var(--space-6);
+
+    > div:last-child {
+      align-items: center;
+      color: var(--color-text-muted);
+      display: flex;
+      font-size: 0.78rem;
+      justify-content: space-between;
+      margin-top: var(--space-2);
+
+      strong {
+        color: var(--color-text);
+      }
+    }
+  }
+
+  .phaseTrack {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    margin-bottom: var(--space-6);
+
+    > div {
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      position: relative;
+
+      &::before {
+        background: var(--color-border);
+        content: '';
+        height: 2px;
+        position: absolute;
+        right: 50%;
+        top: 12px;
+        width: 100%;
+        z-index: 0;
+      }
+
+      &:first-child::before {
+        display: none;
+      }
+
+      > span {
+        align-items: center;
+        background: var(--color-surface-subtle);
+        border: 2px solid var(--color-border);
+        border-radius: 50%;
+        display: flex;
+        font-size: 0.65rem;
+        height: 26px;
+        justify-content: center;
+        position: relative;
+        width: 26px;
+        z-index: 1;
+      }
+
+      small {
+        color: var(--color-text-muted);
+        font-size: 0.65rem;
+        text-align: center;
+      }
+
+      &.phaseComplete > span {
+        background: var(--color-success);
+        border-color: var(--color-success);
+        color: var(--color-on-success);
+      }
+    }
+  }
+
+  .logSection {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+
+    > header {
+      align-items: center;
+      background: var(--color-surface-subtle);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+
+      h3 {
+        font-size: 0.8rem;
+        margin: 0;
+      }
+
+      span {
+        color: var(--color-text-muted);
+        font-size: 0.68rem;
+      }
+    }
+
+    .logViewer {
+      background: var(--color-log);
+      color: var(--color-log-text);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      height: 300px;
+      overflow: auto;
+      padding: var(--space-3);
+
+      p {
+        color: var(--color-log-muted);
+        margin: 0;
+      }
+
+      > div {
+        display: grid;
+        gap: var(--space-3);
+        grid-template-columns: 64px 58px minmax(0, 1fr);
+        padding: 3px 0;
+
+        time,
+        > span {
+          color: var(--color-log-muted);
+        }
+
+        code {
+          color: inherit;
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
+        }
+
+        &.warning {
+          color: var(--color-log-warning);
+        }
+
+        &.error {
+          color: var(--color-log-danger);
+        }
+      }
+    }
+  }
+
+  > footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-4);
+  }
+}

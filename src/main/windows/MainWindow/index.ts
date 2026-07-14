@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { BrowserWindow, dialog, shell } from 'electron';
+import { app, BrowserWindow, dialog, shell } from 'electron';
 import type { MainWindowOptions } from '@main/windows/MainWindow/index.types';
 
 const isApprovedExternalUrl = (targetUrl: string): boolean => {
@@ -15,9 +15,14 @@ const isApprovedExternalUrl = (targetUrl: string): boolean => {
 };
 
 export const createMainWindow = async (options: MainWindowOptions): Promise<BrowserWindow> => {
+  const developmentIconPath = path.join(process.cwd(), 'resources', 'dev-icon.png');
+  if (!app.isPackaged && process.platform === 'darwin') {
+    app.dock?.setIcon(developmentIconPath);
+  }
   const mainWindow = new BrowserWindow({
     backgroundColor: '#F7F8FA',
     height: 820,
+    ...(!app.isPackaged && process.platform !== 'darwin' ? { icon: developmentIconPath } : {}),
     minHeight: 680,
     minWidth: 1040,
     show: false,

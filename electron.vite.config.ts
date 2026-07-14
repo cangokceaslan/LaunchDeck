@@ -13,7 +13,7 @@ const createProductionObfuscationPlugin = (): Plugin => ({
       identifierNamesGenerator: 'hexadecimal',
       numbersToExpressions: true,
       renameGlobals: false,
-      selfDefending: true,
+      selfDefending: false,
       simplify: true,
       splitStrings: true,
       splitStringsChunkLength: 8,

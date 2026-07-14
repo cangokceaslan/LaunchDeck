@@ -11,6 +11,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "postinstall": "electron-builder install-app-deps",
     "package": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder"
   },
@@ -34,6 +35,7 @@
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",
     "javascript-obfuscator": "5.4.7",
+    "sass": "1.101.0",
     "typescript": "7.0.2",
     "vite": "7.3.6"
   },
@@ -44,21 +46,42 @@
       "buildResources": "resources",
       "output": "release"
     },
-    "files": ["out/**/*", "package.json"],
-    "asarUnpack": ["node_modules/better-sqlite3/**/*"],
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "resources/launch-icon.png",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "win": {
       "icon": "resources/launch-icon.png",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
       "icon": "resources/launch-icon.png",
       "category": "Development",
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     }
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "@parcel/watcher@2.5.6": true,
+    "fsevents@2.3.3": true,
+    "electron-winstaller@5.4.0": true
   }
 }

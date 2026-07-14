@@ -7,7 +7,7 @@ export const androidConfigurationSchema = z.object({
   artifactPath: nonEmptyPathSchema,
   firebaseAppId: identifierSchema,
   googleServicesJsonPath: nonEmptyPathSchema,
-  gradleTask: z.string().trim().min(1).max(160),
+  gradleTask: z.string().trim().min(1).max(160).regex(/^[:A-Za-z0-9_-]+$/u),
   projectPath: nonEmptyPathSchema,
 });
 

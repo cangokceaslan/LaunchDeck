@@ -69,19 +69,25 @@ export class FirebaseCliIntegration {
     if (executablePath === null) {
       throw new Error('Firebase CLI bulunamadı.');
     }
-    const result = await runExecutable({
-      args,
-      cwdPath: input.cwdPath,
-      environment: {
-        CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: input.credentialPath,
-        GOOGLE_APPLICATION_CREDENTIALS: input.credentialPath,
-      },
-      executablePath,
-      onOutput: input.onOutput,
-      signal: input.signal,
-    });
-    if (result.exitCode !== 0) {
-      throw new Error(`Firebase CLI ${result.exitCode} çıkış koduyla sonlandı.`);
+    const isolatedConfigHome = await mkdtemp(path.join(tmpdir(), 'launchdeck-firebase-'));
+    try {
+      const result = await runExecutable({
+        args,
+        cwdPath: input.cwdPath,
+        environment: {
+          CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: input.credentialPath,
+          GOOGLE_APPLICATION_CREDENTIALS: input.credentialPath,
+          XDG_CONFIG_HOME: isolatedConfigHome,
+        },
+        executablePath,
+        onOutput: input.onOutput,
+        signal: input.signal,
+      });
+      if (result.exitCode !== 0) {
+        throw new Error(`Firebase CLI ${result.exitCode} çıkış koduyla sonlandı.`);
+      }
+    } finally {
+      await rm(isolatedConfigHome, { force: true, recursive: true });
     }
   }
 
@@ -112,3 +118,6 @@ export class FirebaseCliIntegration {
     );
   }
 }
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';

@@ -1,0 +1,61 @@
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  margin: 0;
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    &:focus-visible {
+      box-shadow: var(--shadow-focus) !important;
+      outline: 0;
+    }
+  }
+
+  .btn-primary {
+    --bs-btn-bg: var(--color-primary);
+    --bs-btn-border-color: var(--color-primary);
+    --bs-btn-color: var(--color-on-primary);
+    --bs-btn-hover-bg: var(--color-primary-strong);
+    --bs-btn-hover-border-color: var(--color-primary-strong);
+    --bs-btn-hover-color: var(--color-on-primary);
+  }
+
+  .form-control,
+  .form-select {
+    background-color: var(--color-surface);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  .form-text {
+    color: var(--color-text-muted);
+  }
+
+  .progress {
+    --bs-progress-bg: var(--color-surface-subtle);
+    --bs-progress-bar-bg: var(--color-primary);
+    height: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

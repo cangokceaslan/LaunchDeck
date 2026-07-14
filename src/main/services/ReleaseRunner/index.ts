@@ -7,7 +7,11 @@ import type { FirebaseCliIntegration } from '@main/integrations/FirebaseCli';
 import type { ApplicationRepository } from '@main/repositories/Application';
 import type { RunHistoryRepository } from '@main/repositories/RunHistory';
 import { runExecutable } from '@main/utils/ChildProcess';
-import { resolveExistingDirectory, resolveExistingFile } from '@main/utils/FileSystem';
+import {
+  resolveExecutableFile,
+  resolveExistingDirectory,
+  resolveExistingFile,
+} from '@main/utils/FileSystem';
 import { createRedactor } from '@main/utils/Redaction';
 import type {
   ActiveReleaseRun,
@@ -135,7 +139,7 @@ export class ReleaseRunner {
       );
       await Promise.all(
         relevantHooks.map(async (hook) => {
-          await resolveExistingFile(hook.executablePath);
+          await resolveExecutableFile(hook.executablePath);
           await resolveExistingDirectory(hook.cwdPath);
         }),
       );

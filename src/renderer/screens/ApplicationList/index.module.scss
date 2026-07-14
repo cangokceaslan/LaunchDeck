@@ -1,0 +1,108 @@
+.page {
+  margin: 0 auto;
+  max-width: 1180px;
+
+  .pageHeader {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--space-6);
+    justify-content: space-between;
+    margin-bottom: var(--space-8);
+
+    h1 {
+      font-size: 2rem;
+      letter-spacing: -0.03em;
+      margin: var(--space-1) 0 var(--space-2);
+    }
+
+    p {
+      color: var(--color-text-muted);
+      margin: 0;
+    }
+
+    .eyebrow {
+      color: var(--color-primary-strong);
+      font-size: 0.72rem;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  }
+
+  .grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+
+    .applicationCard {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      color: var(--color-text);
+      padding: var(--space-5);
+      text-align: left;
+      transition: border-color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
+
+      &:hover {
+        border-color: var(--color-primary);
+        box-shadow: var(--shadow-soft);
+        transform: translateY(-2px);
+      }
+
+      &:focus-visible {
+        box-shadow: var(--shadow-focus);
+        outline: 0;
+      }
+
+      .cardTop {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+
+        .initial {
+          align-items: center;
+          background: var(--color-primary-soft);
+          border-radius: var(--radius-md);
+          color: var(--color-primary-strong);
+          display: flex;
+          font-size: 1.1rem;
+          font-weight: 800;
+          height: 44px;
+          justify-content: center;
+          width: 44px;
+        }
+      }
+
+      h2 {
+        font-size: 1.1rem;
+        margin: var(--space-5) 0 var(--space-1);
+      }
+
+      code,
+      small {
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+      }
+
+      .platforms {
+        display: flex;
+        gap: var(--space-2);
+        margin: var(--space-5) 0;
+
+        span {
+          background: var(--color-surface-subtle);
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-weight: 650;
+          padding: 5px 9px;
+        }
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .grid .applicationCard {
+      transition: none;
+    }
+  }
+}

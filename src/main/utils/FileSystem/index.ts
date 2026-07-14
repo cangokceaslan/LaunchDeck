@@ -26,6 +26,12 @@ export const resolveExistingFile = async (
   return resolvedPath;
 };
 
+export const resolveExecutableFile = async (selectedPath: string): Promise<string> => {
+  const resolvedPath = await resolveExistingFile(selectedPath);
+  await access(resolvedPath, process.platform === 'win32' ? constants.F_OK : constants.X_OK);
+  return resolvedPath;
+};
+
 export const resolveExistingDirectory = async (selectedPath: string): Promise<string> => {
   const normalizedPath = path.resolve(selectedPath.trim());
   const directoryStats = await lstat(normalizedPath);

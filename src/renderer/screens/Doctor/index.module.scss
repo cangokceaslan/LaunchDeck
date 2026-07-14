@@ -1,0 +1,103 @@
+.page {
+  align-items: center;
+  background: var(--color-background);
+  color: var(--color-text);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-8);
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    max-width: 780px;
+    padding: var(--space-8);
+    width: 100%;
+
+    .header {
+      align-items: center;
+      display: flex;
+      gap: var(--space-5);
+      margin-bottom: var(--space-8);
+
+      img {
+        border-radius: var(--radius-lg);
+        height: 88px;
+        width: 88px;
+      }
+
+      h1 {
+        font-size: 1.75rem;
+        margin: var(--space-1) 0 var(--space-2);
+      }
+
+      p {
+        color: var(--color-text-muted);
+        margin: 0;
+      }
+
+      .eyebrow {
+        color: var(--color-primary-strong);
+        font-size: 0.72rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+    }
+
+    .checks {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-5);
+      overflow: hidden;
+
+      .check {
+        align-items: center;
+        border-bottom: 1px solid var(--color-border);
+        display: flex;
+        gap: var(--space-4);
+        justify-content: space-between;
+        padding: var(--space-4);
+
+        &:last-child {
+          border-bottom: 0;
+        }
+
+        h2 {
+          font-size: 0.95rem;
+          margin: 0 0 var(--space-1);
+        }
+
+        p {
+          color: var(--color-text-muted);
+          margin: 0;
+        }
+
+        code {
+          color: var(--color-text-muted);
+          display: inline-block;
+          font-size: 0.72rem;
+          margin-top: var(--space-2);
+        }
+      }
+    }
+
+    .loading {
+      align-items: center;
+      color: var(--color-text-muted);
+      display: flex;
+      gap: var(--space-3);
+      justify-content: center;
+      min-height: 220px;
+    }
+
+    .footer {
+      display: flex;
+      gap: var(--space-3);
+      justify-content: flex-end;
+      margin-top: var(--space-6);
+    }
+  }
+}
