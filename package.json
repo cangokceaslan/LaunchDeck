@@ -7,9 +7,9 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node scripts/run-electron-vite.cjs dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview",
+    "preview": "node scripts/run-electron-vite.cjs preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "postinstall": "node scripts/postinstall.cjs",
     "package": "npm run build && electron-builder --dir",

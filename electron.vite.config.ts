@@ -33,7 +33,10 @@ const buildOptions = { minify: true, sourcemap: false } as const;
 export default defineConfig({
   main: {
     build: buildOptions,
-    plugins: [externalizeDepsPlugin(), createProductionObfuscationPlugin()],
+    plugins: [
+      externalizeDepsPlugin({ exclude: ['plist'] }),
+      createProductionObfuscationPlugin(),
+    ],
     resolve: {
       alias: {
         '@main': path.resolve('src/main'),
