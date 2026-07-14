@@ -143,7 +143,7 @@ export const ApplicationSetup = ({
                 <Form.Label>Uygulama adı</Form.Label>
                 <Form.Control
                   onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                  placeholder="Örn. ISTON Mobil"
+                  placeholder="Örn. Mobil Uygulama"
                   required
                   value={form.name}
                 />

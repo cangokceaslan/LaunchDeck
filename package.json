@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Firebase App Distribution için güvenli masaüstü release yöneticisi",
   "main": "./out/main/index.js",
-  "author": "ISTON",
+  "author": "LaunchDeck Team",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
@@ -42,7 +42,7 @@
     "vite": "7.3.6"
   },
   "build": {
-    "appId": "com.iston.launchdeck",
+    "appId": "com.launchdeck.app",
     "productName": "LaunchDeck",
     "directories": {
       "buildResources": "resources",
