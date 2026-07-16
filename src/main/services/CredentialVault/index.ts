@@ -4,12 +4,12 @@ export class CredentialVault {
   private assertSecureStorage(): void {
     if (!safeStorage.isEncryptionAvailable()) {
       throw new Error(
-        'İşletim sistemi güvenli depolaması kullanılamıyor. Service Account yolu düz metin olarak saklanmayacak.',
+        'Secure operating system storage is unavailable. The service account path will not be stored as plain text.',
       );
     }
     if (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text') {
       throw new Error(
-        'Linux güvenli credential deposu bulunamadı. Secret Service veya KWallet yapılandırılmadan Service Account yolu saklanamaz.',
+        'No secure credential store was found on Linux. The service account path cannot be stored until Secret Service or KWallet is configured.',
       );
     }
   }

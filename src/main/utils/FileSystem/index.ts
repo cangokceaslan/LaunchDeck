@@ -11,7 +11,7 @@ export const resolveExistingFile = async (
   const normalizedPath = path.resolve(selectedPath.trim());
   const fileStats = await lstat(normalizedPath);
   if (!fileStats.isFile()) {
-    throw new Error(`Dosya bekleniyordu: ${normalizedPath}`);
+    throw new Error(`Expected a file: ${normalizedPath}`);
   }
 
   const resolvedPath = await realpath(normalizedPath);
@@ -19,7 +19,7 @@ export const resolveExistingFile = async (
     expectedExtensions.length > 0 &&
     !expectedExtensions.some((extension) => resolvedPath.toLowerCase().endsWith(extension))
   ) {
-    throw new Error(`Beklenen dosya uzantısı: ${expectedExtensions.join(', ')}`);
+    throw new Error(`Expected file extension: ${expectedExtensions.join(', ')}`);
   }
 
   await access(resolvedPath, constants.R_OK);
@@ -36,7 +36,7 @@ export const resolveExistingDirectory = async (selectedPath: string): Promise<st
   const normalizedPath = path.resolve(selectedPath.trim());
   const directoryStats = await lstat(normalizedPath);
   if (!directoryStats.isDirectory()) {
-    throw new Error(`Klasör bekleniyordu: ${normalizedPath}`);
+    throw new Error(`Expected a directory: ${normalizedPath}`);
   }
 
   const resolvedPath = await realpath(normalizedPath);
@@ -51,11 +51,11 @@ export const resolveExistingBundlePath = async (
   const normalizedPath = path.resolve(selectedPath.trim());
   const pathStats = await lstat(normalizedPath);
   if (!pathStats.isDirectory() && !pathStats.isFile()) {
-    throw new Error(`Dosya veya paket klasörü bekleniyordu: ${normalizedPath}`);
+    throw new Error(`Expected a file or package directory: ${normalizedPath}`);
   }
   const resolvedPath = await realpath(normalizedPath);
   if (!expectedExtensions.some((extension) => resolvedPath.toLowerCase().endsWith(extension))) {
-    throw new Error(`Beklenen paket uzantısı: ${expectedExtensions.join(', ')}`);
+    throw new Error(`Expected package extension: ${expectedExtensions.join(', ')}`);
   }
   await access(resolvedPath, constants.R_OK);
   return resolvedPath;
@@ -64,7 +64,7 @@ export const resolveExistingBundlePath = async (
 export const readJsonConfiguration = async (filePath: string): Promise<unknown> => {
   const fileStats = await lstat(filePath);
   if (fileStats.size > MAX_CONFIGURATION_BYTES) {
-    throw new Error('Yapılandırma dosyası izin verilen boyutu aşıyor.');
+    throw new Error('The configuration file exceeds the allowed size.');
   }
 
   const contents = await readFile(filePath, 'utf8');

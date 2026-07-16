@@ -66,8 +66,8 @@ if (!app.requestSingleInstanceLock()) {
     .whenReady()
     .then(bootstrap)
     .catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : 'Beklenmeyen başlangıç hatası.';
-      dialog.showErrorBox('LaunchDeck başlatılamadı', message);
+      const message = error instanceof Error ? error.message : 'Unexpected startup error.';
+      dialog.showErrorBox('LaunchDeck could not start', message);
       app.quit();
     });
 }

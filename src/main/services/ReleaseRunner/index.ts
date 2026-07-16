@@ -71,7 +71,7 @@ const countPlatformSteps = (
 };
 
 const safeErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : 'Beklenmeyen bir işlem hatası oluştu.';
+  error instanceof Error ? error.message : 'An unexpected operation error occurred.';
 
 export class ReleaseRunner {
   private readonly plans = new Map<string, InternalReleasePlan>();
@@ -100,7 +100,7 @@ export class ReleaseRunner {
     if (platform === 'ios' && process.platform !== 'darwin') {
       issues.push({
         code: 'platformUnsupported',
-        message: 'iOS release yalnız macOS üzerinde çalıştırılabilir.',
+        message: 'iOS releases can run only on macOS.',
         severity: 'error',
       });
       return;
@@ -109,7 +109,7 @@ export class ReleaseRunner {
     if (configuration === null) {
       issues.push({
         code: 'invalidConfiguration',
-        message: `${platform === 'android' ? 'Android' : 'iOS'} kurulumu bu uygulama için tamamlanmamış.`,
+        message: `${platform === 'android' ? 'Android' : 'iOS'} setup is incomplete for this application.`,
         severity: 'error',
       });
       return;
@@ -158,13 +158,13 @@ export class ReleaseRunner {
     if (application === null) {
       return {
         isValid: false,
-        issues: [{ code: 'applicationNotFound', message: 'Uygulama bulunamadı.', severity: 'error' }],
+        issues: [{ code: 'applicationNotFound', message: 'Application not found.', severity: 'error' }],
       };
     }
     if (new Set(request.platforms).size !== request.platforms.length) {
       issues.push({
         code: 'invalidConfiguration',
-        message: 'Aynı platform birden fazla seçilemez.',
+        message: 'The same platform cannot be selected more than once.',
         severity: 'error',
       });
     }
@@ -175,7 +175,7 @@ export class ReleaseRunner {
       issues.push({
         code: 'invalidConfiguration',
         field: 'distributionGroups',
-        message: `Geçersiz tester grup aliası: ${invalidGroup}`,
+        message: `Invalid tester group alias: ${invalidGroup}`,
         severity: 'error',
       });
     }
@@ -191,7 +191,7 @@ export class ReleaseRunner {
         if ((await this.firebaseCli.getExecutablePath()) === null) {
           issues.push({
             code: 'firebaseCliMissing',
-            message: 'Firebase CLI bulunamadı.',
+            message: 'Firebase CLI was not found.',
             severity: 'error',
           });
         } else {
@@ -208,7 +208,7 @@ export class ReleaseRunner {
       issues.push({
         code: includesUpload(request.mode) ? 'firebaseAccessDenied' : 'credentialUnavailable',
         message: includesUpload(request.mode)
-          ? 'Firebase projesine Service Account ile erişilemedi.'
+          ? 'The Firebase project could not be accessed with the service account.'
           : safeErrorMessage(error),
         severity: 'error',
       });
@@ -246,7 +246,7 @@ export class ReleaseRunner {
       ? [
           {
             code: 'invalidConfiguration',
-            message: 'Etkin özel pipeline komutları seçilen çalışma klasörlerinde çalıştırılacak.',
+            message: 'Enabled custom pipeline commands will run in the selected working directories.',
             severity: 'warning',
           },
         ]
@@ -259,7 +259,7 @@ export class ReleaseRunner {
       return {
         error: {
           code: 'activeRunExists',
-          message: 'Başka bir release işlemi devam ediyor.',
+          message: 'Another release is already running.',
           retryable: true,
         },
         started: false,
@@ -271,7 +271,7 @@ export class ReleaseRunner {
       return {
         error: {
           code: 'planExpired',
-          message: 'Preflight planının süresi doldu. Yeniden doğrulayın.',
+          message: 'The preflight plan has expired. Validate it again.',
           retryable: true,
         },
         started: false,
@@ -352,7 +352,7 @@ export class ReleaseRunner {
     ): Promise<void> => {
       const phase: ReleasePhase = hookPhase;
       for (const hook of hooksFor(plan.application.hooks, hookPhase, platform)) {
-        await runStep(phase, platform, `Özel adım: ${hook.name}`, async () => {
+        await runStep(phase, platform, `Custom step: ${hook.name}`, async () => {
           const result = await runExecutable({
             args: hook.args,
             cwdPath: hook.cwdPath,
@@ -361,7 +361,7 @@ export class ReleaseRunner {
             signal: abortController.signal,
           });
           if (result.exitCode !== 0) {
-            throw new Error(`${hook.name} ${result.exitCode} çıkış koduyla başarısız oldu.`);
+            throw new Error(`${hook.name} failed with exit code ${result.exitCode}.`);
           }
         });
       }
@@ -380,7 +380,7 @@ export class ReleaseRunner {
         try {
           if (includesBuild(plan.request.mode)) {
             await runHooks('preBuild', platform);
-            await runStep('build', platform, `${platform === 'android' ? 'Android' : 'iOS'} build başladı.`, async () => {
+            await runStep('build', platform, `${platform === 'android' ? 'Android' : 'iOS'} build started.`, async () => {
               if (platform === 'android' && plan.application.android !== null) {
                 artifactPath = await this.androidBuilder.build(
                   plan.application.android,
@@ -395,15 +395,15 @@ export class ReleaseRunner {
                   ({ level, line }) => emitLog(line, level === 'error' ? 'error' : 'info', platform),
                 );
               } else {
-                throw new Error('Platform build yapılandırması bulunamadı.');
+                throw new Error('Platform build configuration was not found.');
               }
               platformResult.buildStatus = 'succeeded';
             });
             await runHooks('postBuild', platform);
           }
-          await runStep('verifying', platform, 'Artifact doğrulanıyor.', async () => {
+          await runStep('verifying', platform, 'Verifying artifact.', async () => {
             if (artifactPath === undefined) {
-              throw new Error('Artifact yolu çözülemedi.');
+              throw new Error('Artifact path could not be resolved.');
             }
             artifactPath = await resolveExistingFile(artifactPath, [platform === 'android' ? '.apk' : '.ipa']);
             platformResult.artifactPath = artifactPath;
@@ -411,11 +411,11 @@ export class ReleaseRunner {
           if (includesUpload(plan.request.mode)) {
             failureArea = 'upload';
             await runHooks('preUpload', platform);
-            await runStep('upload', platform, 'Firebase App Distribution upload başladı.', async () => {
+            await runStep('upload', platform, 'Firebase App Distribution upload started.', async () => {
               const platformConfiguration =
                 platform === 'android' ? plan.application.android : plan.application.ios;
               if (platformConfiguration === null || artifactPath === undefined) {
-                throw new Error('Upload yapılandırması eksik.');
+                throw new Error('Upload configuration is incomplete.');
               }
               await this.firebaseCli.upload({
                 appId: platformConfiguration.firebaseAppId,
@@ -433,7 +433,7 @@ export class ReleaseRunner {
             });
             await runHooks('postUpload', platform);
           }
-          emitLog('Platform pipeline tamamlandı.', 'info', platform);
+          emitLog('Platform pipeline completed.', 'info', platform);
         } catch (error) {
           if (abortController.signal.aborted) {
             throw error;

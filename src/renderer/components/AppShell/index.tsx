@@ -5,9 +5,9 @@ import type { AppShellProps } from '@components/AppShell/index.types';
 import styles from '@components/AppShell/index.module.scss';
 
 const themeLabels = {
-  dark: 'Koyu',
-  light: 'Açık',
-  system: 'Sistem',
+  dark: 'Dark',
+  light: 'Light',
+  system: 'System',
 } as const;
 
 export const AppShell = ({
@@ -26,16 +26,16 @@ export const AppShell = ({
         <img alt="" aria-hidden="true" src={import.meta.env.DEV ? devIcon : launchIcon} />
         <span>
           <strong>LaunchDeck</strong>
-          <small>{import.meta.env.DEV ? 'Geliştirme' : 'Release merkezi'}</small>
+          <small>{import.meta.env.DEV ? 'Development' : 'Release center'}</small>
         </span>
       </button>
-      <nav aria-label="Uygulamalar" className={styles.navigation}>
+      <nav aria-label="Applications" className={styles.navigation}>
         <div className={styles.navigationHeader}>
-          <span>Uygulamalar</span>
-          <button aria-label="Yeni uygulama ekle" onClick={onAddApplication} type="button">+</button>
+          <span>Applications</span>
+          <button aria-label="Add application" onClick={onAddApplication} type="button">+</button>
         </div>
         {applications.length === 0 ? (
-          <p className={styles.sidebarEmpty}>Henüz uygulama eklenmedi.</p>
+          <p className={styles.sidebarEmpty}>No applications added yet.</p>
         ) : (
           applications.map((application) => (
             <button
@@ -48,7 +48,7 @@ export const AppShell = ({
               onClick={() => onOpenApplication(application.id)}
               type="button"
             >
-              <span className={styles.appInitial}>{application.name.slice(0, 1).toLocaleUpperCase('tr')}</span>
+              <span className={styles.appInitial}>{application.name.slice(0, 1).toLocaleUpperCase('en-US')}</span>
               <span>
                 <strong>{application.name}</strong>
                 <small>{application.platforms.map((platform) => (platform === 'ios' ? 'iOS' : 'Android')).join(' + ')}</small>
@@ -60,16 +60,16 @@ export const AppShell = ({
       <div className={styles.sidebarFooter}>
         <Dropdown drop="up">
           <Dropdown.Toggle className={styles.themeButton} variant="link">
-            Tema · {themeLabels[theme]}
+            Theme · {themeLabels[theme]}
           </Dropdown.Toggle>
           <Dropdown.Menu>
-            <Dropdown.Item onClick={() => onThemeChange('system')}>Sistem</Dropdown.Item>
-            <Dropdown.Item onClick={() => onThemeChange('light')}>Açık</Dropdown.Item>
-            <Dropdown.Item onClick={() => onThemeChange('dark')}>Koyu</Dropdown.Item>
+            <Dropdown.Item onClick={() => onThemeChange('system')}>System</Dropdown.Item>
+            <Dropdown.Item onClick={() => onThemeChange('light')}>Light</Dropdown.Item>
+            <Dropdown.Item onClick={() => onThemeChange('dark')}>Dark</Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
         <Button className={styles.addButton} onClick={onAddApplication} size="sm" variant="outline-light">
-          Yeni uygulama
+          Add application
         </Button>
       </div>
     </aside>

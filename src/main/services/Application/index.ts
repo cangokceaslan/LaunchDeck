@@ -27,10 +27,10 @@ const resolveOutputPath = (projectPath: string, outputPath: string, extension: s
   const resolvedOutputPath = path.resolve(projectPath, outputPath);
   const relativePath = path.relative(projectPath, resolvedOutputPath);
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-    throw new Error('Build çıktısı seçilen proje klasörünün içinde olmalıdır.');
+    throw new Error('The build output must be inside the selected project directory.');
   }
   if (!resolvedOutputPath.toLowerCase().endsWith(extension)) {
-    throw new Error(`Build çıktısı ${extension} uzantılı olmalıdır.`);
+    throw new Error(`The build output must have the ${extension} extension.`);
   }
   return resolvedOutputPath;
 };
@@ -41,11 +41,11 @@ const inspectServiceAccount = async (
   const resolvedPath = await resolveExistingFile(serviceAccountPath, ['.json']);
   const serviceAccount = await readJsonConfiguration(resolvedPath);
   if (!isRecord(serviceAccount) || readStringProperty(serviceAccount, 'type') !== 'service_account') {
-    throw new Error('Seçilen JSON geçerli bir Firebase Service Account dosyası değil.');
+    throw new Error('The selected JSON is not a valid Firebase service account file.');
   }
   const projectId = readStringProperty(serviceAccount, 'project_id');
   if (projectId === null) {
-    throw new Error('Service Account dosyasında project_id bulunamadı.');
+    throw new Error('project_id was not found in the service account file.');
   }
   return { path: resolvedPath, projectId };
 };
@@ -54,24 +54,24 @@ const inspectGoogleServicesJson = async (filePath: string): Promise<FirebaseFile
   const resolvedPath = await resolveExistingFile(filePath, ['.json']);
   const configuration = await readJsonConfiguration(resolvedPath);
   if (!isRecord(configuration)) {
-    throw new Error('google-services.json yapısı geçersiz.');
+    throw new Error('The google-services.json structure is invalid.');
   }
   const projectInfo = configuration.project_info;
   const clients = configuration.client;
   if (!isRecord(projectInfo) || !Array.isArray(clients) || clients.length === 0) {
-    throw new Error('google-services.json içinde Firebase istemcisi bulunamadı.');
+    throw new Error('No Firebase client was found in google-services.json.');
   }
   const firstClient = clients[0];
   if (!isRecord(firstClient)) {
-    throw new Error('google-services.json istemci yapısı geçersiz.');
+    throw new Error('The google-services.json client structure is invalid.');
   }
   const clientInfo = firstClient.client_info;
   if (!isRecord(clientInfo)) {
-    throw new Error('google-services.json client_info alanı geçersiz.');
+    throw new Error('The client_info field in google-services.json is invalid.');
   }
   const appId = readStringProperty(clientInfo, 'mobilesdk_app_id');
   if (appId === null) {
-    throw new Error('google-services.json içinde mobilesdk_app_id bulunamadı.');
+    throw new Error('mobilesdk_app_id was not found in google-services.json.');
   }
   return { appId, projectId: readStringProperty(projectInfo, 'project_id') };
 };
@@ -81,11 +81,11 @@ const inspectGoogleServiceInfoPlist = async (filePath: string): Promise<Firebase
   const contents = await readFile(resolvedPath, 'utf8');
   const configuration: unknown = parsePlist(contents);
   if (!isRecord(configuration)) {
-    throw new Error('GoogleService-Info.plist yapısı geçersiz.');
+    throw new Error('The GoogleService-Info.plist structure is invalid.');
   }
   const appId = readStringProperty(configuration, 'GOOGLE_APP_ID');
   if (appId === null) {
-    throw new Error('GoogleService-Info.plist içinde GOOGLE_APP_ID bulunamadı.');
+    throw new Error('GOOGLE_APP_ID was not found in GoogleService-Info.plist.');
   }
   return { appId, projectId: readStringProperty(configuration, 'PROJECT_ID') };
 };
@@ -98,7 +98,7 @@ const resolveHooks = async (hooks: PipelineHook[]): Promise<PipelineHook[]> =>
         process.platform === 'win32' &&
         (executablePath.toLowerCase().endsWith('.bat') || executablePath.toLowerCase().endsWith('.cmd'))
       ) {
-        throw new Error('Windows özel pipeline adımları .exe çalıştırılabilir dosyası olmalıdır.');
+        throw new Error('Custom pipeline steps on Windows must use an .exe executable.');
       }
       return {
         ...hook,
@@ -139,7 +139,7 @@ const resolveIos = async (
     return { configuration: null, projectId: null };
   }
   if (process.platform !== 'darwin') {
-    throw new Error('iOS yapılandırması yalnız macOS üzerinde kullanılabilir.');
+    throw new Error('iOS configuration is available only on macOS.');
   }
   const projectPath = await resolveExistingDirectory(configuration.projectPath);
   const googleServiceInfoPlistPath = await resolveExistingFile(
@@ -185,7 +185,7 @@ export class ApplicationService {
       (projectId): projectId is string => projectId !== null,
     );
     if (observedProjectIds.some((projectId) => projectId !== firebaseProjectId)) {
-      throw new Error('Service Account ve Google Services dosyaları aynı Firebase projesine ait değil.');
+      throw new Error('The service account and Google Services files do not belong to the same Firebase project.');
     }
     return {
       android: android.configuration,
@@ -206,7 +206,7 @@ export class ApplicationService {
   public async update(request: UpdateApplicationRequest): Promise<ApplicationDetail> {
     const currentApplication = this.repository.getStored(request.id);
     if (currentApplication === null) {
-      throw new Error('Güncellenecek uygulama bulunamadı.');
+      throw new Error('The application to update was not found.');
     }
     const createRequest: CreateApplicationRequest = {
       android: request.android,

@@ -7,7 +7,7 @@ import { App } from '@renderer/App';
 
 const rootElement = document.getElementById('root');
 if (rootElement === null) {
-  throw new Error('LaunchDeck renderer kökü bulunamadı.');
+  throw new Error('LaunchDeck renderer root was not found.');
 }
 
 createRoot(rootElement).render(

@@ -57,12 +57,12 @@ export const createMainWindow = async (options: MainWindowOptions): Promise<Brow
     event.preventDefault();
     void dialog
       .showMessageBox(mainWindow, {
-        buttons: ['Kal', 'İptal et ve çık'],
+        buttons: ['Stay', 'Cancel release and quit'],
         cancelId: 0,
         defaultId: 0,
-        detail: 'Çıkış, çalışan alt süreçleri güvenli biçimde sonlandırır.',
-        message: 'Release işlemi devam ediyor.',
-        title: 'Çıkışı onayla',
+        detail: 'Quitting will safely terminate active child processes.',
+        message: 'A release is currently running.',
+        title: 'Confirm quit',
         type: 'warning',
       })
       .then(async ({ response }) => {

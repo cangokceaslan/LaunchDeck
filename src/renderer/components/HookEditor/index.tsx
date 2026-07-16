@@ -10,7 +10,7 @@ const createHook = (): PipelineHook => ({
   executablePath: '',
   id: crypto.randomUUID(),
   isEnabled: true,
-  name: 'Yeni özel adım',
+  name: 'New custom step',
   phase: 'preBuild',
   platform: 'all',
 });
@@ -44,15 +44,15 @@ export const HookEditor = ({
     <section className={styles.editor}>
       <header>
         <div>
-          <h3>Özel pipeline adımları</h3>
-          <p>Komut metni yerine çalıştırılabilir dosya ve argümanlar ayrı tutulur; shell kullanılmaz.</p>
+          <h3>Custom pipeline steps</h3>
+          <p>The executable and arguments are stored separately, and no shell is used.</p>
         </div>
         <Button onClick={() => onChange([...hooks, createHook()])} size="sm" variant="outline-secondary">
-          Adım ekle
+          Add step
         </Button>
       </header>
       {hooks.length === 0 ? (
-        <div className={styles.empty}>Pre/post build veya upload komutu tanımlanmadı.</div>
+        <div className={styles.empty}>No pre/post build or upload commands have been configured.</div>
       ) : (
         <div className={styles.hookList}>
           {hooks.map((hook, index) => (
@@ -60,39 +60,39 @@ export const HookEditor = ({
               <div className={styles.hookHeader}>
                 <Form.Check
                   checked={hook.isEnabled}
-                  label="Etkin"
+                  label="Enabled"
                   onChange={(event) => updateHook(index, { isEnabled: event.target.checked })}
                   type="switch"
                 />
                 <Button
-                  aria-label={`${hook.name} adımını sil`}
+                  aria-label={`Delete ${hook.name}`}
                   onClick={() => onChange(hooks.filter(({ id }) => id !== hook.id))}
                   size="sm"
                   variant="link"
                 >
-                  Sil
+                  Delete
                 </Button>
               </div>
               <div className={styles.fieldGrid}>
                 <Form.Group>
-                  <Form.Label>Adım adı</Form.Label>
+                  <Form.Label>Step name</Form.Label>
                   <Form.Control
                     onChange={(event) => updateHook(index, { name: event.target.value })}
                     value={hook.name}
                   />
                 </Form.Group>
                 <Form.Group>
-                  <Form.Label>Faz</Form.Label>
+                  <Form.Label>Phase</Form.Label>
                   <Form.Select
                     onChange={(event) => {
                       if (isHookPhase(event.target.value)) updateHook(index, { phase: event.target.value });
                     }}
                     value={hook.phase}
                   >
-                    <option value="preBuild">Build öncesi</option>
-                    <option value="postBuild">Build sonrası</option>
-                    <option value="preUpload">Upload öncesi</option>
-                    <option value="postUpload">Upload sonrası</option>
+                    <option value="preBuild">Before build</option>
+                    <option value="postBuild">After build</option>
+                    <option value="preUpload">Before upload</option>
+                    <option value="postUpload">After upload</option>
                   </Form.Select>
                 </Form.Group>
                 <Form.Group>
@@ -103,24 +103,24 @@ export const HookEditor = ({
                     }}
                     value={hook.platform}
                   >
-                    <option value="all">Tümü</option>
+                    <option value="all">All</option>
                     {supportedPlatforms.includes('android') && <option value="android">Android</option>}
                     {supportedPlatforms.includes('ios') && <option value="ios">iOS</option>}
                   </Form.Select>
                 </Form.Group>
               </div>
-              <PathField label="Çalıştırılabilir dosya" onBrowse={() => void chooseExecutable(index)} required value={hook.executablePath} />
-              <PathField label="Çalışma klasörü" onBrowse={() => void chooseDirectory(index)} required value={hook.cwdPath} />
+              <PathField label="Executable file" onBrowse={() => void chooseExecutable(index)} required value={hook.executablePath} />
+              <PathField label="Working directory" onBrowse={() => void chooseDirectory(index)} required value={hook.cwdPath} />
               <Form.Group>
-                <Form.Label>Argümanlar</Form.Label>
+                <Form.Label>Arguments</Form.Label>
                 <Form.Control
                   as="textarea"
                   onChange={(event) => updateHook(index, { args: event.target.value.split('\n') })}
-                  placeholder={'Her satıra bir argüman\nÖrnek: --configuration\nÖrnek: release'}
+                  placeholder={'One argument per line\ne.g. --configuration\ne.g. release'}
                   rows={3}
                   value={hook.args.join('\n')}
                 />
-                <Form.Text>Her satır tek bir argümandır; shell operatörleri yorumlanmaz.</Form.Text>
+                <Form.Text>Each line is one argument. Shell operators are not interpreted.</Form.Text>
               </Form.Group>
             </article>
           ))}

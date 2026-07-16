@@ -1,62 +1,62 @@
 # LaunchDeck
 
-LaunchDeck, Android ve iOS release artifact’larını hazırlamak ve Firebase App Distribution’a göndermek için geliştirilmiş güvenli bir Electron masaüstü uygulamasıdır. Ürün dili Türkçedir.
+LaunchDeck is a secure Electron desktop application for preparing Android and iOS release artifacts and distributing them through Firebase App Distribution. The product language is English (US).
 
-## Temel akış
+## Core workflow
 
-1. Uygulama açılışında Doctor, sistem Firebase CLI kurulumunu doğrular.
-2. İlk kurulumda Service Account JSON, mobil proje klasörleri ve Google Services dosyaları seçilir.
-3. İsteğe bağlı build/upload öncesi veya sonrası komutlar; çalıştırılabilir dosya, argüman dizisi ve çalışma klasörü olarak eklenir.
-4. Release sihirbazında işlem modu ve platform seçilir.
-5. Main process preflight ile araçları, yolları, credential erişimini, artifact beklentilerini ve platform desteğini tekrar doğrular.
-6. Pipeline faz-temelli yüzde, son 500 maskeli log satırı ve platform sonuçlarıyla izlenir.
-7. Son 10 release metadata kaydı SQLite’ta tutulur; daha eski kayıtlar migration ile kurulan trigger tarafından otomatik silinir.
+1. At startup, Doctor verifies the Firebase CLI installation and platform capabilities.
+2. During initial setup, the user selects a service account JSON, mobile project directories, and Google Services files.
+3. Optional commands can run before or after build and upload phases. Each command stores an executable file, an argument array, and a working directory.
+4. The release wizard collects the operation mode and platforms.
+5. The main process preflight validates tools, paths, credential access, artifact expectations, and platform support again.
+6. The pipeline displays phase-based progress, up to 500 redacted log lines, and per-platform outcomes.
+7. SQLite stores metadata for the 10 most recent releases. A migration-installed trigger removes older records automatically.
 
-## Platform desteği
+## Platform support
 
-| İşletim sistemi | Android | iOS |
+| Operating system | Android | iOS |
 | --- | --- | --- |
-| macOS | Desteklenir | Desteklenir |
-| Windows | Desteklenir | Desteklenmez |
-| Linux | Desteklenir | Desteklenmez |
+| macOS | Supported | Supported |
+| Windows | Supported | Not supported |
+| Linux | Supported | Not supported |
 
-iOS seçimi macOS dışındaki sistemlerde renderer ve main process tarafından ayrı ayrı engellenir.
+iOS selection is blocked independently by both the renderer and the main process on non-macOS systems.
 
-## Gereksinimler
+## Requirements
 
-- Node.js 22.12 veya üzeri
+- Node.js 22.12 or later
 - Firebase CLI (`npm install -g firebase-tools`)
-- Android için proje klasöründe çalıştırılabilir Gradle wrapper
-- iOS için macOS, Xcode Command Line Tools, geçerli scheme ve otomatik signing yapılandırması
-- Firebase App Distribution erişimi olan Service Account JSON
-- Linux’ta Service Account yolunu şifrelemek için Secret Service veya KWallet
+- An executable Gradle wrapper in the Android project directory
+- macOS, Xcode Command Line Tools, a valid scheme, and automatic signing for iOS
+- A service account JSON with Firebase App Distribution access
+- Secret Service or KWallet to encrypt the service account path on Linux
 
-Doctor, Firebase CLI eksikken ana uygulama alanına geçişe izin vermez. Xcode eksikliği Android kullanımını engellemez, iOS’u sınırlı olarak işaretler.
+Doctor does not allow access to the main application when Firebase CLI is missing. Missing Xcode tools do not block Android use; they mark iOS support as limited.
 
-## Kurulum
+## Setup
 
 ```bash
 npm install
 npm run dev
 ```
 
-`postinstall`, `better-sqlite3` native modülünü kullanılan Electron sürümüyle yeniden bağlar. npm install-script allowlist’i paket ve sürüm bazında `package.json` içinde tanımlıdır.
+The `postinstall` script rebuilds the native `better-sqlite3` module for the installed Electron version. The npm install-script allowlist is defined by package and version in `package.json`.
 
-## Komutlar
+## Commands
 
-| Komut | Amaç |
+| Command | Purpose |
 | --- | --- |
-| `npm run dev` | Electron geliştirme instance’ını açar |
-| `npm run typecheck` | Main, preload, shared ve renderer TypeScript sözleşmelerini statik kontrol eder |
-| `npm run build` | Üretim JavaScript çıktılarını üretir |
-| `npm run package` | Paketlenmemiş uygulama klasörü üretir |
-| `npm run dist` | Platform dağıtım paketini üretir |
+| `npm run dev` | Opens the Electron development instance |
+| `npm run typecheck` | Statically checks the main, preload, shared, and renderer TypeScript contracts |
+| `npm run build` | Produces production JavaScript output |
+| `npm run package` | Produces an unpacked application directory |
+| `npm run dist` | Produces the platform distribution package |
 
-Üretim build’lerinde source map kapalıdır. Main, preload ve renderer JavaScript chunk’ları minification sonrasında production-only obfuscation işleminden geçer. Obfuscation bir güvenlik sınırı değildir; gerçek sınırlar Electron sandbox, context isolation, dar preload API’si, doğrulanan IPC ve main-process sahipliğidir.
+Source maps are disabled in production builds. Main, preload, and renderer JavaScript chunks receive production-only obfuscation after minification. Obfuscation is not a security boundary; the actual boundaries are Electron sandboxing, context isolation, the narrow preload API, validated IPC, and main-process ownership.
 
-## SQLite schema yönetimi
+## SQLite schema management
 
-Veritabanı Electron `userData/database/launchdeck.db` altında oluşturulur. Schema değişiklikleri sıralı migration modülleriyle yönetilir:
+The database is created at `userData/database/launchdeck.db`. Ordered migration modules manage schema changes:
 
 ```text
 src/main/database/
@@ -66,36 +66,36 @@ src/main/database/
     └── index.ts
 ```
 
-Uygulanan migration’lar `schema_migrations` tablosunda sürüm ve zaman bilgisiyle kayıtlıdır. Migration’lar transaction içinde çalışır. Temel tablolar:
+Applied migrations are recorded in the `schema_migrations` table with version and timestamp information. Migrations run inside transactions. Core tables:
 
-- `applications`: kalıcı uygulama ve platform yapılandırması
-- `pipeline_hooks`: güvenli argüman dizili özel fazlar
-- `release_runs`: en fazla 10 metadata sonucu; raw log içermez
-- `settings`: tema tercihi
+- `applications`: persistent application and platform configuration
+- `pipeline_hooks`: custom phases with safe argument arrays
+- `release_runs`: metadata for up to 10 outcomes; contains no raw logs
+- `settings`: theme preference
 
-Service Account içeriği hiçbir zaman SQLite’a yazılmaz. Dosya yolu Electron `safeStorage` ile şifrelenir; güvenli backend yoksa düz metin fallback yapılmaz ve kurulum durdurulur.
+Service account contents are never written to SQLite. Electron `safeStorage` encrypts the file path. If no secure backend is available, LaunchDeck does not fall back to plain text and setup stops.
 
-## Güvenlik modeli
+## Security model
 
-- Renderer’da Node.js veya Electron erişimi yoktur.
-- `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true` zorunludur.
-- Preload yalnız isimlendirilmiş ve typed kullanım senaryolarını açar; generic `invoke`, `send`, filesystem veya child-process API’si açmaz.
-- IPC gönderen ana frame ve beklenen origin/protokol üzerinden doğrulanır; payload’lar Zod ile yeniden kontrol edilir.
-- Child process çağrıları executable + argüman dizisiyle ve kontrollü environment ile çalışır.
-- Kullanıcı komutları shell metni değildir. Çalıştırılabilir dosya, her satırı ayrı argüman ve seçilmiş çalışma klasörü saklanır.
-- Windows Gradle batch zorunluluğu izole `cmd.exe` adaptöründe allowlist task ve sabit flag’lerle ele alınır.
-- Credential yolu ve bilinen secret desenleri loglar renderer’a geçmeden maskelenir.
-- Aktif release işi, process handle ve iptal denetimi main process’e aittir.
-- Android ve iOS sonuçları bağımsızdır; kısmi başarı ayrı bir terminal sonuçtur.
+- The renderer has no Node.js or Electron access.
+- `nodeIntegration: false`, `contextIsolation: true`, and `sandbox: true` are required.
+- Preload exposes only named, typed use cases; it does not expose generic `invoke`, `send`, filesystem, or child-process APIs.
+- IPC senders are verified against the main frame and expected origin or protocol. Zod validates payloads again.
+- Child processes run with an executable, an argument array, and a controlled environment.
+- User commands are not shell text. LaunchDeck stores an executable file, one argument per line, and a selected working directory.
+- The Windows Gradle batch requirement is isolated in a `cmd.exe` adapter with allowlisted tasks and fixed flags.
+- Credential paths and known secret patterns are redacted before logs reach the renderer.
+- The main process owns the active release job, process handles, and cancellation control.
+- Android and iOS outcomes are independent; partial success is a distinct terminal outcome.
 
-## Pipeline ilerlemesi
+## Pipeline progress
 
-Yüzde geçen süreden tahmin edilmez. Preflight planındaki toplam doğrulanmış faz sayısı ile tamamlanan faz sayısının oranıdır. Bir Gradle, Xcode veya Firebase CLI komutu çalışırken aktif faz gösterilir; yalnız süreç başarılı çıktıktan ve gerekli artifact doğrulandıktan sonra adım tamamlanmış sayılır.
+Progress is not estimated from elapsed time. It is the ratio between completed phases and the total verified phase count in the preflight plan. The active phase remains visible while a Gradle, Xcode, or Firebase CLI command runs. A step is marked complete only after the process succeeds and the required artifact is verified.
 
-## Uygulama ikonları
+## Application icons
 
-- `resources/launch-icon.png`: üretim ve paketleme ikonu
-- `resources/dev-icon.png`: geliştirme kanalı ikonu
-- `src/renderer/assets/`: renderer kopyaları
+- `resources/launch-icon.png`: production and packaging icon
+- `resources/dev-icon.png`: development channel icon
+- `src/renderer/assets/`: renderer copies
 
-İkonlar LaunchDeck için özgün üretilmiştir; Firebase veya Google marka işaretlerini kopyalamaz.
+The icons were created specifically for LaunchDeck and do not reproduce Firebase or Google brand marks.

@@ -6,13 +6,13 @@ import styles from '@components/PipelineProgress/index.module.scss';
 
 const phaseLabels: Record<string, string> = {
   build: 'Build',
-  postBuild: 'Build sonrası',
-  postUpload: 'Upload sonrası',
-  preBuild: 'Build öncesi',
-  preUpload: 'Upload öncesi',
+  postBuild: 'After build',
+  postUpload: 'After upload',
+  preBuild: 'Before build',
+  preUpload: 'Before upload',
   upload: 'Firebase upload',
-  validating: 'Doğrulama',
-  verifying: 'Artifact doğrulama',
+  validating: 'Validation',
+  verifying: 'Artifact verification',
 };
 
 export const PipelineProgress = ({
@@ -40,27 +40,27 @@ export const PipelineProgress = ({
     <div className={styles.progressPanel} aria-live="polite">
       <div className={styles.progressHeader}>
         <div>
-          <span className={styles.eyebrow}>{isFinished ? 'Pipeline tamamlandı' : 'Pipeline çalışıyor'}</span>
+          <span className={styles.eyebrow}>{isFinished ? 'Pipeline completed' : 'Pipeline running'}</span>
           <h2>
             {isFinished
               ? result.platforms.map(({ platform: resultPlatform }) => formatPlatform(resultPlatform)).join(' + ')
-              : `${platform === null ? '' : `${formatPlatform(platform)} · `}${activePhase === null ? 'Başlatılıyor' : phaseLabels[activePhase]}`}
+              : `${platform === null ? '' : `${formatPlatform(platform)} · `}${activePhase === null ? 'Starting' : phaseLabels[activePhase]}`}
           </h2>
         </div>
         {result === null ? (
-          <StatusPill label={isCancelling ? 'İptal ediliyor' : 'Çalışıyor'} tone={isCancelling ? 'warning' : 'running'} />
+          <StatusPill label={isCancelling ? 'Cancelling' : 'Running'} tone={isCancelling ? 'warning' : 'running'} />
         ) : (
           <StatusPill label={formatOutcome(result.outcome)} tone={outcomeTone} />
         )}
       </div>
 
       <div className={styles.progressSummary}>
-        <ProgressBar aria-label="Pipeline ilerlemesi" now={percent} />
-        <div><strong>%{percent}</strong><span>{completedPhases} / {totalPhases} doğrulanmış adım</span></div>
+        <ProgressBar aria-label="Pipeline progress" now={percent} />
+        <div><strong>{percent}%</strong><span>{completedPhases} / {totalPhases} verified steps</span></div>
       </div>
 
       <div className={styles.phaseTrack}>
-        {['Build öncesi', 'Build', 'Artifact', 'Upload öncesi', 'Upload', 'Tamamlandı'].map((label, index) => (
+        {['Before build', 'Build', 'Artifact', 'Before upload', 'Upload', 'Completed'].map((label, index) => (
           <div className={index <= Math.floor(percent / 20) ? styles.phaseComplete : styles.phasePending} key={label}>
             <span>{index + 1}</span><small>{label}</small>
           </div>
@@ -68,12 +68,12 @@ export const PipelineProgress = ({
       </div>
 
       <section className={styles.logSection}>
-        <header><h3>Son loglar</h3><span>En fazla 500 satır · hassas değerler maskeli</span></header>
+        <header><h3>Recent logs</h3><span>Up to 500 lines · sensitive values masked</span></header>
         <div className={styles.logViewer} role="log">
-          {logs.length === 0 ? <p>Komut çıktısı bekleniyor…</p> : logs.map((entry) => (
+          {logs.length === 0 ? <p>Waiting for command output…</p> : logs.map((entry) => (
             <div className={styles[entry.level]} key={entry.sequence}>
-              <time>{new Date(entry.timestamp).toLocaleTimeString('tr-TR')}</time>
-              <span>{entry.platform === undefined ? 'Sistem' : formatPlatform(entry.platform)}</span>
+              <time>{new Date(entry.timestamp).toLocaleTimeString('en-US')}</time>
+              <span>{entry.platform === undefined ? 'System' : formatPlatform(entry.platform)}</span>
               <code>{entry.message}</code>
             </div>
           ))}
@@ -81,7 +81,7 @@ export const PipelineProgress = ({
       </section>
 
       {!isFinished && (
-        <footer><Button disabled={isCancelling} onClick={onCancel} variant="outline-danger">{isCancelling ? 'İptal ediliyor…' : 'Pipeline’ı iptal et'}</Button></footer>
+        <footer><Button disabled={isCancelling} onClick={onCancel} variant="outline-danger">{isCancelling ? 'Cancelling…' : 'Cancel pipeline'}</Button></footer>
       )}
     </div>
   );

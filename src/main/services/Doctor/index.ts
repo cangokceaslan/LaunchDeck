@@ -20,10 +20,10 @@ export class DoctorService {
       code: 'platform',
       detail:
         os === 'darwin'
-          ? 'macOS üzerinde Android ve iOS release akışları kullanılabilir.'
-          : 'Bu işletim sisteminde yalnız Android release akışı kullanılabilir.',
+          ? 'Android and iOS release workflows are available on macOS.'
+          : 'Only the Android release workflow is available on this operating system.',
       isBlocking: false,
-      label: 'Platform desteği',
+      label: 'Platform support',
       status: 'passed',
     };
     const firebaseCheck = await this.firebaseCli.diagnose();
@@ -32,10 +32,10 @@ export class DoctorService {
       code: 'xcode',
       detail:
         os !== 'darwin'
-          ? 'iOS build bu platformda desteklenmiyor.'
+          ? 'iOS builds are not supported on this platform.'
           : xcodePath === null
-            ? 'Xcode Command Line Tools bulunamadı. Android kullanılabilir; iOS build kullanılamaz.'
-            : `iOS build aracı hazır: ${xcodePath}`,
+            ? 'Xcode Command Line Tools were not found. Android is available, but iOS builds are unavailable.'
+            : `iOS build tool ready: ${xcodePath}`,
       isBlocking: false,
       label: 'Xcode',
       status: os === 'darwin' && xcodePath !== null ? 'passed' : 'warning',

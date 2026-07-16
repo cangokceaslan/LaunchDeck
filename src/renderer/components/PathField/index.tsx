@@ -3,7 +3,7 @@ import type { PathFieldProps } from '@components/PathField/index.types';
 import styles from '@components/PathField/index.module.scss';
 
 export const PathField = ({
-  buttonLabel = 'Seç',
+  buttonLabel = 'Select',
   disabled = false,
   helpText,
   label,
@@ -19,7 +19,7 @@ export const PathField = ({
         className={styles.pathInput}
         disabled={disabled}
         onChange={(event) => onChange?.(event.target.value)}
-        placeholder="Henüz seçilmedi"
+        placeholder="Not selected yet"
         readOnly={onChange === undefined}
         required={required}
         value={value}

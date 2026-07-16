@@ -1,7 +1,7 @@
 {
   "name": "launchdeck",
   "version": "1.0.0",
-  "description": "Firebase App Distribution için güvenli masaüstü release yöneticisi",
+  "description": "Secure desktop release manager for Firebase App Distribution",
   "main": "./out/main/index.js",
   "author": "LaunchDeck Team",
   "license": "UNLICENSED",

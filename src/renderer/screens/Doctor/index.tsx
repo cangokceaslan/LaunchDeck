@@ -13,10 +13,10 @@ const toneForStatus = (status: 'checking' | 'passed' | 'warning' | 'failed') => 
 };
 
 const labelForStatus = (status: 'checking' | 'passed' | 'warning' | 'failed'): string => {
-  if (status === 'passed') return 'Hazır';
-  if (status === 'warning') return 'Sınırlı';
-  if (status === 'failed') return 'Eksik';
-  return 'Kontrol ediliyor';
+  if (status === 'passed') return 'Ready';
+  if (status === 'warning') return 'Limited';
+  if (status === 'failed') return 'Missing';
+  return 'Checking';
 };
 
 export const Doctor = ({
@@ -32,15 +32,15 @@ export const Doctor = ({
         <img alt="" aria-hidden="true" src={import.meta.env.DEV ? devIcon : launchIcon} />
         <div>
           <span className={styles.eyebrow}>LaunchDeck Doctor</span>
-          <h1>Release ortamını doğruluyoruz</h1>
-          <p>Uygulamaya geçmeden önce gerekli araçları ve platform yeteneklerini kontrol ediyoruz.</p>
+          <h1>Checking your release environment</h1>
+          <p>We are checking the required tools and platform capabilities before you continue.</p>
         </div>
       </header>
 
       {isChecking && report === null ? (
         <div className={styles.loading}>
           <Spinner animation="border" role="status" size="sm" />
-          <span>Firebase CLI ve sistem araçları denetleniyor…</span>
+          <span>Checking Firebase CLI and system tools…</span>
         </div>
       ) : (
         <div className={styles.checks}>
@@ -60,15 +60,15 @@ export const Doctor = ({
       {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
       {report !== null && !report.isReady && (
         <Alert variant="warning">
-          Firebase CLI kurulmadan release alanına geçilemez. Kurulumu tamamladıktan sonra yeniden denetleyin.
+          Firebase CLI is required to access the release workspace. Install it, then check again.
         </Alert>
       )}
       <footer className={styles.footer}>
         <Button disabled={isChecking} onClick={onRetry} variant="outline-secondary">
-          Yeniden denetle
+          Check again
         </Button>
         <Button disabled={isChecking || report?.isReady !== true} onClick={onContinue}>
-          LaunchDeck’e geç
+          Continue to LaunchDeck
         </Button>
       </footer>
     </section>

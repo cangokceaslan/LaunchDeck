@@ -134,41 +134,41 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
   registerPicker(
     IPC_CHANNELS.pathChooseServiceAccount,
     ['openFile'],
-    'Firebase Service Account JSON seç',
+    'Select Firebase service account JSON',
     [{ extensions: ['json'], name: 'JSON' }],
   );
   registerPicker(
     IPC_CHANNELS.pathChooseGoogleServicesJson,
     ['openFile'],
-    'google-services.json seç',
+    'Select google-services.json',
     [{ extensions: ['json'], name: 'JSON' }],
   );
   registerPicker(
     IPC_CHANNELS.pathChooseGoogleServiceInfoPlist,
     ['openFile'],
-    'GoogleService-Info.plist seç',
+    'Select GoogleService-Info.plist',
     [{ extensions: ['plist'], name: 'Property List' }],
   );
-  registerPicker(IPC_CHANNELS.pathChooseAndroidProject, ['openDirectory'], 'Android proje klasörünü seç');
-  registerPicker(IPC_CHANNELS.pathChooseIosProject, ['openDirectory'], 'iOS proje klasörünü seç');
+  registerPicker(IPC_CHANNELS.pathChooseAndroidProject, ['openDirectory'], 'Select Android project directory');
+  registerPicker(IPC_CHANNELS.pathChooseIosProject, ['openDirectory'], 'Select iOS project directory');
   registerPicker(
     IPC_CHANNELS.pathChooseIosWorkspaceOrProject,
     ['openFile', 'openDirectory'],
-    'Xcode workspace veya project seç',
-    [{ extensions: ['xcworkspace', 'xcodeproj'], name: 'Xcode Projesi' }],
+    'Select an Xcode workspace or project',
+    [{ extensions: ['xcworkspace', 'xcodeproj'], name: 'Xcode Project' }],
   );
-  registerPicker(IPC_CHANNELS.pathChooseHookExecutable, ['openFile'], 'Çalıştırılabilir dosyayı seç');
-  registerPicker(IPC_CHANNELS.pathChooseHookDirectory, ['openDirectory'], 'Komut çalışma klasörünü seç');
+  registerPicker(IPC_CHANNELS.pathChooseHookExecutable, ['openFile'], 'Select executable file');
+  registerPicker(IPC_CHANNELS.pathChooseHookDirectory, ['openDirectory'], 'Select command working directory');
   registerPicker(
     IPC_CHANNELS.pathChooseAndroidArtifact,
     ['openFile'],
-    'Yüklenecek APK dosyasını seç',
+    'Select APK file to upload',
     [{ extensions: ['apk'], name: 'Android APK' }],
   );
   registerPicker(
     IPC_CHANNELS.pathChooseIosArtifact,
     ['openFile'],
-    'Yüklenecek IPA dosyasını seç',
+    'Select IPA file to upload',
     [{ extensions: ['ipa'], name: 'iOS IPA' }],
   );
 };

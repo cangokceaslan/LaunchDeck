@@ -13,12 +13,12 @@ const readAppliedVersions = (database: ApplicationDatabase): Set<number> => {
   return new Set(
     rows.map((row) => {
       if (typeof row !== 'object' || row === null || !('version' in row)) {
-        throw new Error('SQLite schema migration kaydı okunamadı.');
+        throw new Error('The SQLite schema migration record could not be read.');
       }
 
       const version = row.version;
       if (typeof version !== 'number') {
-        throw new Error('SQLite schema migration sürümü geçersiz.');
+        throw new Error('The SQLite schema migration version is invalid.');
       }
 
       return version;

@@ -13,10 +13,10 @@ export const createRedactor = (sensitiveValues: readonly string[]) => {
   return (message: string): string => {
     let redactedMessage = message;
     for (const sensitiveValue of normalizedSecrets) {
-      redactedMessage = redactedMessage.split(sensitiveValue).join('[GİZLENDİ]');
+      redactedMessage = redactedMessage.split(sensitiveValue).join('[REDACTED]');
     }
     for (const secretPattern of SECRET_PATTERNS) {
-      redactedMessage = redactedMessage.replace(secretPattern, '[GİZLENDİ]');
+      redactedMessage = redactedMessage.replace(secretPattern, '[REDACTED]');
     }
     return redactedMessage.slice(0, 8_000);
   };

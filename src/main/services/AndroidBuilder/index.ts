@@ -23,7 +23,7 @@ export class AndroidBuilder {
       gradleWrapperPath.includes(String.fromCharCode(13)) ||
       gradleWrapperPath.includes(String.fromCharCode(10));
     if (isWindows && hasUnsafeWindowsShellCharacter) {
-      throw new Error('Windows Gradle wrapper yolu güvenli olmayan karakter içeriyor.');
+      throw new Error('The Windows Gradle wrapper path contains unsafe characters.');
     }
     const executablePath = isWindows
       ? await resolveExecutableFile(path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'cmd.exe'))
@@ -46,12 +46,12 @@ export class AndroidBuilder {
       signal,
     });
     if (result.exitCode !== 0) {
-      throw new Error(`Android build ${result.exitCode} çıkış koduyla başarısız oldu.`);
+      throw new Error(`Android build failed with exit code ${result.exitCode}.`);
     }
     const artifactPath = await resolveExistingFile(configuration.artifactPath, ['.apk']);
     const artifactStats = await lstat(artifactPath);
     if (artifactStats.size === 0) {
-      throw new Error('Üretilen APK dosyası boş.');
+      throw new Error('The generated APK file is empty.');
     }
     return artifactPath;
   }

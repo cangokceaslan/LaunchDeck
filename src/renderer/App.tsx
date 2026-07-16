@@ -64,7 +64,7 @@ export const App = (): React.JSX.Element => {
     try {
       const application = await window.desktopApi.getApplication(applicationId);
       if (application === null) {
-        setGlobalError('Uygulama bulunamadı.');
+        setGlobalError('Application not found.');
         return;
       }
       setSelectedApplication(application);
@@ -221,7 +221,7 @@ export const App = (): React.JSX.Element => {
         />
       )}
       {view !== 'home' && selectedApplication === null && view !== 'setup' && (
-        <div className={styles.loading}><Spinner animation="border" size="sm" /> Uygulama yükleniyor…</div>
+        <div className={styles.loading}><Spinner animation="border" size="sm" /> Loading application…</div>
       )}
     </AppShell>
   );

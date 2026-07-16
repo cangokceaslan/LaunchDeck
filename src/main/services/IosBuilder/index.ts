@@ -19,7 +19,7 @@ export class IosBuilder {
   public async resolveXcodeBuild(): Promise<string> {
     const executablePath = await findExecutable('xcodebuild');
     if (executablePath === null) {
-      throw new Error('xcodebuild bulunamadı.');
+      throw new Error('xcodebuild was not found.');
     }
     return executablePath;
   }
@@ -31,7 +31,7 @@ export class IosBuilder {
     onOutput: (output: ProcessOutput) => void,
   ): Promise<string> {
     if (process.platform !== 'darwin') {
-      throw new Error('iOS build yalnız macOS üzerinde çalıştırılabilir.');
+      throw new Error('iOS builds can run only on macOS.');
     }
     const xcodeBuildPath = await this.resolveXcodeBuild();
     const archivePath = path.join(runWorkspacePath, 'application.xcarchive');
@@ -65,7 +65,7 @@ export class IosBuilder {
         signal,
       });
       if (archiveResult.exitCode !== 0) {
-        throw new Error(`iOS archive ${archiveResult.exitCode} çıkış koduyla başarısız oldu.`);
+        throw new Error(`iOS archive failed with exit code ${archiveResult.exitCode}.`);
       }
       const exportResult = await runExecutable({
         args: [
@@ -83,12 +83,12 @@ export class IosBuilder {
         signal,
       });
       if (exportResult.exitCode !== 0) {
-        throw new Error(`iOS export ${exportResult.exitCode} çıkış koduyla başarısız oldu.`);
+        throw new Error(`iOS export failed with exit code ${exportResult.exitCode}.`);
       }
       const exportedFiles = await readdir(exportPath);
       const ipaFiles = exportedFiles.filter((fileName) => fileName.toLowerCase().endsWith('.ipa'));
       if (ipaFiles.length !== 1) {
-        throw new Error('iOS export klasöründe tek bir IPA bulunamadı.');
+        throw new Error('Exactly one IPA file was not found in the iOS export directory.');
       }
       await mkdir(path.dirname(configuration.artifactPath), { mode: 0o700, recursive: true });
       await copyFile(path.join(exportPath, ipaFiles[0]), configuration.artifactPath);

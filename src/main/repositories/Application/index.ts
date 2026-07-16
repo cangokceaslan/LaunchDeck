@@ -22,7 +22,7 @@ import {
 const readRequiredString = (record: Record<string, unknown>, key: string): string => {
   const value = record[key];
   if (typeof value !== 'string') {
-    throw new Error(`SQLite uygulama alanı geçersiz: ${key}`);
+    throw new Error(`Invalid SQLite application field: ${key}`);
   }
   return value;
 };
@@ -41,7 +41,7 @@ const isHookPlatform = (value: string): value is PipelineHook['platform'] =>
 const parseStringArray = (serializedValue: string): string[] => {
   const parsedValue = parseJson(serializedValue);
   if (!Array.isArray(parsedValue) || !parsedValue.every((item) => typeof item === 'string')) {
-    throw new Error('SQLite metin dizisi geçersiz.');
+    throw new Error('Invalid SQLite string array.');
   }
   return parsedValue;
 };
@@ -51,7 +51,7 @@ const parseAndroidConfiguration = (serializedValue: unknown): AndroidConfigurati
     return null;
   }
   if (typeof serializedValue !== 'string') {
-    throw new Error('SQLite platform yapılandırması geçersiz.');
+    throw new Error('Invalid SQLite platform configuration.');
   }
   return androidConfigurationSchema.parse(parseJson(serializedValue));
 };
@@ -61,27 +61,27 @@ const parseIosConfiguration = (serializedValue: unknown): IosConfiguration | nul
     return null;
   }
   if (typeof serializedValue !== 'string') {
-    throw new Error('SQLite platform yapılandırması geçersiz.');
+    throw new Error('Invalid SQLite platform configuration.');
   }
   return iosConfigurationSchema.parse(parseJson(serializedValue));
 };
 
 const parseHook = (row: unknown): PipelineHook => {
   if (!isRecord(row)) {
-    throw new Error('SQLite pipeline hook kaydı geçersiz.');
+    throw new Error('Invalid SQLite pipeline hook record.');
   }
   const phase = readRequiredString(row, 'phase');
   const platform = readRequiredString(row, 'platform');
   if (!isHookPhase(phase)) {
-    throw new Error('Pipeline hook fazı geçersiz.');
+    throw new Error('Invalid pipeline hook phase.');
   }
   if (!isHookPlatform(platform)) {
-    throw new Error('Pipeline hook platformu geçersiz.');
+    throw new Error('Invalid pipeline hook platform.');
   }
   const args = parseStringArray(readRequiredString(row, 'args_json'));
   const isEnabled = row.is_enabled;
   if (typeof isEnabled !== 'number') {
-    throw new Error('Pipeline hook durumu geçersiz.');
+    throw new Error('Invalid pipeline hook state.');
   }
   return {
     args,
@@ -118,7 +118,7 @@ export class ApplicationRepository {
     includeCredential: boolean,
   ): StoredApplication | ApplicationDetail {
     if (!isRecord(row)) {
-      throw new Error('SQLite uygulama kaydı geçersiz.');
+      throw new Error('Invalid SQLite application record.');
     }
     const id = readRequiredString(row, 'id');
     const android = parseAndroidConfiguration(row.android_json);
@@ -184,7 +184,7 @@ export class ApplicationRepository {
     })();
     const createdApplication = this.get(id);
     if (createdApplication === null) {
-      throw new Error('Uygulama kaydı oluşturulamadı.');
+      throw new Error('The application record could not be created.');
     }
     return createdApplication;
   }
@@ -212,13 +212,13 @@ export class ApplicationRepository {
           id,
         );
       if (result.changes !== 1) {
-        throw new Error('Güncellenecek uygulama bulunamadı.');
+        throw new Error('The application to update was not found.');
       }
       this.replaceHooks(id, input.hooks);
     })();
     const updatedApplication = this.get(id);
     if (updatedApplication === null) {
-      throw new Error('Uygulama kaydı güncellenemedi.');
+      throw new Error('The application record could not be updated.');
     }
     return updatedApplication;
   }

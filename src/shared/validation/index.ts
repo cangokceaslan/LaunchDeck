@@ -44,7 +44,7 @@ export const createApplicationRequestSchema = z
     serviceAccountPath: nonEmptyPathSchema,
   })
   .refine((request) => request.android !== null || request.ios !== null, {
-    message: 'En az bir platform yapılandırılmalıdır.',
+    message: 'At least one platform must be configured.',
   });
 
 export const updateApplicationRequestSchema = z
@@ -59,7 +59,7 @@ export const updateApplicationRequestSchema = z
     serviceAccountPath: nonEmptyPathSchema.nullable(),
   })
   .refine((request) => request.android !== null || request.ios !== null, {
-    message: 'En az bir platform yapılandırılmalıdır.',
+    message: 'At least one platform must be configured.',
   });
 
 export const preflightReleaseRequestSchema = z.object({

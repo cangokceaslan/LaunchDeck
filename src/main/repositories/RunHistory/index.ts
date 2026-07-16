@@ -9,7 +9,7 @@ const parsePlatforms = (serializedPlatforms: string): ReleasePlatform[] => {
     !Array.isArray(platforms) ||
     !platforms.every((platform) => platform === 'android' || platform === 'ios')
   ) {
-    throw new Error('Build geçmişi platform verisi geçersiz.');
+    throw new Error('Invalid build history platform data.');
   }
   return platforms;
 };
@@ -55,22 +55,22 @@ export class RunHistoryRepository {
       .all(applicationId);
     return rows.map((row) => {
       if (!isRecord(row)) {
-        throw new Error('Build geçmişi kaydı geçersiz.');
+        throw new Error('Invalid build history record.');
       }
       const read = (key: string): string => {
         const value = row[key];
         if (typeof value !== 'string') {
-          throw new Error(`Build geçmişi alanı geçersiz: ${key}`);
+          throw new Error(`Invalid build history field: ${key}`);
         }
         return value;
       };
       const mode = read('mode');
       const outcome = read('outcome');
       if (!isReleaseMode(mode)) {
-        throw new Error('Build geçmişi modu geçersiz.');
+        throw new Error('Invalid build history mode.');
       }
       if (!isReleaseOutcome(outcome)) {
-        throw new Error('Build geçmişi sonucu geçersiz.');
+        throw new Error('Invalid build history outcome.');
       }
       return {
         applicationId: read('application_id'),

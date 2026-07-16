@@ -28,7 +28,7 @@ export class FirebaseCliIntegration {
     if (executablePath === null) {
       return {
         code: 'firebaseCli',
-        detail: 'Firebase CLI bulunamadı. Terminalde “npm install -g firebase-tools” çalıştırıp yeniden denetleyin.',
+        detail: 'Firebase CLI was not found. Run “npm install -g firebase-tools” in a terminal, then check again.',
         isBlocking: true,
         label: 'Firebase CLI',
         status: 'failed',
@@ -45,7 +45,7 @@ export class FirebaseCliIntegration {
     if (result.exitCode !== 0) {
       return {
         code: 'firebaseCli',
-        detail: 'Firebase CLI çalıştırıldı ancak sürüm bilgisi alınamadı.',
+        detail: 'Firebase CLI ran, but its version information could not be retrieved.',
         isBlocking: true,
         label: 'Firebase CLI',
         status: 'failed',
@@ -53,7 +53,7 @@ export class FirebaseCliIntegration {
     }
     return {
       code: 'firebaseCli',
-      detail: `Hazır: ${executablePath}`,
+      detail: `Ready: ${executablePath}`,
       isBlocking: true,
       label: 'Firebase CLI',
       status: 'passed',
@@ -67,7 +67,7 @@ export class FirebaseCliIntegration {
   ): Promise<void> {
     const executablePath = await this.getExecutablePath();
     if (executablePath === null) {
-      throw new Error('Firebase CLI bulunamadı.');
+      throw new Error('Firebase CLI was not found.');
     }
     const isolatedConfigHome = await mkdtemp(path.join(tmpdir(), 'launchdeck-firebase-'));
     try {
@@ -84,7 +84,7 @@ export class FirebaseCliIntegration {
         signal: input.signal,
       });
       if (result.exitCode !== 0) {
-        throw new Error(`Firebase CLI ${result.exitCode} çıkış koduyla sonlandı.`);
+        throw new Error(`Firebase CLI exited with code ${result.exitCode}.`);
       }
     } finally {
       await rm(isolatedConfigHome, { force: true, recursive: true });

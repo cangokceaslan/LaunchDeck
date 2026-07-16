@@ -13,18 +13,18 @@ export const ApplicationList = ({
   <div className={styles.page}>
     <header className={styles.pageHeader}>
       <div>
-        <span className={styles.eyebrow}>Release çalışma alanı</span>
-        <h1>Uygulamalar</h1>
-        <p>Kurulumu tamamlanmış mobil uygulamaları ve son release durumlarını yönetin.</p>
+        <span className={styles.eyebrow}>Release workspace</span>
+        <h1>Applications</h1>
+        <p>Manage configured mobile applications and their latest release status.</p>
       </div>
-      <Button onClick={onAddApplication}>Yeni uygulama ekle</Button>
+      <Button onClick={onAddApplication}>Add application</Button>
     </header>
     {applications.length === 0 ? (
       <EmptyState
-        actionLabel="Kuruluma başla"
-        description="Service Account ve mobil proje dosyalarını bir kez seçin; sonraki release’lerde yapılandırmayı tekrar girmeyin."
+        actionLabel="Start setup"
+        description="Select the service account and mobile project files once, then reuse the configuration for future releases."
         onAction={onAddApplication}
-        title="İlk uygulamanızı ekleyin"
+        title="Add your first application"
       />
     ) : (
       <div className={styles.grid}>
@@ -36,8 +36,8 @@ export const ApplicationList = ({
             type="button"
           >
             <div className={styles.cardTop}>
-              <span className={styles.initial}>{application.name.slice(0, 1).toLocaleUpperCase('tr')}</span>
-              <StatusPill label="Kurulum hazır" tone="success" />
+              <span className={styles.initial}>{application.name.slice(0, 1).toLocaleUpperCase('en-US')}</span>
+              <StatusPill label="Setup ready" tone="success" />
             </div>
             <h2>{application.name}</h2>
             <code>{application.firebaseProjectId}</code>
@@ -46,7 +46,7 @@ export const ApplicationList = ({
                 <span key={platform}>{formatPlatform(platform)}</span>
               ))}
             </div>
-            <small>Son güncelleme {formatDateTime(application.updatedAt)}</small>
+            <small>Updated {formatDateTime(application.updatedAt)}</small>
           </button>
         ))}
       </div>

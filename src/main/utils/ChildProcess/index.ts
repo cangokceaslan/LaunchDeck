@@ -71,7 +71,7 @@ const terminateProcessTree = (childProcess: ChildProcessWithoutNullStreams): voi
 export const runExecutable = (options: RunExecutableOptions): Promise<ProcessExecutionResult> =>
   new Promise((resolve, reject) => {
     if (options.signal.aborted) {
-      reject(new Error('İşlem iptal edildi.'));
+      reject(new Error('The operation was cancelled.'));
       return;
     }
 
@@ -95,7 +95,7 @@ export const runExecutable = (options: RunExecutableOptions): Promise<ProcessExe
     childProcess.once('close', (exitCode, signal) => {
       options.signal.removeEventListener('abort', handleAbort);
       if (options.signal.aborted) {
-        reject(new Error('İşlem iptal edildi.'));
+        reject(new Error('The operation was cancelled.'));
         return;
       }
       resolve({ exitCode: exitCode ?? -1, signal });
