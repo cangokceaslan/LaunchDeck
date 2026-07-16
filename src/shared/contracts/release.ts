@@ -10,6 +10,8 @@ export type ReleasePhase =
   | 'postUpload'
   | 'verifying';
 
+export type ReleaseProgressKind = 'estimated' | 'reported' | 'verified';
+
 export type ValidationIssueCode =
   | 'applicationNotFound'
   | 'artifactMissing'
@@ -112,6 +114,7 @@ export type ReleaseEvent =
       completedPhases: number;
       percent: number;
       platform?: ReleasePlatform;
+      progressKind: ReleaseProgressKind;
       runId: string;
       totalPhases: number;
       type: 'phaseChanged';

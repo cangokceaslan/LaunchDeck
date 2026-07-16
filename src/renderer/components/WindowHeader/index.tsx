@@ -1,3 +1,4 @@
+import launchIcon from '@renderer/assets/launch-icon.png';
 import styles from '@components/WindowHeader/index.module.scss';
 
 export const WindowHeader = (): React.JSX.Element => (
@@ -6,7 +7,7 @@ export const WindowHeader = (): React.JSX.Element => (
       className={styles.dragRegion}
       onDoubleClick={() => void window.desktopApi.windowToggleMaximize()}
     >
-      <span aria-hidden="true" className={styles.monogram}>LD</span>
+      <img alt="" aria-hidden="true" className={styles.productIcon} src={launchIcon} />
       <div className={styles.productTitle}>
         <strong>LaunchDeck</strong>
         <span>Distribution operations</span>
@@ -19,6 +20,7 @@ export const WindowHeader = (): React.JSX.Element => (
     <div className={styles.windowControls}>
       <button
         aria-label="Minimize window"
+        className={styles.minimizeButton}
         onClick={() => void window.desktopApi.windowMinimize()}
         title="Minimize"
         type="button"
@@ -29,6 +31,7 @@ export const WindowHeader = (): React.JSX.Element => (
       </button>
       <button
         aria-label="Maximize or restore window"
+        className={styles.maximizeButton}
         onClick={() => void window.desktopApi.windowToggleMaximize()}
         title="Maximize or restore"
         type="button"

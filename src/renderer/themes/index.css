@@ -25,8 +25,13 @@
   --color-on-success: #ffffff;
   --color-warning: #b46509;
   --color-warning-soft: #fff3dc;
+  --color-window-close: #ff5f57;
+  --color-window-maximize: #28c840;
+  --color-window-minimize: #febc2e;
+  --color-window-symbol: rgb(0 0 0 / 55%);
   --color-danger: #c53b47;
   --color-danger-soft: #fdebee;
+  --color-on-danger: #ffffff;
   --color-log: #091225;
   --color-log-text: #d8e0ef;
   --color-log-muted: #7f8ca4;

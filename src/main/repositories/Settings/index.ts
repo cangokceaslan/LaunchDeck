@@ -2,36 +2,61 @@ import type { ApplicationDatabase } from '@main/database';
 import type { AppSettings } from '@shared/contracts/settings';
 import type { ThemePreference } from '@shared/contracts/domain';
 
-const SETTINGS_KEYS = { theme: 'launchdeck.theme' } as const;
+const SETTINGS_KEYS = {
+  pickerDirectory: 'launchdeck.pickerDirectory',
+  theme: 'launchdeck.theme',
+} as const;
 
 export class SettingsRepository {
   public constructor(private readonly database: ApplicationDatabase) {}
 
-  public get(): AppSettings {
+  private readValue(key: string): unknown {
     const row: unknown = this.database
       .prepare('SELECT value_json FROM settings WHERE key = ?')
-      .get(SETTINGS_KEYS.theme);
+      .get(key);
     if (typeof row !== 'object' || row === null || !('value_json' in row)) {
-      return { theme: 'system' };
+      return null;
     }
-    const serializedTheme = row.value_json;
-    if (typeof serializedTheme !== 'string') {
-      return { theme: 'system' };
+    const serializedValue = row.value_json;
+    if (typeof serializedValue !== 'string') {
+      return null;
     }
-    const parsedTheme: unknown = JSON.parse(serializedTheme);
-    return parsedTheme === 'light' || parsedTheme === 'dark' || parsedTheme === 'system'
-      ? { theme: parsedTheme }
-      : { theme: 'system' };
+    try {
+      const parsedValue: unknown = JSON.parse(serializedValue);
+      return parsedValue;
+    } catch {
+      return null;
+    }
   }
 
-  public updateTheme(theme: ThemePreference): AppSettings {
+  private writeValue(key: string, value: string): void {
     this.database
       .prepare(
         `INSERT INTO settings (key, value_json, updated_at) VALUES (?, ?, ?)
          ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json,
            updated_at = excluded.updated_at`,
       )
-      .run(SETTINGS_KEYS.theme, JSON.stringify(theme), new Date().toISOString());
+      .run(key, JSON.stringify(value), new Date().toISOString());
+  }
+
+  public get(): AppSettings {
+    const parsedTheme = this.readValue(SETTINGS_KEYS.theme);
+    return parsedTheme === 'light' || parsedTheme === 'dark' || parsedTheme === 'system'
+      ? { theme: parsedTheme }
+      : { theme: 'system' };
+  }
+
+  public getLastPickerDirectory(pickerId: string): string | null {
+    const directory = this.readValue(`${SETTINGS_KEYS.pickerDirectory}.${pickerId}`);
+    return typeof directory === 'string' && directory.trim() !== '' ? directory : null;
+  }
+
+  public updateLastPickerDirectory(pickerId: string, directory: string): void {
+    this.writeValue(`${SETTINGS_KEYS.pickerDirectory}.${pickerId}`, directory);
+  }
+
+  public updateTheme(theme: ThemePreference): AppSettings {
+    this.writeValue(SETTINGS_KEYS.theme, theme);
     return { theme };
   }
 }

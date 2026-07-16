@@ -18,20 +18,11 @@
     min-width: 0;
     padding-left: var(--space-4);
 
-    .monogram {
-      align-items: center;
-      background: var(--color-primary);
-      border-radius: var(--radius-sm);
-      color: var(--color-on-primary);
-      display: flex;
-      font-family: var(--font-mono);
-      font-size: 0.64rem;
-      font-weight: 800;
-      height: 25px;
-      justify-content: center;
-      letter-spacing: -0.04em;
-      transform: rotate(-3deg);
-      width: 25px;
+    .productIcon {
+      border-radius: 7px;
+      height: 27px;
+      object-fit: cover;
+      width: 27px;
     }
 
     .productTitle {
@@ -72,38 +63,57 @@
 
   .windowControls {
     -webkit-app-region: no-drag;
+    align-items: center;
     display: flex;
+    gap: 8px;
+    padding: 0 var(--space-4);
 
     button {
       align-items: center;
-      background: transparent;
+      background: var(--window-control-color);
       border: 0;
-      color: var(--color-text-muted);
+      border-radius: 50%;
+      color: var(--color-window-symbol);
       display: flex;
+      height: 13px;
       justify-content: center;
       padding: 0;
-      transition: background var(--motion-fast), color var(--motion-fast);
-      width: 46px;
+      transition: filter var(--motion-fast), transform var(--motion-fast);
+      width: 13px;
 
       &:hover {
-        background: var(--color-surface-subtle);
-        color: var(--color-text);
+        filter: brightness(0.92);
+        transform: scale(1.08);
       }
 
       svg {
         fill: none;
-        height: 16px;
+        height: 9px;
+        opacity: 0;
         stroke: currentColor;
         stroke-linecap: round;
         stroke-linejoin: round;
-        stroke-width: 1.35;
-        width: 16px;
+        stroke-width: 1.8;
+        transition: opacity var(--motion-fast);
+        width: 9px;
       }
 
-      &.closeButton:hover {
-        background: var(--color-danger-soft);
-        color: var(--color-danger);
+      &:hover svg,
+      .windowControls:hover & svg {
+        opacity: 1;
       }
+    }
+
+    .minimizeButton {
+      --window-control-color: var(--color-window-minimize);
+    }
+
+    .maximizeButton {
+      --window-control-color: var(--color-window-maximize);
+    }
+
+    .closeButton {
+      --window-control-color: var(--color-window-close);
     }
   }
 

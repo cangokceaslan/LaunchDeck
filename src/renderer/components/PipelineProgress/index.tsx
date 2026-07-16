@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { Button, ProgressBar } from 'react-bootstrap';
 import { StatusPill } from '@components/StatusPill';
 import { formatOutcome, formatPlatform } from '@renderer/utils/formatting';
@@ -21,15 +21,37 @@ export const PipelineProgress = ({
   completedPhases,
   isCancelling,
   logs,
+  mode,
   onCancel,
   percent,
   platform,
+  platforms,
+  progressKind,
   result,
   totalPhases,
 }: PipelineProgressProps): React.JSX.Element => {
   const logViewerRef = useRef<HTMLDivElement>(null);
   const shouldFollowLogs = useRef(true);
   const isFinished = result !== null;
+  const phaseSequence = useMemo(
+    () => [
+      ...(mode === 'buildOnly' || mode === 'buildAndUpload'
+        ? [{ key: 'build', label: 'Build' }]
+        : []),
+      { key: 'verifying', label: 'Verify artifact' },
+      ...(mode === 'uploadOnly' || mode === 'buildAndUpload'
+        ? [{ key: 'upload', label: 'Distribute' }]
+        : []),
+    ],
+    [mode],
+  );
+  const activeStage =
+    activePhase === 'preBuild' || activePhase === 'postBuild'
+      ? 'build'
+      : activePhase === 'preUpload' || activePhase === 'postUpload'
+        ? 'upload'
+        : activePhase;
+  const activeStageIndex = phaseSequence.findIndex(({ key }) => key === activeStage);
   const outcomeTone =
     result?.outcome === 'succeeded'
       ? 'success'
@@ -42,15 +64,19 @@ export const PipelineProgress = ({
   useLayoutEffect(() => {
     const logViewer = logViewerRef.current;
     if (logViewer !== null && shouldFollowLogs.current) {
-      logViewer.scrollTop = logViewer.scrollHeight;
+      const animationFrame = requestAnimationFrame(() => {
+        logViewer.scrollTop = logViewer.scrollHeight;
+      });
+      return () => cancelAnimationFrame(animationFrame);
     }
+    return undefined;
   }, [logs]);
 
   const handleLogScroll = (): void => {
     const logViewer = logViewerRef.current;
     if (logViewer === null) return;
     const distanceFromBottom = logViewer.scrollHeight - logViewer.scrollTop - logViewer.clientHeight;
-    shouldFollowLogs.current = distanceFromBottom <= 24;
+    shouldFollowLogs.current = distanceFromBottom <= 48;
   };
 
   return (
@@ -71,17 +97,40 @@ export const PipelineProgress = ({
         )}
       </div>
 
-      <div className={styles.progressSummary}>
-        <ProgressBar aria-label="Pipeline progress" now={percent} />
-        <div><strong>{percent}%</strong><span>{completedPhases} / {totalPhases} verified steps</span></div>
+      <div className={styles.progressOverview}>
+        <div className={styles.percentBlock}>
+          <strong>{percent}%</strong>
+          <span>
+            {progressKind === 'verified'
+              ? 'Verified progress'
+              : progressKind === 'reported'
+                ? 'Tool-reported progress'
+                : 'Estimated live progress'}
+          </span>
+        </div>
+        <div className={styles.progressSummary}>
+          <ProgressBar aria-label="Pipeline progress" now={percent} />
+          <div>
+            <span>{completedPhases} of {totalPhases} steps verified</span>
+            <span>{platforms.map(formatPlatform).join(' + ')}</span>
+          </div>
+        </div>
       </div>
 
       <div className={styles.phaseTrack}>
-        {['Before build', 'Build', 'Artifact', 'Before upload', 'Upload', 'Completed'].map((label, index) => (
-          <div className={index <= Math.floor(percent / 20) ? styles.phaseComplete : styles.phasePending} key={label}>
-            <span>{index + 1}</span><small>{label}</small>
-          </div>
-        ))}
+        {phaseSequence.map(({ key, label }, index) => {
+          const isComplete = isFinished || (activeStageIndex >= 0 && index < activeStageIndex);
+          const isActive = !isFinished && index === activeStageIndex;
+          return (
+            <div
+              className={isComplete ? styles.phaseComplete : isActive ? styles.phaseActive : styles.phasePending}
+              key={key}
+            >
+              <span>{isComplete ? '✓' : index + 1}</span>
+              <small>{label}</small>
+            </div>
+          );
+        })}
       </div>
 
       <section className={styles.logSection}>

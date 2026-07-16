@@ -35,8 +35,10 @@ const choosePath = async (
   properties: Array<'openFile' | 'openDirectory'>,
   title: string,
   filters?: FileFilter[],
+  defaultPath?: string,
 ): Promise<PathSelectionResult> => {
   const dialogOptions = {
+    defaultPath,
     filters,
     properties,
     title,
@@ -161,7 +163,21 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
   ): void => {
     ipcMain.handle(channel, async (event) => {
       assertTrustedSender(event);
-      return choosePath(BrowserWindow.fromWebContents(event.sender), properties, title, filters);
+      const result = await choosePath(
+        BrowserWindow.fromWebContents(event.sender),
+        properties,
+        title,
+        filters,
+        dependencies.settingsRepository.getLastPickerDirectory(channel) ?? undefined,
+      );
+      if (result.status === 'selected') {
+        const isDirectoryOnly = properties.length === 1 && properties[0] === 'openDirectory';
+        dependencies.settingsRepository.updateLastPickerDirectory(
+          channel,
+          isDirectoryOnly ? result.path : path.dirname(result.path),
+        );
+      }
+      return result;
     });
   };
   registerPicker(

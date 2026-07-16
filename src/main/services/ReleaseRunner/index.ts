@@ -26,6 +26,7 @@ import type {
   PreflightResult,
   ReleaseEvent,
   ReleasePhase,
+  ReleaseProgressKind,
   ReleaseResult,
   ResolvedReleasePlan,
   StartReleaseResult,
@@ -69,6 +70,13 @@ const countPlatformSteps = (
 
 const safeErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : 'An unexpected operation error occurred.';
+
+const readReportedPercent = (line: string): number | null => {
+  const match = /(?:^|[\s[(])(\d{1,3})%(?:[\s\])]|$)/u.exec(line);
+  if (match?.[1] === undefined) return null;
+  const percent = Number(match[1]);
+  return Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : null;
+};
 
 export class ReleaseRunner {
   private readonly plans = new Map<string, InternalReleasePlan>();
@@ -294,6 +302,8 @@ export class ReleaseRunner {
     const redact = createRedactor([plan.application.serviceAccountPath]);
     let sequence = 0;
     let completedPhases = 0;
+    let lastEmittedPercent = 0;
+    let lastProgressKind: ReleaseProgressKind = 'verified';
     let activePhase: ReleasePhase = 'validating';
     const emitLog = (
       message: string,
@@ -318,26 +328,67 @@ export class ReleaseRunner {
       phase: ReleasePhase,
       platform: ReleasePlatform,
       label: string,
-      operation: () => Promise<void>,
+      operation: (reportActivity: (line?: string) => void) => Promise<void>,
     ): Promise<void> => {
       activePhase = phase;
-      onEvent({
-        activePhase,
-        completedPhases,
-        percent: Math.round((completedPhases / plan.publicPlan.phaseCount) * 100),
-        platform,
-        runId,
-        totalPhases: plan.publicPlan.phaseCount,
-        type: 'phaseChanged',
-      });
+      let activityCount = 0;
+      let stepFraction = 0;
+      const emitProgress = (progressKind: ReleaseProgressKind): void => {
+        const calculatedPercent = Math.min(
+          99,
+          Math.round(
+            ((completedPhases + stepFraction) / plan.publicPlan.phaseCount) * 100,
+          ),
+        );
+        if (calculatedPercent > lastEmittedPercent) {
+          lastEmittedPercent = calculatedPercent;
+          lastProgressKind = progressKind;
+        }
+        onEvent({
+          activePhase,
+          completedPhases,
+          percent: lastEmittedPercent,
+          platform,
+          progressKind: lastProgressKind,
+          runId,
+          totalPhases: plan.publicPlan.phaseCount,
+          type: 'phaseChanged',
+        });
+      };
+      const reportActivity = (line?: string): void => {
+        activityCount += 1;
+        const reportedPercent = line === undefined ? null : readReportedPercent(line);
+        const nextFraction =
+          reportedPercent === null
+            ? Math.min(0.9, 0.08 + (1 - Math.exp(-activityCount / 18)) * 0.82)
+            : Math.min(0.95, reportedPercent / 100);
+        if (nextFraction <= stepFraction) return;
+        stepFraction = nextFraction;
+        emitProgress(reportedPercent === null ? 'estimated' : 'reported');
+      };
+      emitProgress('verified');
       emitLog(label, 'info', platform);
-      await operation();
+      const activityTimer = setInterval(() => reportActivity(), 1_000);
+      try {
+        await operation(reportActivity);
+      } finally {
+        clearInterval(activityTimer);
+      }
       completedPhases += 1;
+      stepFraction = 0;
+      const verifiedPercent = Math.round(
+        (completedPhases / plan.publicPlan.phaseCount) * 100,
+      );
+      if (verifiedPercent >= lastEmittedPercent) {
+        lastEmittedPercent = verifiedPercent;
+        lastProgressKind = 'verified';
+      }
       onEvent({
         activePhase,
         completedPhases,
-        percent: Math.round((completedPhases / plan.publicPlan.phaseCount) * 100),
+        percent: lastEmittedPercent,
         platform,
+        progressKind: lastProgressKind,
         runId,
         totalPhases: plan.publicPlan.phaseCount,
         type: 'phaseChanged',
@@ -349,13 +400,16 @@ export class ReleaseRunner {
     ): Promise<void> => {
       const phase: ReleasePhase = hookPhase;
       for (const hook of hooksFor(plan.application.hooks, hookPhase, platform)) {
-        await runStep(phase, platform, `Custom step: ${hook.name}`, async () => {
+        await runStep(phase, platform, `Custom step: ${hook.name}`, async (reportActivity) => {
           const command = await resolveCommandLine(hook.command, hook.cwdPath);
           const result = await runExecutable({
             args: command.args,
             cwdPath: hook.cwdPath,
             executablePath: command.executablePath,
-            onOutput: ({ level, line }) => emitLog(line, level === 'error' ? 'error' : 'info', platform),
+            onOutput: ({ level, line }) => {
+              reportActivity(line);
+              emitLog(line, level === 'error' ? 'error' : 'info', platform);
+            },
             signal: abortController.signal,
           });
           if (result.exitCode !== 0) {
@@ -378,19 +432,25 @@ export class ReleaseRunner {
         try {
           if (includesBuild(plan.request.mode)) {
             await runHooks('preBuild', platform);
-            await runStep('build', platform, `${platform === 'android' ? 'Android' : 'iOS'} build started.`, async () => {
+            await runStep('build', platform, `${platform === 'android' ? 'Android' : 'iOS'} build started.`, async (reportActivity) => {
               if (platform === 'android' && plan.application.android !== null) {
                 artifactPath = await this.androidBuilder.build(
                   plan.application.android,
                   abortController.signal,
-                  ({ level, line }) => emitLog(line, level === 'error' ? 'error' : 'info', platform),
+                  ({ level, line }) => {
+                    reportActivity(line);
+                    emitLog(line, level === 'error' ? 'error' : 'info', platform);
+                  },
                 );
               } else if (platform === 'ios' && plan.application.ios !== null) {
                 artifactPath = await this.iosBuilder.build(
                   plan.application.ios,
                   path.join(runWorkspacePath, 'ios'),
                   abortController.signal,
-                  ({ level, line }) => emitLog(line, level === 'error' ? 'error' : 'info', platform),
+                  ({ level, line }) => {
+                    reportActivity(line);
+                    emitLog(line, level === 'error' ? 'error' : 'info', platform);
+                  },
                 );
               } else {
                 throw new Error('Platform build configuration was not found.');
@@ -409,7 +469,7 @@ export class ReleaseRunner {
           if (includesUpload(plan.request.mode)) {
             failureArea = 'upload';
             await runHooks('preUpload', platform);
-            await runStep('upload', platform, 'Firebase App Distribution upload started.', async () => {
+            await runStep('upload', platform, 'Firebase App Distribution upload started.', async (reportActivity) => {
               const platformConfiguration =
                 platform === 'android' ? plan.application.android : plan.application.ios;
               if (platformConfiguration === null || artifactPath === undefined) {
@@ -421,8 +481,10 @@ export class ReleaseRunner {
                 credentialPath: plan.application.serviceAccountPath,
                 cwdPath: platformConfiguration.projectPath,
                 groups: plan.request.distributionGroups,
-                onOutput: ({ level, line }) =>
-                  emitLog(line, level === 'error' ? 'error' : 'info', platform),
+                onOutput: ({ level, line }) => {
+                  reportActivity(line);
+                  emitLog(line, level === 'error' ? 'error' : 'info', platform);
+                },
                 projectId: plan.application.firebaseProjectId,
                 releaseNotes: plan.request.releaseNotes,
                 signal: abortController.signal,

@@ -1,4 +1,8 @@
-import type { ReleaseLogEntry, ReleaseResult } from '@shared/contracts/release';
+import type {
+  ReleaseLogEntry,
+  ReleaseProgressKind,
+  ReleaseResult,
+} from '@shared/contracts/release';
 
 export type ReleaseRunViewState = {
   activePhase: string | null;
@@ -6,6 +10,7 @@ export type ReleaseRunViewState = {
   logs: ReleaseLogEntry[];
   percent: number;
   platform: 'android' | 'ios' | null;
+  progressKind: ReleaseProgressKind;
   result: ReleaseResult | null;
   runId: string | null;
   status: 'idle' | 'starting' | 'running' | 'cancelling' | 'finished' | 'failedToStart';

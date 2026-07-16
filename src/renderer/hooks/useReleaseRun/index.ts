@@ -12,6 +12,7 @@ const initialState: ReleaseRunViewState = {
   logs: [],
   percent: 0,
   platform: null,
+  progressKind: 'verified',
   result: null,
   runId: null,
   status: 'idle',
@@ -40,6 +41,7 @@ export const useReleaseRun = (): UseReleaseRunResult => {
         completedPhases: event.completedPhases,
         percent: event.percent,
         platform: event.platform ?? null,
+        progressKind: event.progressKind,
         status: current.status === 'cancelling' ? 'cancelling' : 'running',
         totalPhases: event.totalPhases,
       }));
