@@ -181,7 +181,7 @@ export const PipelineProgress = ({
         </div>
       </div>
 
-      <div className={styles.phaseTrack}>
+      <ol aria-label="Pipeline stages" className={styles.phaseTrack}>
         {phaseSequence.map(({ key, label }, index) => {
           const terminalStageIndex = failedStageIndex >= 0 ? failedStageIndex : activeStageIndex;
           const isSuccessfulResult = result?.outcome === 'succeeded';
@@ -195,7 +195,7 @@ export const PipelineProgress = ({
           const isCancelled =
             isFinished && result.outcome === 'cancelled' && index === terminalStageIndex;
           return (
-            <div
+            <li
               className={
                 isComplete
                   ? styles.phaseComplete
@@ -221,10 +221,10 @@ export const PipelineProgress = ({
                         : index + 1}
               </span>
               <small>{label}</small>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       <section className={styles.logSection}>
         <header><h3>Recent logs</h3><span>Up to 500 lines · sensitive values masked</span></header>

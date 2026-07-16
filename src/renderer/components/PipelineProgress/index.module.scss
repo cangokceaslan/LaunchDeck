@@ -1,42 +1,41 @@
 .progressPanel {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-5);
 
   .progressHeader {
     align-items: center;
-    border-bottom: 1px solid var(--color-border);
     display: flex;
+    gap: var(--space-4);
     justify-content: space-between;
-    padding-bottom: var(--space-5);
 
     .eyebrow {
       color: var(--color-primary-strong);
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
     h2 {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: -0.015em;
       margin: var(--space-1) 0 0;
     }
   }
 
   .progressOverview {
     align-items: center;
-    background: linear-gradient(120deg, var(--color-primary-soft), var(--color-surface-subtle) 62%);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     display: grid;
-    gap: var(--space-5);
-    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-6);
+    grid-template-columns: 150px minmax(0, 1fr);
     padding: var(--space-5);
 
     .percentBlock {
       display: flex;
       flex-direction: column;
-      min-width: 164px;
 
       .percentValue {
         align-items: center;
@@ -44,7 +43,9 @@
         gap: var(--space-3);
 
         strong {
-          font-size: 2.15rem;
+          font-size: 1.9rem;
+          font-variant-numeric: tabular-nums;
+          font-weight: 600;
           letter-spacing: -0.04em;
           line-height: 1;
         }
@@ -52,7 +53,7 @@
 
       small {
         color: var(--color-text-muted);
-        font-size: 0.68rem;
+        font-size: 0.66rem;
         margin-top: var(--space-2);
       }
 
@@ -61,14 +62,15 @@
       .signalFailed,
       .signalCancelled {
         align-items: center;
-        border: 2px solid currentColor;
+        border: 1px solid currentColor;
         border-radius: 50%;
         display: flex;
-        font-size: 0.9rem;
+        flex: 0 0 auto;
+        font-size: 0.82rem;
         font-weight: 700;
-        height: 32px;
+        height: 28px;
         justify-content: center;
-        width: 32px;
+        width: 28px;
       }
 
       .signalRunning {
@@ -79,25 +81,25 @@
           border: 2px solid var(--color-border-strong);
           border-radius: 50%;
           border-top-color: var(--color-primary-strong);
-          height: 15px;
-          width: 15px;
+          height: 13px;
+          width: 13px;
         }
       }
 
       .signalSuccess {
-        background: var(--color-success);
+        background: var(--color-success-soft);
         border-color: var(--color-success);
-        color: var(--color-on-success);
+        color: var(--color-success);
       }
 
       .signalFailed {
-        background: var(--color-danger);
+        background: var(--color-danger-soft);
         border-color: var(--color-danger);
-        color: var(--color-on-danger);
+        color: var(--color-danger);
       }
 
       .signalCancelled {
-        background: var(--color-surface);
+        background: var(--color-surface-subtle);
         color: var(--color-text-muted);
       }
     }
@@ -106,78 +108,91 @@
   .progressSummary {
     min-width: 0;
 
+    :global(.progress) {
+      --bs-progress-bg: var(--color-surface-subtle);
+      border-radius: 999px;
+      height: 7px;
+    }
+
+    :global(.progress-bar) {
+      border-radius: 999px;
+    }
+
     > div:last-child {
       align-items: center;
       color: var(--color-text-muted);
       display: flex;
-      font-size: 0.78rem;
+      font-size: 0.7rem;
+      gap: var(--space-3);
       justify-content: space-between;
       margin-top: var(--space-2);
-
-      strong {
-        color: var(--color-text);
-      }
     }
   }
 
   .phaseTrack {
     background: var(--color-surface-subtle);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    padding: var(--space-5) var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    list-style: none;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
     width: 100%;
 
-    > div {
+    > li {
       align-items: center;
       display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      position: relative;
+      gap: var(--space-3);
+      justify-content: center;
+      min-width: 0;
+      padding: var(--space-4);
 
-      &::before {
-        background: var(--color-border);
-        content: '';
-        height: 2px;
-        position: absolute;
-        right: 50%;
-        top: 12px;
-        width: 100%;
-        z-index: 0;
-      }
-
-      &:first-child::before {
-        display: none;
+      & + li {
+        border-left: 1px solid var(--color-border);
       }
 
       > span {
         align-items: center;
-        background: var(--color-surface-subtle);
-        border: 2px solid var(--color-border);
+        background: var(--color-surface);
+        border: 1px solid var(--color-border-strong);
         border-radius: 50%;
         display: flex;
-        font-size: 0.65rem;
+        flex: 0 0 auto;
+        font-size: 0.64rem;
+        font-weight: 700;
         height: 26px;
         justify-content: center;
-        position: relative;
         width: 26px;
-        z-index: 1;
       }
 
       small {
         color: var(--color-text-muted);
-        font-size: 0.65rem;
-        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      &.phaseComplete > span {
-        background: var(--color-success);
-        border-color: var(--color-success);
-        color: var(--color-on-success);
+      &.phaseComplete {
+        background: var(--color-surface);
+
+        > span {
+          background: var(--color-success-soft);
+          border-color: var(--color-success);
+          color: var(--color-success);
+        }
+
+        small {
+          color: var(--color-text);
+        }
       }
 
       &.phaseActive {
+        background: var(--color-primary-soft);
+
         > span {
           background: var(--color-primary);
           border-color: var(--color-primary);
@@ -191,12 +206,12 @@
       }
 
       &.phaseFailed {
+        background: var(--color-danger-soft);
+
         > span {
-          background: var(--color-danger);
           border-color: var(--color-danger);
-          color: var(--color-on-danger);
-          font-size: 0.9rem;
-          font-weight: 700;
+          color: var(--color-danger);
+          font-size: 0.84rem;
         }
 
         small {
@@ -205,14 +220,10 @@
         }
       }
 
-      &.phaseCancelled {
-        > span {
-          background: var(--color-surface);
-          border-color: var(--color-text-muted);
-          color: var(--color-text-muted);
-          font-size: 0.9rem;
-          font-weight: 700;
-        }
+      &.phaseCancelled > span {
+        background: var(--color-surface-subtle);
+        color: var(--color-text-muted);
+        font-size: 0.84rem;
       }
 
       .phaseLoader {
@@ -220,15 +231,15 @@
         border: 2px solid var(--color-on-primary);
         border-radius: 50%;
         border-right-color: transparent;
-        height: 12px;
-        width: 12px;
+        height: 11px;
+        width: 11px;
       }
     }
   }
 
   .logSection {
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     overflow: hidden;
 
     > header {
@@ -240,13 +251,14 @@
       padding: var(--space-3) var(--space-4);
 
       h3 {
-        font-size: 0.8rem;
+        font-size: 0.76rem;
+        font-weight: 600;
         margin: 0;
       }
 
       span {
         color: var(--color-text-muted);
-        font-size: 0.68rem;
+        font-size: 0.66rem;
       }
     }
 
@@ -254,11 +266,11 @@
       background: var(--color-log);
       color: var(--color-log-text);
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      height: 300px;
+      font-size: 0.68rem;
+      height: 320px;
       overflow: auto;
       overflow-anchor: none;
-      padding: var(--space-3);
+      padding: var(--space-3) var(--space-4);
 
       .logContent {
         min-height: 100%;
@@ -271,7 +283,7 @@
         > div {
           display: grid;
           gap: var(--space-3);
-          grid-template-columns: 64px 58px minmax(0, 1fr);
+          grid-template-columns: 66px 58px minmax(0, 1fr);
           padding: 3px 0;
 
           time,
@@ -298,17 +310,43 @@
   }
 
   > footer {
+    border-top: 1px solid var(--color-border);
     display: flex;
     justify-content: flex-end;
+    padding-top: var(--space-5);
   }
 
   @media (max-width: 760px) {
     .progressOverview {
+      gap: var(--space-4);
       grid-template-columns: 1fr;
     }
 
-    .logSection > header span {
-      display: none;
+    .phaseTrack {
+      grid-template-columns: 1fr;
+
+      > li {
+        justify-content: flex-start;
+
+        & + li {
+          border-left: 0;
+          border-top: 1px solid var(--color-border);
+        }
+      }
+    }
+
+    .logSection {
+      > header span {
+        display: none;
+      }
+
+      .logViewer .logContent > div {
+        grid-template-columns: 58px minmax(0, 1fr);
+
+        > span {
+          display: none;
+        }
+      }
     }
   }
 }
@@ -322,7 +360,7 @@
 @media (prefers-reduced-motion: reduce) {
   .progressPanel {
     .progressOverview .percentBlock .signalRunning i,
-    .phaseTrack > div .phaseLoader {
+    .phaseTrack > li .phaseLoader {
       animation: none;
       border-color: currentColor;
     }

@@ -84,14 +84,17 @@ export const ReleasePipeline = ({
         <Button disabled={releaseRun.status === 'running' || releaseRun.status === 'cancelling'} onClick={onClose} variant="outline-secondary">Close</Button>
       </header>
 
-      <ol aria-label="Release steps" className={`${styles.stepper} ${styles[`step${step}`]}`}>
+      <ol aria-label="Release steps" className={styles.stepper}>
         {['Configure', 'Release details', 'Pipeline'].map((label, index) => (
           <li
             aria-current={step === index + 1 ? 'step' : undefined}
             className={step === index + 1 ? styles.active : step > index + 1 ? styles.complete : ''}
             key={label}
           >
-            <div className={styles.stepNode}><span>{index + 1}</span><strong>{label}</strong></div>
+            <div className={styles.stepNode}>
+              <span aria-hidden="true">{step > index + 1 ? '✓' : index + 1}</span>
+              <strong>{label}</strong>
+            </div>
           </li>
         ))}
       </ol>
@@ -105,7 +108,7 @@ export const ReleasePipeline = ({
               <div className={styles.choiceGrid}>
                 {modes.map((modeOption) => (
                   <button aria-pressed={mode === modeOption.value} className={mode === modeOption.value ? styles.choiceSelected : styles.choice} key={modeOption.value} onClick={() => setMode(modeOption.value)} type="button">
-                    <span aria-hidden="true" className={styles.radio}>{mode === modeOption.value ? '●' : '○'}</span>
+                    <span aria-hidden="true" className={styles.radio}>{mode === modeOption.value ? '✓' : ''}</span>
                     <strong>{modeOption.label}</strong><small>{modeOption.description}</small>
                   </button>
                 ))}
