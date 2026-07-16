@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Button, ProgressBar } from 'react-bootstrap';
 import { StatusPill } from '@components/StatusPill';
 import { formatOutcome, formatPlatform } from '@renderer/utils/formatting';
@@ -16,6 +16,13 @@ const phaseLabels: Record<string, string> = {
   verifying: 'Artifact verification',
 };
 
+const toStageKey = (phase: string | null | undefined): string | null =>
+  phase === 'preBuild' || phase === 'postBuild'
+    ? 'build'
+    : phase === 'preUpload' || phase === 'postUpload'
+      ? 'upload'
+      : phase ?? null;
+
 export const PipelineProgress = ({
   activePhase,
   completedPhases,
@@ -30,7 +37,11 @@ export const PipelineProgress = ({
   result,
   totalPhases,
 }: PipelineProgressProps): React.JSX.Element => {
+  const isAutoScrolling = useRef(false);
+  const lastScrollHeight = useRef(0);
+  const logContentRef = useRef<HTMLDivElement>(null);
   const logViewerRef = useRef<HTMLDivElement>(null);
+  const scrollAnimationFrame = useRef<number | null>(null);
   const shouldFollowLogs = useRef(true);
   const isFinished = result !== null;
   const phaseSequence = useMemo(
@@ -45,13 +56,16 @@ export const PipelineProgress = ({
     ],
     [mode],
   );
-  const activeStage =
-    activePhase === 'preBuild' || activePhase === 'postBuild'
-      ? 'build'
-      : activePhase === 'preUpload' || activePhase === 'postUpload'
-        ? 'upload'
-        : activePhase;
+  const activeStage = toStageKey(activePhase);
   const activeStageIndex = phaseSequence.findIndex(({ key }) => key === activeStage);
+  const failedStage = result?.platforms.reduce<string | null>(
+    (currentStage, platformResult) =>
+      platformResult.failedPhase === undefined
+        ? currentStage
+        : toStageKey(platformResult.failedPhase),
+    null,
+  );
+  const failedStageIndex = phaseSequence.findIndex(({ key }) => key === failedStage);
   const outcomeTone =
     result?.outcome === 'succeeded'
       ? 'success'
@@ -61,22 +75,56 @@ export const PipelineProgress = ({
           ? 'neutral'
           : 'danger';
 
-  useLayoutEffect(() => {
+  const scrollToBottom = (): void => {
     const logViewer = logViewerRef.current;
-    if (logViewer !== null && shouldFollowLogs.current) {
-      const animationFrame = requestAnimationFrame(() => {
-        logViewer.scrollTop = logViewer.scrollHeight;
-      });
-      return () => cancelAnimationFrame(animationFrame);
+    if (logViewer === null || !shouldFollowLogs.current) return;
+    if (scrollAnimationFrame.current !== null) {
+      cancelAnimationFrame(scrollAnimationFrame.current);
     }
-    return undefined;
+    isAutoScrolling.current = true;
+    logViewer.scrollTop = logViewer.scrollHeight;
+    lastScrollHeight.current = logViewer.scrollHeight;
+    scrollAnimationFrame.current = requestAnimationFrame(() => {
+      logViewer.scrollTop = logViewer.scrollHeight;
+      lastScrollHeight.current = logViewer.scrollHeight;
+      scrollAnimationFrame.current = requestAnimationFrame(() => {
+        logViewer.scrollTop = logViewer.scrollHeight;
+        lastScrollHeight.current = logViewer.scrollHeight;
+        isAutoScrolling.current = false;
+        scrollAnimationFrame.current = null;
+      });
+    });
+  };
+
+  useLayoutEffect(() => {
+    scrollToBottom();
   }, [logs]);
+
+  useEffect(() => {
+    const logContent = logContentRef.current;
+    if (logContent === null) return undefined;
+    const resizeObserver = new ResizeObserver(() => scrollToBottom());
+    resizeObserver.observe(logContent);
+    return () => {
+      resizeObserver.disconnect();
+      if (scrollAnimationFrame.current !== null) {
+        cancelAnimationFrame(scrollAnimationFrame.current);
+      }
+    };
+  }, []);
 
   const handleLogScroll = (): void => {
     const logViewer = logViewerRef.current;
     if (logViewer === null) return;
+    const hasContentGrown = logViewer.scrollHeight > lastScrollHeight.current;
+    lastScrollHeight.current = logViewer.scrollHeight;
+    if (isAutoScrolling.current) return;
+    if (hasContentGrown && shouldFollowLogs.current) {
+      scrollToBottom();
+      return;
+    }
     const distanceFromBottom = logViewer.scrollHeight - logViewer.scrollTop - logViewer.clientHeight;
-    shouldFollowLogs.current = distanceFromBottom <= 48;
+    shouldFollowLogs.current = distanceFromBottom <= 64;
   };
 
   return (
@@ -99,14 +147,30 @@ export const PipelineProgress = ({
 
       <div className={styles.progressOverview}>
         <div className={styles.percentBlock}>
-          <strong>{percent}%</strong>
-          <span>
+          <div className={styles.percentValue}>
+            <span
+              aria-hidden="true"
+              className={
+                result === null
+                  ? styles.signalRunning
+                  : result.outcome === 'succeeded'
+                    ? styles.signalSuccess
+                    : result.outcome === 'cancelled'
+                      ? styles.signalCancelled
+                      : styles.signalFailed
+              }
+            >
+              {result === null ? <i /> : result.outcome === 'succeeded' ? '✓' : result.outcome === 'cancelled' ? '–' : '×'}
+            </span>
+            <strong>{percent}%</strong>
+          </div>
+          <small>
             {progressKind === 'verified'
               ? 'Verified progress'
               : progressKind === 'reported'
                 ? 'Tool-reported progress'
                 : 'Estimated live progress'}
-          </span>
+          </small>
         </div>
         <div className={styles.progressSummary}>
           <ProgressBar aria-label="Pipeline progress" now={percent} />
@@ -119,14 +183,43 @@ export const PipelineProgress = ({
 
       <div className={styles.phaseTrack}>
         {phaseSequence.map(({ key, label }, index) => {
-          const isComplete = isFinished || (activeStageIndex >= 0 && index < activeStageIndex);
+          const terminalStageIndex = failedStageIndex >= 0 ? failedStageIndex : activeStageIndex;
+          const isSuccessfulResult = result?.outcome === 'succeeded';
+          const isComplete = isSuccessfulResult || index < terminalStageIndex;
           const isActive = !isFinished && index === activeStageIndex;
+          const isFailed =
+            isFinished &&
+            result.outcome !== 'succeeded' &&
+            result.outcome !== 'cancelled' &&
+            index === terminalStageIndex;
+          const isCancelled =
+            isFinished && result.outcome === 'cancelled' && index === terminalStageIndex;
           return (
             <div
-              className={isComplete ? styles.phaseComplete : isActive ? styles.phaseActive : styles.phasePending}
+              className={
+                isComplete
+                  ? styles.phaseComplete
+                  : isActive
+                    ? styles.phaseActive
+                    : isFailed
+                      ? styles.phaseFailed
+                      : isCancelled
+                        ? styles.phaseCancelled
+                        : styles.phasePending
+              }
               key={key}
             >
-              <span>{isComplete ? '✓' : index + 1}</span>
+              <span>
+                {isComplete
+                  ? '✓'
+                  : isActive
+                    ? <i aria-hidden="true" className={styles.phaseLoader} />
+                    : isFailed
+                      ? '×'
+                      : isCancelled
+                        ? '–'
+                        : index + 1}
+              </span>
               <small>{label}</small>
             </div>
           );
@@ -136,13 +229,15 @@ export const PipelineProgress = ({
       <section className={styles.logSection}>
         <header><h3>Recent logs</h3><span>Up to 500 lines · sensitive values masked</span></header>
         <div className={styles.logViewer} onScroll={handleLogScroll} ref={logViewerRef} role="log">
-          {logs.length === 0 ? <p>Waiting for command output…</p> : logs.map((entry) => (
-            <div className={styles[entry.level]} key={entry.sequence}>
-              <time>{new Date(entry.timestamp).toLocaleTimeString('en-US')}</time>
-              <span>{entry.platform === undefined ? 'System' : formatPlatform(entry.platform)}</span>
-              <code>{entry.message}</code>
-            </div>
-          ))}
+          <div className={styles.logContent} ref={logContentRef}>
+            {logs.length === 0 ? <p>Waiting for command output…</p> : logs.map((entry) => (
+              <div className={styles[entry.level]} key={entry.sequence}>
+                <time>{new Date(entry.timestamp).toLocaleTimeString('en-US')}</time>
+                <span>{entry.platform === undefined ? 'System' : formatPlatform(entry.platform)}</span>
+                <code>{entry.message}</code>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

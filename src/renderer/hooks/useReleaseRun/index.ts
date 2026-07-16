@@ -47,7 +47,13 @@ export const useReleaseRun = (): UseReleaseRunResult => {
       }));
       return;
     }
-    setState((current) => ({ ...current, percent: 100, result: event.result, status: 'finished' }));
+    setState((current) => ({
+      ...current,
+      percent: 100,
+      progressKind: 'verified',
+      result: event.result,
+      status: 'finished',
+    }));
   };
 
   useEffect(() =>

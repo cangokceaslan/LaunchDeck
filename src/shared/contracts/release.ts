@@ -75,6 +75,7 @@ export type PlatformReleaseResult = {
   artifactPath?: string;
   buildStatus: 'notRequested' | 'succeeded' | 'failed';
   errorMessage?: string;
+  failedPhase?: ReleasePhase;
   platform: ReleasePlatform;
   uploadStatus: 'notRequested' | 'succeeded' | 'failed';
 };

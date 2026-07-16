@@ -498,6 +498,7 @@ export class ReleaseRunner {
           if (abortController.signal.aborted) {
             throw error;
           }
+          platformResult.failedPhase = activePhase;
           platformResult.errorMessage = redact(safeErrorMessage(error));
           if (failureArea === 'build' && platformResult.buildStatus === 'succeeded') {
             platformResult.buildStatus = 'failed';

@@ -1,6 +1,6 @@
 .page {
   margin: 0 auto;
-  max-width: 1120px;
+  max-width: 1240px;
 
   .pageHeader {
     align-items: center;
@@ -23,66 +23,92 @@
   }
 
   .stepper {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0;
     list-style: none;
     margin: 0 0 var(--space-5);
-    padding: 0;
+    overflow: hidden;
+    padding: var(--space-4) 0 var(--space-3);
+    position: relative;
+
+    &::before,
+    &::after {
+      content: '';
+      height: 2px;
+      left: calc(100% / 6);
+      position: absolute;
+      right: calc(100% / 6);
+      top: 30px;
+    }
+
+    &::before {
+      background: var(--color-border);
+    }
+
+    &::after {
+      background: var(--color-success);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 240ms ease;
+    }
+
+    &.step2::after {
+      transform: scaleX(0.5);
+    }
+
+    &.step3::after {
+      transform: scaleX(1);
+    }
 
     li {
-      align-items: center;
       color: var(--color-text-muted);
       display: flex;
       font-size: 0.75rem;
-      gap: var(--space-2);
+      justify-content: center;
+      position: relative;
+      z-index: 1;
 
-      &::after {
-        background: var(--color-border);
-        content: '';
-        flex: 1;
-        height: 1px;
-        margin: 0 var(--space-3);
-        transition: background var(--motion-fast);
-      }
-
-      &:last-child::after {
-        display: none;
-      }
-
-      span {
+      .stepNode {
         align-items: center;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: 50%;
         display: flex;
-        height: 28px;
-        justify-content: center;
-        width: 28px;
-      }
+        flex-direction: column;
+        gap: 6px;
 
-      strong {
-        white-space: nowrap;
+        span {
+          align-items: center;
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 50%;
+          display: flex;
+          height: 28px;
+          justify-content: center;
+          transition: background var(--motion-fast), border var(--motion-fast);
+          width: 28px;
+        }
+
+        strong {
+          white-space: nowrap;
+        }
       }
 
       &.active {
         color: var(--color-text);
 
-        span {
+        .stepNode span {
           background: var(--color-primary);
           border-color: var(--color-primary);
           color: var(--color-on-primary);
+          box-shadow: 0 0 0 4px var(--color-primary-soft);
         }
       }
 
       &.complete {
         color: var(--color-text);
 
-        &::after {
-          background: var(--color-success);
-        }
-
-        span {
+        .stepNode span {
           background: var(--color-success);
           border-color: var(--color-success);
           color: var(--color-on-success);
@@ -103,7 +129,19 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-soft);
+    overflow: hidden;
     padding: clamp(var(--space-5), 3vw, var(--space-8));
+    position: relative;
+
+    &::before {
+      background: linear-gradient(90deg, var(--color-primary), transparent 72%);
+      content: '';
+      height: 3px;
+      left: 0;
+      position: absolute;
+      right: 0;
+      top: 0;
+    }
 
     .stepContent {
       > header {
@@ -142,6 +180,13 @@
           min-height: 142px;
           padding: var(--space-5);
           text-align: left;
+          transition: border var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+
+          &:hover {
+            border-color: var(--color-border-strong);
+            box-shadow: var(--shadow-soft);
+            transform: translateY(-2px);
+          }
 
           .radio {
             color: var(--color-primary-strong);
@@ -174,6 +219,7 @@
         .choiceSelected {
           background: var(--color-primary-soft);
           border-color: var(--color-primary);
+          box-shadow: inset 0 0 0 1px var(--color-primary);
         }
       }
 
@@ -318,8 +364,16 @@
   }
 
   @media (max-width: 780px) {
-    .stepper li strong {
-      display: none;
+    .stepper {
+      &::before,
+      &::after {
+        left: calc(100% / 6);
+        right: calc(100% / 6);
+      }
+
+      li .stepNode strong {
+        display: none;
+      }
     }
 
     .wizardCard .stepContent {

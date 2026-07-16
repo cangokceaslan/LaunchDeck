@@ -84,14 +84,14 @@ export const ReleasePipeline = ({
         <Button disabled={releaseRun.status === 'running' || releaseRun.status === 'cancelling'} onClick={onClose} variant="outline-secondary">Close</Button>
       </header>
 
-      <ol aria-label="Release steps" className={styles.stepper}>
+      <ol aria-label="Release steps" className={`${styles.stepper} ${styles[`step${step}`]}`}>
         {['Configure', 'Release details', 'Pipeline'].map((label, index) => (
           <li
             aria-current={step === index + 1 ? 'step' : undefined}
             className={step === index + 1 ? styles.active : step > index + 1 ? styles.complete : ''}
             key={label}
           >
-            <span>{index + 1}</span><strong>{label}</strong>
+            <div className={styles.stepNode}><span>{index + 1}</span><strong>{label}</strong></div>
           </li>
         ))}
       </ol>

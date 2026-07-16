@@ -4,8 +4,10 @@
 
   .progressHeader {
     align-items: center;
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
+    padding-bottom: var(--space-5);
 
     .eyebrow {
       color: var(--color-primary-strong);
@@ -23,7 +25,7 @@
 
   .progressOverview {
     align-items: center;
-    background: var(--color-surface-subtle);
+    background: linear-gradient(120deg, var(--color-primary-soft), var(--color-surface-subtle) 62%);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     display: grid;
@@ -34,18 +36,69 @@
     .percentBlock {
       display: flex;
       flex-direction: column;
-      min-width: 124px;
+      min-width: 164px;
 
-      strong {
-        font-size: 2rem;
-        letter-spacing: -0.04em;
-        line-height: 1;
+      .percentValue {
+        align-items: center;
+        display: flex;
+        gap: var(--space-3);
+
+        strong {
+          font-size: 2.15rem;
+          letter-spacing: -0.04em;
+          line-height: 1;
+        }
       }
 
-      span {
+      small {
         color: var(--color-text-muted);
         font-size: 0.68rem;
         margin-top: var(--space-2);
+      }
+
+      .signalRunning,
+      .signalSuccess,
+      .signalFailed,
+      .signalCancelled {
+        align-items: center;
+        border: 2px solid currentColor;
+        border-radius: 50%;
+        display: flex;
+        font-size: 0.9rem;
+        font-weight: 700;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
+      }
+
+      .signalRunning {
+        color: var(--color-primary-strong);
+
+        i {
+          animation: pipelineSpin 700ms linear infinite;
+          border: 2px solid var(--color-border-strong);
+          border-radius: 50%;
+          border-top-color: var(--color-primary-strong);
+          height: 15px;
+          width: 15px;
+        }
+      }
+
+      .signalSuccess {
+        background: var(--color-success);
+        border-color: var(--color-success);
+        color: var(--color-on-success);
+      }
+
+      .signalFailed {
+        background: var(--color-danger);
+        border-color: var(--color-danger);
+        color: var(--color-on-danger);
+      }
+
+      .signalCancelled {
+        background: var(--color-surface);
+        color: var(--color-text-muted);
       }
     }
   }
@@ -68,10 +121,12 @@
   }
 
   .phaseTrack {
+    background: var(--color-surface-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    margin: 0 auto;
-    max-width: 620px;
+    padding: var(--space-5) var(--space-4);
     width: 100%;
 
     > div {
@@ -134,6 +189,40 @@
           font-weight: 600;
         }
       }
+
+      &.phaseFailed {
+        > span {
+          background: var(--color-danger);
+          border-color: var(--color-danger);
+          color: var(--color-on-danger);
+          font-size: 0.9rem;
+          font-weight: 700;
+        }
+
+        small {
+          color: var(--color-danger);
+          font-weight: 600;
+        }
+      }
+
+      &.phaseCancelled {
+        > span {
+          background: var(--color-surface);
+          border-color: var(--color-text-muted);
+          color: var(--color-text-muted);
+          font-size: 0.9rem;
+          font-weight: 700;
+        }
+      }
+
+      .phaseLoader {
+        animation: pipelineSpin 700ms linear infinite;
+        border: 2px solid var(--color-on-primary);
+        border-radius: 50%;
+        border-right-color: transparent;
+        height: 12px;
+        width: 12px;
+      }
     }
   }
 
@@ -168,36 +257,41 @@
       font-size: 0.7rem;
       height: 300px;
       overflow: auto;
+      overflow-anchor: none;
       padding: var(--space-3);
 
-      p {
-        color: var(--color-log-muted);
-        margin: 0;
-      }
+      .logContent {
+        min-height: 100%;
 
-      > div {
-        display: grid;
-        gap: var(--space-3);
-        grid-template-columns: 64px 58px minmax(0, 1fr);
-        padding: 3px 0;
-
-        time,
-        > span {
+        p {
           color: var(--color-log-muted);
+          margin: 0;
         }
 
-        code {
-          color: inherit;
-          overflow-wrap: anywhere;
-          white-space: pre-wrap;
-        }
+        > div {
+          display: grid;
+          gap: var(--space-3);
+          grid-template-columns: 64px 58px minmax(0, 1fr);
+          padding: 3px 0;
 
-        &.warning {
-          color: var(--color-log-warning);
-        }
+          time,
+          > span {
+            color: var(--color-log-muted);
+          }
 
-        &.error {
-          color: var(--color-log-danger);
+          code {
+            color: inherit;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+          }
+
+          &.warning {
+            color: var(--color-log-warning);
+          }
+
+          &.error {
+            color: var(--color-log-danger);
+          }
         }
       }
     }
@@ -215,6 +309,22 @@
 
     .logSection > header span {
       display: none;
+    }
+  }
+}
+
+@keyframes pipelineSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressPanel {
+    .progressOverview .percentBlock .signalRunning i,
+    .phaseTrack > div .phaseLoader {
+      animation: none;
+      border-color: currentColor;
     }
   }
 }
