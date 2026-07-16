@@ -26,7 +26,6 @@ export type DesktopApi = {
   chooseGoogleServiceInfoPlist: () => Promise<PathSelectionResult>;
   chooseGoogleServicesJson: () => Promise<PathSelectionResult>;
   chooseHookDirectory: () => Promise<PathSelectionResult>;
-  chooseHookExecutable: () => Promise<PathSelectionResult>;
   chooseIosArtifact: () => Promise<PathSelectionResult>;
   chooseIosProjectDirectory: () => Promise<PathSelectionResult>;
   chooseIosWorkspaceOrProject: () => Promise<PathSelectionResult>;

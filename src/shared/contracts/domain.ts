@@ -5,9 +5,8 @@ export type HookPlatform = ReleasePlatform | 'all';
 export type ThemePreference = 'light' | 'dark' | 'system';
 
 export type PipelineHook = {
-  args: string[];
+  command: string;
   cwdPath: string;
-  executablePath: string;
   id: string;
   isEnabled: boolean;
   name: string;

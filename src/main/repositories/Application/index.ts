@@ -78,15 +78,13 @@ const parseHook = (row: unknown): PipelineHook => {
   if (!isHookPlatform(platform)) {
     throw new Error('Invalid pipeline hook platform.');
   }
-  const args = parseStringArray(readRequiredString(row, 'args_json'));
   const isEnabled = row.is_enabled;
   if (typeof isEnabled !== 'number') {
     throw new Error('Invalid pipeline hook state.');
   }
   return {
-    args,
+    command: readRequiredString(row, 'command_text'),
     cwdPath: readRequiredString(row, 'cwd_path'),
-    executablePath: readRequiredString(row, 'executable_path'),
     id: readRequiredString(row, 'id'),
     isEnabled: isEnabled === 1,
     name: readRequiredString(row, 'name'),
@@ -104,7 +102,7 @@ export class ApplicationRepository {
   private getHooks(applicationId: string): PipelineHook[] {
     const rows: unknown[] = this.database
       .prepare(
-        `SELECT id, name, phase, platform, executable_path, args_json, cwd_path, is_enabled
+        `SELECT id, name, phase, platform, command_text, cwd_path, is_enabled
          FROM pipeline_hooks WHERE application_id = ? ORDER BY sort_order`,
       )
       .all(applicationId);
@@ -228,8 +226,8 @@ export class ApplicationRepository {
     const insertHook = this.database.prepare(
       `INSERT INTO pipeline_hooks (
         id, application_id, name, phase, platform, executable_path, args_json,
-        cwd_path, is_enabled, sort_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        cwd_path, is_enabled, sort_order, command_text
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     hooks.forEach((hook, index) => {
       insertHook.run(
@@ -238,11 +236,12 @@ export class ApplicationRepository {
         hook.name,
         hook.phase,
         hook.platform,
-        hook.executablePath,
-        JSON.stringify(hook.args),
+        '',
+        '[]',
         hook.cwdPath,
         hook.isEnabled ? 1 : 0,
         index,
+        hook.command,
       );
     });
   }

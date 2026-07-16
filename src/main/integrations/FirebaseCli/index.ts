@@ -57,7 +57,7 @@ export class FirebaseCliIntegration {
       isBlocking: true,
       label: 'Firebase CLI',
       status: 'passed',
-      version: outputLines.at(-1)?.trim() || 'Bilinmiyor',
+      version: outputLines.at(-1)?.trim() || 'Unknown',
     };
   }
 

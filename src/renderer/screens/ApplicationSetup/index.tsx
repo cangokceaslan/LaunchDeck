@@ -314,7 +314,7 @@ export const ApplicationSetup = ({
         <section className={styles.section}>
           <header><span>03</span><div><h2>Pipeline extensions</h2><p>Optional safe command steps</p></div></header>
           <div className={styles.sectionBody}>
-            <Alert variant="warning">These steps run on the local machine. Select only executable files and directories you trust.</Alert>
+            <Alert variant="warning">These commands run on the local machine. Use only commands and directories you trust.</Alert>
             <HookEditor hooks={form.hooks} onChange={(hooks) => setForm((current) => ({ ...current, hooks }))} supportedPlatforms={supportedPlatforms} />
           </div>
         </section>

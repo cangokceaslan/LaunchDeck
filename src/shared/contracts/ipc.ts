@@ -13,7 +13,6 @@ export const IPC_CHANNELS = {
   pathChooseGoogleServiceInfoPlist: 'path:choose-google-service-info-plist',
   pathChooseGoogleServicesJson: 'path:choose-google-services-json',
   pathChooseHookDirectory: 'path:choose-hook-directory',
-  pathChooseHookExecutable: 'path:choose-hook-executable',
   pathChooseIosArtifact: 'path:choose-ios-artifact',
   pathChooseIosProject: 'path:choose-ios-project',
   pathChooseIosWorkspaceOrProject: 'path:choose-ios-workspace-or-project',

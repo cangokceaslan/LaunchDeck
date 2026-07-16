@@ -11,7 +11,6 @@ export const desktopApi: DesktopApi = {
     ipcRenderer.invoke(IPC_CHANNELS.pathChooseGoogleServiceInfoPlist),
   chooseGoogleServicesJson: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseGoogleServicesJson),
   chooseHookDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseHookDirectory),
-  chooseHookExecutable: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseHookExecutable),
   chooseIosArtifact: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseIosArtifact),
   chooseIosProjectDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseIosProject),
   chooseIosWorkspaceOrProject: () =>

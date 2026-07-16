@@ -7,11 +7,8 @@ import type { FirebaseCliIntegration } from '@main/integrations/FirebaseCli';
 import type { ApplicationRepository } from '@main/repositories/Application';
 import type { RunHistoryRepository } from '@main/repositories/RunHistory';
 import { runExecutable } from '@main/utils/ChildProcess';
-import {
-  resolveExecutableFile,
-  resolveExistingDirectory,
-  resolveExistingFile,
-} from '@main/utils/FileSystem';
+import { resolveCommandLine } from '@main/utils/CommandLine';
+import { resolveExistingDirectory, resolveExistingFile } from '@main/utils/FileSystem';
 import { createRedactor } from '@main/utils/Redaction';
 import type {
   ActiveReleaseRun,
@@ -139,8 +136,8 @@ export class ReleaseRunner {
       );
       await Promise.all(
         relevantHooks.map(async (hook) => {
-          await resolveExecutableFile(hook.executablePath);
-          await resolveExistingDirectory(hook.cwdPath);
+          const cwdPath = await resolveExistingDirectory(hook.cwdPath);
+          await resolveCommandLine(hook.command, cwdPath);
         }),
       );
     } catch (error) {
@@ -353,10 +350,11 @@ export class ReleaseRunner {
       const phase: ReleasePhase = hookPhase;
       for (const hook of hooksFor(plan.application.hooks, hookPhase, platform)) {
         await runStep(phase, platform, `Custom step: ${hook.name}`, async () => {
+          const command = await resolveCommandLine(hook.command, hook.cwdPath);
           const result = await runExecutable({
-            args: hook.args,
+            args: command.args,
             cwdPath: hook.cwdPath,
-            executablePath: hook.executablePath,
+            executablePath: command.executablePath,
             onOutput: ({ level, line }) => emitLog(line, level === 'error' ? 'error' : 'info', platform),
             signal: abortController.signal,
           });

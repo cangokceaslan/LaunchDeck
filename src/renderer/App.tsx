@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Spinner } from 'react-bootstrap';
 import { AppShell } from '@components/AppShell';
 import { WindowFrame } from '@components/WindowFrame';
@@ -32,23 +32,41 @@ export const App = (): React.JSX.Element => {
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [globalError, setGlobalError] = useState<string | null>(null);
-
-  const runDoctor = async (): Promise<void> => {
-    setDoctorError(null);
-    setIsCheckingDoctor(true);
-    try {
-      setDoctorReport(await window.desktopApi.runDoctor());
-    } catch (error) {
-      setDoctorError(normalizeErrorMessage(error));
-    } finally {
-      setIsCheckingDoctor(false);
-    }
-  };
+  const hasStarted = useRef(false);
 
   const refreshApplications = async (): Promise<ApplicationSummary[]> => {
     const nextApplications = await window.desktopApi.listApplications();
     setApplications(nextApplications);
     return nextApplications;
+  };
+
+  const enterApplication = async (): Promise<void> => {
+    try {
+      await refreshApplications();
+    } catch (error) {
+      setGlobalError(normalizeErrorMessage(error));
+    } finally {
+      setHasPassedDoctor(true);
+    }
+  };
+
+  const runDoctor = async (): Promise<void> => {
+    setDoctorError(null);
+    setIsCheckingDoctor(true);
+    try {
+      const report = await window.desktopApi.runDoctor();
+      setDoctorReport(report);
+      const hasActionableWarning =
+        report.os === 'darwin' &&
+        report.checks.some((check) => check.code === 'xcode' && check.status === 'warning');
+      if (report.isReady && !hasActionableWarning) {
+        await enterApplication();
+      }
+    } catch (error) {
+      setDoctorError(normalizeErrorMessage(error));
+    } finally {
+      setIsCheckingDoctor(false);
+    }
   };
 
   const loadHistory = async (applicationId: string): Promise<void> => {
@@ -77,6 +95,8 @@ export const App = (): React.JSX.Element => {
   };
 
   useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
     void runDoctor();
     void window.desktopApi
       .getSettings()
@@ -97,12 +117,7 @@ export const App = (): React.JSX.Element => {
   }, [theme]);
 
   const handleContinue = async (): Promise<void> => {
-    setHasPassedDoctor(true);
-    try {
-      await refreshApplications();
-    } catch (error) {
-      setGlobalError(normalizeErrorMessage(error));
-    }
+    await enterApplication();
   };
 
   const handleThemeChange = async (nextTheme: ThemePreference): Promise<void> => {
@@ -153,6 +168,21 @@ export const App = (): React.JSX.Element => {
     }
     setView('detail');
   };
+
+  if (
+    !hasPassedDoctor &&
+    isCheckingDoctor &&
+    (doctorReport === null || doctorReport.isReady)
+  ) {
+    return (
+      <WindowFrame>
+        <div className={styles.startupLoading} role="status">
+          <Spinner animation="border" size="sm" />
+          <span>Preparing LaunchDeck…</span>
+        </div>
+      </WindowFrame>
+    );
+  }
 
   if (!hasPassedDoctor) {
     return (

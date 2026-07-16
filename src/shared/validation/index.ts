@@ -23,9 +23,8 @@ export const iosConfigurationSchema = z.object({
 });
 
 export const pipelineHookSchema = z.object({
-  args: z.array(z.string().max(4096)).max(64),
+  command: z.string().trim().min(1).max(8192),
   cwdPath: nonEmptyPathSchema,
-  executablePath: nonEmptyPathSchema,
   id: z.string().uuid(),
   isEnabled: z.boolean(),
   name: z.string().trim().min(1).max(80),

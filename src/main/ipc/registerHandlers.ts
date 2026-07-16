@@ -190,7 +190,6 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     'Select an Xcode workspace or project',
     [{ extensions: ['xcworkspace', 'xcodeproj'], name: 'Xcode Project' }],
   );
-  registerPicker(IPC_CHANNELS.pathChooseHookExecutable, ['openFile'], 'Select executable file');
   registerPicker(IPC_CHANNELS.pathChooseHookDirectory, ['openDirectory'], 'Select command working directory');
   registerPicker(
     IPC_CHANNELS.pathChooseAndroidArtifact,

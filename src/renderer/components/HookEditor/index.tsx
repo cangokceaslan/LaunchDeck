@@ -5,9 +5,8 @@ import type { PipelineHook } from '@shared/contracts/domain';
 import styles from '@components/HookEditor/index.module.scss';
 
 const createHook = (): PipelineHook => ({
-  args: [],
+  command: '',
   cwdPath: '',
-  executablePath: '',
   id: crypto.randomUUID(),
   isEnabled: true,
   name: 'New custom step',
@@ -30,11 +29,6 @@ export const HookEditor = ({
     onChange(hooks.map((hook, hookIndex) => (hookIndex === index ? { ...hook, ...patch } : hook)));
   };
 
-  const chooseExecutable = async (index: number): Promise<void> => {
-    const result = await window.desktopApi.chooseHookExecutable();
-    if (result.status === 'selected') updateHook(index, { executablePath: result.path });
-  };
-
   const chooseDirectory = async (index: number): Promise<void> => {
     const result = await window.desktopApi.chooseHookDirectory();
     if (result.status === 'selected') updateHook(index, { cwdPath: result.path });
@@ -45,7 +39,7 @@ export const HookEditor = ({
       <header>
         <div>
           <h3>Custom pipeline steps</h3>
-          <p>The executable and arguments are stored separately, and no shell is used.</p>
+          <p>Choose a working directory and enter the command that should run there.</p>
         </div>
         <Button onClick={() => onChange([...hooks, createHook()])} size="sm" variant="outline-secondary">
           Add step
@@ -110,24 +104,22 @@ export const HookEditor = ({
                 </Form.Group>
               </div>
               <PathField
-                buttonLabel="Select file"
-                helpText="Select a binary or executable script. Symbolic links are resolved safely to their real target."
-                label="Executable file"
-                onBrowse={() => void chooseExecutable(index)}
+                buttonLabel="Select directory"
+                helpText="The command starts in this directory."
+                label="Working directory"
+                onBrowse={() => void chooseDirectory(index)}
                 required
-                value={hook.executablePath}
+                value={hook.cwdPath}
               />
-              <PathField label="Working directory" onBrowse={() => void chooseDirectory(index)} required value={hook.cwdPath} />
               <Form.Group>
-                <Form.Label>Arguments</Form.Label>
+                <Form.Label>Command</Form.Label>
                 <Form.Control
-                  as="textarea"
-                  onChange={(event) => updateHook(index, { args: event.target.value.split('\n') })}
-                  placeholder={'One argument per line\ne.g. --configuration\ne.g. release'}
-                  rows={3}
-                  value={hook.args.join('\n')}
+                  onChange={(event) => updateHook(index, { command: event.target.value })}
+                  placeholder="e.g. npm run build"
+                  required
+                  value={hook.command}
                 />
-                <Form.Text>Each line is one argument. Shell operators are not interpreted.</Form.Text>
+                <Form.Text>Quoted arguments are supported. Shell operators are not interpreted.</Form.Text>
               </Form.Group>
             </article>
           ))}

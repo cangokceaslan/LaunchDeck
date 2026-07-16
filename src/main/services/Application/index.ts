@@ -4,13 +4,13 @@ import { parse as parsePlist } from 'plist';
 import type { ApplicationRepository } from '@main/repositories/Application';
 import type { PersistApplicationInput } from '@main/repositories/Application/index.types';
 import type { IosBuilder } from '@main/services/IosBuilder';
+import { resolveCommandLine } from '@main/utils/CommandLine';
 import {
   isRecord,
   readJsonConfiguration,
   readStringProperty,
   resolveExistingBundlePath,
   resolveExistingDirectory,
-  resolveExecutableFile,
   resolveExistingFile,
 } from '@main/utils/FileSystem';
 import type {
@@ -94,18 +94,12 @@ const inspectGoogleServiceInfoPlist = async (filePath: string): Promise<Firebase
 const resolveHooks = async (hooks: PipelineHook[]): Promise<PipelineHook[]> =>
   Promise.all(
     hooks.map(async (hook) => {
-      const executablePath = await resolveExecutableFile(hook.executablePath);
-      if (
-        process.platform === 'win32' &&
-        (executablePath.toLowerCase().endsWith('.bat') || executablePath.toLowerCase().endsWith('.cmd'))
-      ) {
-        throw new Error('Custom pipeline steps on Windows must use an .exe executable.');
-      }
+      const cwdPath = await resolveExistingDirectory(hook.cwdPath);
+      await resolveCommandLine(hook.command, cwdPath);
       return {
         ...hook,
-        args: hook.args.filter((argument) => argument !== ''),
-        cwdPath: await resolveExistingDirectory(hook.cwdPath),
-        executablePath,
+        command: hook.command.trim(),
+        cwdPath,
       };
     }),
   );
