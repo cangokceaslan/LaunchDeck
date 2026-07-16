@@ -594,20 +594,42 @@ export class ReleaseRunner {
               if (platformConfiguration === null || artifactPath === undefined) {
                 throw new Error('Upload configuration is incomplete.');
               }
-              await this.firebaseCli.upload({
-                appId: platformConfiguration.firebaseAppId,
-                artifactPath,
-                credentialPath: plan.application.serviceAccountPath,
-                cwdPath: platformConfiguration.projectPath,
-                groups: plan.request.distributionGroups,
-                onOutput: ({ level, line }) => {
-                  reportActivity(line);
-                  emitLog(line, level === 'error' ? 'error' : 'info', platform);
-                },
-                projectId: plan.application.firebaseProjectId,
-                releaseNotes: plan.request.releaseNotes,
-                signal: abortController.signal,
-              });
+              const uploadedArtifactPath = artifactPath;
+              let uploadError: unknown;
+              try {
+                await this.firebaseCli.upload({
+                  appId: platformConfiguration.firebaseAppId,
+                  artifactPath: uploadedArtifactPath,
+                  credentialPath: plan.application.serviceAccountPath,
+                  cwdPath: platformConfiguration.projectPath,
+                  groups: plan.request.distributionGroups,
+                  onOutput: ({ level, line }) => {
+                    reportActivity(line);
+                    emitLog(line, level === 'error' ? 'error' : 'info', platform);
+                  },
+                  projectId: plan.application.firebaseProjectId,
+                  releaseNotes: plan.request.releaseNotes,
+                  signal: abortController.signal,
+                });
+              } catch (error) {
+                uploadError = error;
+              }
+              if (plan.request.mode === 'buildAndUpload') {
+                try {
+                  await rm(uploadedArtifactPath, { force: true });
+                  artifactPath = undefined;
+                  platformResult.artifactPath = undefined;
+                  emitLog('Temporary build artifact removed after Firebase distribution.', 'info', platform);
+                } catch (cleanupError) {
+                  const cleanupMessage = `The temporary build artifact could not be deleted: ${safeErrorMessage(cleanupError)}`;
+                  throw uploadError === undefined
+                    ? new Error(cleanupMessage)
+                    : new Error(`${safeErrorMessage(uploadError)} ${cleanupMessage}`);
+                }
+              }
+              if (uploadError !== undefined) {
+                throw uploadError;
+              }
               platformResult.uploadStatus = 'succeeded';
             });
             await runHooks('postUpload', platform);

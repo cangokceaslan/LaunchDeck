@@ -236,7 +236,15 @@ export const PipelineProgress = ({
               <article key={platformResult.platform}>
                 <span>{formatPlatform(platformResult.platform)}</span>
                 {platformResult.artifactPath === undefined
-                  ? <small>No artifact was produced.</small>
+                  ? (
+                      <small>
+                        {mode === 'buildAndUpload' && platformResult.uploadStatus === 'succeeded'
+                          ? 'Temporary build artifact removed after distribution.'
+                          : mode === 'buildAndUpload' && platformResult.failedPhase === 'upload'
+                            ? 'Temporary build artifact removed after the upload attempt.'
+                            : 'No artifact was produced.'}
+                      </small>
+                    )
                   : <code>{platformResult.artifactPath}</code>}
               </article>
             ))}
