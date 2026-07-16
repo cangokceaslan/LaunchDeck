@@ -1,5 +1,6 @@
 export type ReleasePlatform = 'android' | 'ios';
 export type ReleaseMode = 'buildOnly' | 'uploadOnly' | 'buildAndUpload';
+export type AndroidArtifactType = 'apk' | 'aab';
 export type HookPhase = 'preBuild' | 'postBuild' | 'preUpload' | 'postUpload';
 export type HookPlatform = ReleasePlatform | 'all';
 export type ThemePreference = 'light' | 'dark' | 'system';
@@ -15,7 +16,10 @@ export type PipelineHook = {
 };
 
 export type AndroidConfiguration = {
+  aabArtifactPath: string;
+  aabGradleTask: string;
   artifactPath: string;
+  defaultArtifactType: AndroidArtifactType;
   firebaseAppId: string;
   googleServicesJsonPath: string;
   gradleTask: string;
@@ -38,6 +42,7 @@ export type IosSetupConfiguration = Omit<IosConfiguration, 'firebaseAppId'>;
 
 export type CreateApplicationRequest = {
   android: AndroidSetupConfiguration | null;
+  artifactOutputDirectoryPath: string | null;
   distributionGroups: string[];
   firebaseProjectId: string;
   hooks: PipelineHook[];
@@ -51,6 +56,11 @@ export type UpdateApplicationRequest = Omit<CreateApplicationRequest, 'serviceAc
   serviceAccountPath: string | null;
 };
 
+export type UpdateArtifactOutputDirectoryRequest = {
+  applicationId: string;
+  directoryPath: string;
+};
+
 export type ApplicationSummary = {
   createdAt: string;
   firebaseProjectId: string;
@@ -62,6 +72,7 @@ export type ApplicationSummary = {
 
 export type ApplicationDetail = ApplicationSummary & {
   android: AndroidConfiguration | null;
+  artifactOutputDirectoryPath: string | null;
   distributionGroups: string[];
   hasServiceAccount: boolean;
   hooks: PipelineHook[];

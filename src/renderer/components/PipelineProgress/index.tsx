@@ -11,6 +11,7 @@ const phaseLabels: Record<string, string> = {
   postUpload: 'After upload',
   preBuild: 'Before build',
   preUpload: 'Before upload',
+  saving: 'Save artifact',
   upload: 'Firebase upload',
   validating: 'Validation',
   verifying: 'Artifact verification',
@@ -53,6 +54,7 @@ export const PipelineProgress = ({
       ...(mode === 'uploadOnly' || mode === 'buildAndUpload'
         ? [{ key: 'upload', label: 'Distribute' }]
         : []),
+      ...(mode === 'buildOnly' ? [{ key: 'saving', label: 'Save locally' }] : []),
     ],
     [mode],
   );
@@ -225,6 +227,22 @@ export const PipelineProgress = ({
           );
         })}
       </ol>
+
+      {result !== null && (
+        <section className={styles.resultArtifacts}>
+          <header><h3>Artifacts</h3><span>Verified output from this pipeline</span></header>
+          <div>
+            {result.platforms.map((platformResult) => (
+              <article key={platformResult.platform}>
+                <span>{formatPlatform(platformResult.platform)}</span>
+                {platformResult.artifactPath === undefined
+                  ? <small>No artifact was produced.</small>
+                  : <code>{platformResult.artifactPath}</code>}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className={styles.logSection}>
         <header><h3>Recent logs</h3><span>Up to 500 lines · sensitive values masked</span></header>

@@ -49,6 +49,12 @@ export const resolveExistingDirectory = async (selectedPath: string): Promise<st
   return resolvedPath;
 };
 
+export const resolveWritableDirectory = async (selectedPath: string): Promise<string> => {
+  const resolvedPath = await resolveExistingDirectory(selectedPath);
+  await access(resolvedPath, constants.W_OK | constants.X_OK);
+  return resolvedPath;
+};
+
 export const resolveExistingBundlePath = async (
   selectedPath: string,
   expectedExtensions: readonly string[],

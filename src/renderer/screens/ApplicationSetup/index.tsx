@@ -14,7 +14,10 @@ import type { ApplicationSetupProps } from '@screens/ApplicationSetup/index.type
 import styles from '@screens/ApplicationSetup/index.module.scss';
 
 const defaultAndroid = (): AndroidSetupConfiguration => ({
+  aabArtifactPath: 'app/build/outputs/bundle/release/app-release.aab',
+  aabGradleTask: ':app:bundleRelease',
   artifactPath: 'app/build/outputs/apk/release/app-release.apk',
+  defaultArtifactType: 'apk',
   googleServicesJsonPath: '',
   gradleTask: ':app:assembleRelease',
   projectPath: '',
@@ -42,11 +45,15 @@ const createInitialForm = (application: ApplicationDetail | null): CreateApplica
       : application.android === null
         ? null
         : {
+            aabArtifactPath: application.android.aabArtifactPath,
+            aabGradleTask: application.android.aabGradleTask,
             artifactPath: application.android.artifactPath,
+            defaultArtifactType: application.android.defaultArtifactType,
             googleServicesJsonPath: application.android.googleServicesJsonPath,
             gradleTask: application.android.gradleTask,
             projectPath: application.android.projectPath,
           },
+  artifactOutputDirectoryPath: application?.artifactOutputDirectoryPath ?? null,
   distributionGroups: application?.distributionGroups ?? ['internal-testers'],
   firebaseProjectId: application?.firebaseProjectId ?? '',
   hooks: application?.hooks ?? [],
@@ -254,14 +261,34 @@ export const ApplicationSetup = ({
               />
             </div>
 
+            <PathField
+              helpText="Optional default used when a pipeline saves generated artifacts locally."
+              label="Local artifact output directory"
+              onBrowse={() => void choosePath(window.desktopApi.chooseArtifactOutputDirectory, (artifactOutputDirectoryPath) => setForm((current) => ({ ...current, artifactOutputDirectoryPath })))}
+              onChange={(artifactOutputDirectoryPath) => setForm((current) => ({ ...current, artifactOutputDirectoryPath: artifactOutputDirectoryPath.trim() === '' ? null : artifactOutputDirectoryPath }))}
+              value={form.artifactOutputDirectoryPath ?? ''}
+            />
+
             {form.android !== null && (
               <div className={styles.platformPanel}>
                 <h3>Android</h3>
                 <PathField label="Android application directory" onBrowse={() => void choosePath(window.desktopApi.chooseAndroidProjectDirectory, (projectPath) => updateAndroid({ projectPath }))} required value={form.android.projectPath} />
                 <PathField label="google-services.json" onBrowse={() => void choosePath(window.desktopApi.chooseGoogleServicesJson, (googleServicesJsonPath) => updateAndroid({ googleServicesJsonPath }))} required value={form.android.googleServicesJsonPath} />
+                <Form.Group className={styles.compactField}>
+                  <Form.Label>Default Android artifact</Form.Label>
+                  <Form.Select onChange={(event) => updateAndroid({ defaultArtifactType: event.target.value === 'aab' ? 'aab' : 'apk' })} value={form.android.defaultArtifactType}>
+                    <option value="apk">APK</option>
+                    <option value="aab">AAB</option>
+                  </Form.Select>
+                  <Form.Text>The artifact type can be changed for each pipeline run.</Form.Text>
+                </Form.Group>
                 <div className={styles.twoColumns}>
-                  <Form.Group><Form.Label>Gradle task</Form.Label><Form.Control onChange={(event) => updateAndroid({ gradleTask: event.target.value })} required value={form.android.gradleTask} /></Form.Group>
-                  <Form.Group><Form.Label>APK artifact path</Form.Label><Form.Control onChange={(event) => updateAndroid({ artifactPath: event.target.value })} required value={form.android.artifactPath} /><Form.Text>May be relative to the Android project directory.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>APK Gradle task</Form.Label><Form.Control onChange={(event) => updateAndroid({ gradleTask: event.target.value })} required value={form.android.gradleTask} /></Form.Group>
+                  <Form.Group><Form.Label>APK source path</Form.Label><Form.Control onChange={(event) => updateAndroid({ artifactPath: event.target.value })} required value={form.android.artifactPath} /><Form.Text>May be relative to the Android project directory.</Form.Text></Form.Group>
+                </div>
+                <div className={styles.twoColumns}>
+                  <Form.Group><Form.Label>AAB Gradle task</Form.Label><Form.Control onChange={(event) => updateAndroid({ aabGradleTask: event.target.value })} required value={form.android.aabGradleTask} /></Form.Group>
+                  <Form.Group><Form.Label>AAB source path</Form.Label><Form.Control onChange={(event) => updateAndroid({ aabArtifactPath: event.target.value })} required value={form.android.aabArtifactPath} /><Form.Text>May be relative to the Android project directory.</Form.Text></Form.Group>
                 </div>
               </div>
             )}

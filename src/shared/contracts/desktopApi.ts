@@ -6,6 +6,7 @@ import type {
   IosSchemeListResult,
   PathSelectionResult,
   ThemePreference,
+  UpdateArtifactOutputDirectoryRequest,
   UpdateApplicationRequest,
 } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
@@ -23,6 +24,7 @@ export type DesktopApi = {
   cancelRelease: (runId: string) => Promise<CancelReleaseResult>;
   chooseAndroidArtifact: () => Promise<PathSelectionResult>;
   chooseAndroidProjectDirectory: () => Promise<PathSelectionResult>;
+  chooseArtifactOutputDirectory: () => Promise<PathSelectionResult>;
   chooseGoogleServiceInfoPlist: () => Promise<PathSelectionResult>;
   chooseGoogleServicesJson: () => Promise<PathSelectionResult>;
   chooseHookDirectory: () => Promise<PathSelectionResult>;
@@ -43,6 +45,9 @@ export type DesktopApi = {
   runDoctor: () => Promise<DoctorReport>;
   startRelease: (planId: string) => Promise<StartReleaseResult>;
   updateApplication: (request: UpdateApplicationRequest) => Promise<ApplicationDetail>;
+  updateArtifactOutputDirectory: (
+    request: UpdateArtifactOutputDirectoryRequest,
+  ) => Promise<ApplicationDetail>;
   updateTheme: (theme: ThemePreference) => Promise<AppSettings>;
   windowClose: () => Promise<void>;
   windowMinimize: () => Promise<void>;

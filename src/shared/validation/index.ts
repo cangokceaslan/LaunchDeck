@@ -2,12 +2,16 @@ import { z } from 'zod';
 
 const nonEmptyPathSchema = z.string().trim().min(1).max(4096);
 const identifierSchema = z.string().trim().min(1).max(256);
+const gradleTaskSchema = z.string().trim().min(1).max(160).regex(/^[:A-Za-z0-9_-]+$/u);
 
 export const androidConfigurationSchema = z.object({
+  aabArtifactPath: nonEmptyPathSchema.default('app/build/outputs/bundle/release/app-release.aab'),
+  aabGradleTask: gradleTaskSchema.default(':app:bundleRelease'),
   artifactPath: nonEmptyPathSchema,
+  defaultArtifactType: z.enum(['apk', 'aab']).default('apk'),
   firebaseAppId: identifierSchema,
   googleServicesJsonPath: nonEmptyPathSchema,
-  gradleTask: z.string().trim().min(1).max(160).regex(/^[:A-Za-z0-9_-]+$/u),
+  gradleTask: gradleTaskSchema,
   projectPath: nonEmptyPathSchema,
 });
 
@@ -35,6 +39,7 @@ export const pipelineHookSchema = z.object({
 export const createApplicationRequestSchema = z
   .object({
     android: androidConfigurationSchema.omit({ firebaseAppId: true }).nullable(),
+    artifactOutputDirectoryPath: nonEmptyPathSchema.nullable(),
     distributionGroups: z.array(identifierSchema).min(1).max(50),
     firebaseProjectId: z.string().trim().max(256),
     hooks: z.array(pipelineHookSchema).max(24),
@@ -49,6 +54,7 @@ export const createApplicationRequestSchema = z
 export const updateApplicationRequestSchema = z
   .object({
     android: createApplicationRequestSchema.shape.android,
+    artifactOutputDirectoryPath: createApplicationRequestSchema.shape.artifactOutputDirectoryPath,
     distributionGroups: createApplicationRequestSchema.shape.distributionGroups,
     firebaseProjectId: createApplicationRequestSchema.shape.firebaseProjectId,
     hooks: createApplicationRequestSchema.shape.hooks,
@@ -61,14 +67,47 @@ export const updateApplicationRequestSchema = z
     message: 'At least one platform must be configured.',
   });
 
-export const preflightReleaseRequestSchema = z.object({
-  androidArtifactPath: nonEmptyPathSchema.optional(),
+export const preflightReleaseRequestSchema = z
+  .object({
+    androidArtifactPath: nonEmptyPathSchema.optional(),
+    androidArtifactType: z.enum(['apk', 'aab']).optional(),
+    applicationId: z.string().uuid(),
+    artifactOutputDirectoryPath: nonEmptyPathSchema.optional(),
+    distributionGroups: z.array(identifierSchema).max(50),
+    iosArtifactPath: nonEmptyPathSchema.optional(),
+    mode: z.enum(['buildOnly', 'uploadOnly', 'buildAndUpload']),
+    platforms: z.array(z.enum(['android', 'ios'])).min(1).max(2),
+    releaseNotes: z.string().trim().max(5000),
+  })
+  .superRefine((request, context) => {
+    if (request.mode !== 'buildOnly') {
+      if (request.distributionGroups.length === 0) {
+        context.addIssue({
+          code: 'custom',
+          message: 'At least one tester group is required for Firebase distribution.',
+          path: ['distributionGroups'],
+        });
+      }
+      if (request.releaseNotes === '') {
+        context.addIssue({
+          code: 'custom',
+          message: 'Release notes are required for Firebase distribution.',
+          path: ['releaseNotes'],
+        });
+      }
+    }
+    if (request.mode === 'buildOnly' && request.artifactOutputDirectoryPath === undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'An artifact output directory is required for a local build.',
+        path: ['artifactOutputDirectoryPath'],
+      });
+    }
+  });
+
+export const updateArtifactOutputDirectoryRequestSchema = z.object({
   applicationId: z.string().uuid(),
-  distributionGroups: z.array(identifierSchema).min(1).max(50),
-  iosArtifactPath: nonEmptyPathSchema.optional(),
-  mode: z.enum(['buildOnly', 'uploadOnly', 'buildAndUpload']),
-  platforms: z.array(z.enum(['android', 'ios'])).min(1).max(2),
-  releaseNotes: z.string().trim().min(1).max(5000),
+  directoryPath: nonEmptyPathSchema,
 });
 
 export const applicationIdSchema = z.string().uuid();

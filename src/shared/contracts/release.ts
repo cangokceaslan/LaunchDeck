@@ -1,4 +1,8 @@
-import type { ReleaseMode, ReleasePlatform } from '@shared/contracts/domain';
+import type {
+  AndroidArtifactType,
+  ReleaseMode,
+  ReleasePlatform,
+} from '@shared/contracts/domain';
 
 export type ReleasePhase =
   | 'validating'
@@ -8,6 +12,7 @@ export type ReleasePhase =
   | 'preUpload'
   | 'upload'
   | 'postUpload'
+  | 'saving'
   | 'verifying';
 
 export type ReleaseProgressKind = 'estimated' | 'reported' | 'verified';
@@ -19,6 +24,7 @@ export type ValidationIssueCode =
   | 'firebaseAccessDenied'
   | 'firebaseCliMissing'
   | 'invalidConfiguration'
+  | 'outputDirectoryUnavailable'
   | 'pathMissing'
   | 'platformUnsupported'
   | 'toolMissing';
@@ -31,8 +37,10 @@ export type ValidationIssue = {
 };
 
 export type PreflightReleaseRequest = {
+  androidArtifactType?: AndroidArtifactType;
   androidArtifactPath?: string;
   applicationId: string;
+  artifactOutputDirectoryPath?: string;
   distributionGroups: string[];
   iosArtifactPath?: string;
   mode: ReleaseMode;
@@ -41,8 +49,10 @@ export type PreflightReleaseRequest = {
 };
 
 export type ResolvedReleasePlan = {
+  androidArtifactType?: AndroidArtifactType;
   applicationId: string;
   applicationName: string;
+  artifactOutputDirectoryPath?: string;
   distributionGroups: string[];
   expiresAt: string;
   mode: ReleaseMode;

@@ -251,6 +251,7 @@ export const App = (): React.JSX.Element => {
           application={selectedApplication}
           onClose={() => setView('detail')}
           onFinished={() => void handleReleaseFinished()}
+          onApplicationUpdated={setSelectedApplication}
           supportedPlatforms={supportedPlatforms}
         />
       )}

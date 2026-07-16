@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, rm } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { chmod, copyFile, lstat, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { AndroidBuilder } from '@main/services/AndroidBuilder';
 import type { IosBuilder } from '@main/services/IosBuilder';
@@ -8,7 +9,11 @@ import type { ApplicationRepository } from '@main/repositories/Application';
 import type { RunHistoryRepository } from '@main/repositories/RunHistory';
 import { runExecutable } from '@main/utils/ChildProcess';
 import { resolveCommandLine } from '@main/utils/CommandLine';
-import { resolveExistingDirectory, resolveExistingFile } from '@main/utils/FileSystem';
+import {
+  resolveExistingDirectory,
+  resolveExistingFile,
+  resolveWritableDirectory,
+} from '@main/utils/FileSystem';
 import { createRedactor } from '@main/utils/Redaction';
 import type {
   ActiveReleaseRun,
@@ -41,6 +46,60 @@ const includesBuild = (mode: ReleaseMode): boolean =>
 const includesUpload = (mode: ReleaseMode): boolean =>
   mode === 'uploadOnly' || mode === 'buildAndUpload';
 
+const formatArtifactTimestamp = (isoTimestamp: string): string => {
+  const timestamp = new Date(isoTimestamp);
+  const date = [timestamp.getUTCFullYear(), timestamp.getUTCMonth() + 1, timestamp.getUTCDate()]
+    .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, '0'))
+    .join('');
+  const time = [timestamp.getUTCHours(), timestamp.getUTCMinutes(), timestamp.getUTCSeconds()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join('');
+  return `${date}-${time}-${String(timestamp.getUTCMilliseconds()).padStart(3, '0')}`;
+};
+
+const sanitizeArtifactName = (applicationName: string): string => {
+  const sanitizedName = applicationName
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/gu, '')
+    .toLocaleLowerCase('en-US')
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    .slice(0, 64);
+  return sanitizedName === '' ? 'application' : sanitizedName;
+};
+
+const saveLocalArtifact = async (
+  sourceArtifactPath: string,
+  outputDirectoryPath: string,
+  applicationName: string,
+  platform: ReleasePlatform,
+  startedAt: string,
+): Promise<string> => {
+  const directoryPath = await resolveWritableDirectory(outputDirectoryPath);
+  const extension = path.extname(sourceArtifactPath).toLocaleLowerCase('en-US');
+  const destinationPath = path.join(
+    directoryPath,
+    `${sanitizeArtifactName(applicationName)}-${platform}-${formatArtifactTimestamp(startedAt)}${extension}`,
+  );
+  let isDestinationCreated = false;
+  try {
+    await copyFile(sourceArtifactPath, destinationPath, constants.COPYFILE_EXCL);
+    isDestinationCreated = true;
+    await chmod(destinationPath, 0o600);
+    const resolvedPath = await resolveExistingFile(destinationPath, [extension]);
+    const artifactStats = await lstat(resolvedPath);
+    if (artifactStats.size === 0) {
+      throw new Error('The saved local artifact is empty.');
+    }
+    return resolvedPath;
+  } catch (error) {
+    if (isDestinationCreated) {
+      await rm(destinationPath, { force: true });
+    }
+    throw error;
+  }
+};
+
 const hooksFor = (
   hooks: PipelineHook[],
   phase: PipelineHook['phase'],
@@ -65,7 +124,8 @@ const countPlatformSteps = (
       1 +
       hooksFor(hooks, 'postUpload', platform).length
     : 0;
-  return buildSteps + uploadSteps + 1;
+  const localSaveSteps = mode === 'buildOnly' ? 1 : 0;
+  return buildSteps + uploadSteps + localSaveSteps + 1;
 };
 
 const safeErrorMessage = (error: unknown): string =>
@@ -134,13 +194,24 @@ export class ReleaseRunner {
       if (planRequest.mode === 'uploadOnly') {
         artifactPaths[platform] = await resolveExistingFile(
           requestedArtifactPath ?? configuration.artifactPath,
-          [platform === 'android' ? '.apk' : '.ipa'],
+          platform === 'android' ? ['.apk', '.aab'] : ['.ipa'],
         );
       } else {
-        artifactPaths[platform] = configuration.artifactPath;
+        artifactPaths[platform] =
+          platform === 'android' && application.android !== null
+            ? (planRequest.androidArtifactType ?? application.android.defaultArtifactType) === 'aab'
+              ? application.android.aabArtifactPath
+              : application.android.artifactPath
+            : configuration.artifactPath;
       }
       const relevantHooks = application.hooks.filter(
-        (hook) => hook.isEnabled && (hook.platform === 'all' || hook.platform === platform),
+        (hook) =>
+          hook.isEnabled &&
+          (hook.platform === 'all' || hook.platform === platform) &&
+          ((includesBuild(planRequest.mode) &&
+            (hook.phase === 'preBuild' || hook.phase === 'postBuild')) ||
+            (includesUpload(planRequest.mode) &&
+              (hook.phase === 'preUpload' || hook.phase === 'postUpload'))),
       );
       await Promise.all(
         relevantHooks.map(async (hook) => {
@@ -173,9 +244,9 @@ export class ReleaseRunner {
         severity: 'error',
       });
     }
-    const invalidGroup = request.distributionGroups.find(
-      (group) => !GROUP_ALIAS_PATTERN.test(group),
-    );
+    const invalidGroup = includesUpload(request.mode)
+      ? request.distributionGroups.find((group) => !GROUP_ALIAS_PATTERN.test(group))
+      : undefined;
     if (invalidGroup !== undefined) {
       issues.push({
         code: 'invalidConfiguration',
@@ -185,14 +256,29 @@ export class ReleaseRunner {
       });
     }
     const artifactPaths: InternalReleasePlan['artifactPaths'] = {};
+    let artifactOutputDirectoryPath: string | undefined;
+    if (request.mode === 'buildOnly') {
+      try {
+        artifactOutputDirectoryPath = await resolveWritableDirectory(
+          request.artifactOutputDirectoryPath ?? application.artifactOutputDirectoryPath ?? '',
+        );
+      } catch (error) {
+        issues.push({
+          code: 'outputDirectoryUnavailable',
+          field: 'artifactOutputDirectoryPath',
+          message: `The local artifact output directory is unavailable: ${safeErrorMessage(error)}`,
+          severity: 'error',
+        });
+      }
+    }
     await Promise.all(
       request.platforms.map((platform) =>
         this.validatePlatform(request, application, platform, issues, artifactPaths),
       ),
     );
-    try {
-      await resolveExistingFile(application.serviceAccountPath, ['.json']);
-      if (includesUpload(request.mode)) {
+    if (includesUpload(request.mode)) {
+      try {
+        await resolveExistingFile(application.serviceAccountPath, ['.json']);
         if ((await this.firebaseCli.getExecutablePath()) === null) {
           issues.push({
             code: 'firebaseCliMissing',
@@ -208,15 +294,13 @@ export class ReleaseRunner {
             signal: new AbortController().signal,
           });
         }
+      } catch {
+        issues.push({
+          code: 'firebaseAccessDenied',
+          message: 'The Firebase project could not be accessed with the service account.',
+          severity: 'error',
+        });
       }
-    } catch (error) {
-      issues.push({
-        code: includesUpload(request.mode) ? 'firebaseAccessDenied' : 'credentialUnavailable',
-        message: includesUpload(request.mode)
-          ? 'The Firebase project could not be accessed with the service account.'
-          : safeErrorMessage(error),
-        severity: 'error',
-      });
     }
     if (issues.some((issue) => issue.severity === 'error')) {
       return { isValid: false, issues };
@@ -226,9 +310,18 @@ export class ReleaseRunner {
       (total, platform) => total + countPlatformSteps(application.hooks, request.mode, platform),
       0,
     );
+    const resolvedAndroidArtifactType = request.platforms.includes('android')
+      ? request.mode === 'uploadOnly' && artifactPaths.android !== undefined
+        ? artifactPaths.android.toLowerCase().endsWith('.aab')
+          ? 'aab'
+          : 'apk'
+        : request.androidArtifactType ?? application.android?.defaultArtifactType ?? 'apk'
+      : undefined;
     const publicPlan: ResolvedReleasePlan = {
+      androidArtifactType: resolvedAndroidArtifactType,
       applicationId: application.id,
       applicationName: application.name,
+      artifactOutputDirectoryPath,
       distributionGroups: [...request.distributionGroups],
       expiresAt: new Date(Date.now() + PLAN_LIFETIME_MS).toISOString(),
       mode: request.mode,
@@ -247,7 +340,14 @@ export class ReleaseRunner {
         platforms: [...request.platforms],
       },
     });
-    const warnings: ValidationIssue[] = application.hooks.some((hook) => hook.isEnabled)
+    const warnings: ValidationIssue[] = application.hooks.some(
+      (hook) =>
+        hook.isEnabled &&
+        ((includesBuild(request.mode) &&
+          (hook.phase === 'preBuild' || hook.phase === 'postBuild')) ||
+          (includesUpload(request.mode) &&
+            (hook.phase === 'preUpload' || hook.phase === 'postUpload'))),
+    )
       ? [
           {
             code: 'invalidConfiguration',
@@ -436,6 +536,7 @@ export class ReleaseRunner {
               if (platform === 'android' && plan.application.android !== null) {
                 artifactPath = await this.androidBuilder.build(
                   plan.application.android,
+                  plan.publicPlan.androidArtifactType ?? plan.application.android.defaultArtifactType,
                   abortController.signal,
                   ({ level, line }) => {
                     reportActivity(line);
@@ -463,9 +564,27 @@ export class ReleaseRunner {
             if (artifactPath === undefined) {
               throw new Error('Artifact path could not be resolved.');
             }
-            artifactPath = await resolveExistingFile(artifactPath, [platform === 'android' ? '.apk' : '.ipa']);
+            artifactPath = await resolveExistingFile(
+              artifactPath,
+              platform === 'android' ? ['.apk', '.aab'] : ['.ipa'],
+            );
             platformResult.artifactPath = artifactPath;
           });
+          if (plan.request.mode === 'buildOnly') {
+            await runStep('saving', platform, 'Saving artifact to the selected output directory.', async () => {
+              if (artifactPath === undefined || plan.publicPlan.artifactOutputDirectoryPath === undefined) {
+                throw new Error('The local artifact output configuration is incomplete.');
+              }
+              artifactPath = await saveLocalArtifact(
+                artifactPath,
+                plan.publicPlan.artifactOutputDirectoryPath,
+                plan.application.name,
+                platform,
+                startedAt,
+              );
+              platformResult.artifactPath = artifactPath;
+            });
+          }
           if (includesUpload(plan.request.mode)) {
             failureArea = 'upload';
             await runHooks('preUpload', platform);

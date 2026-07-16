@@ -16,6 +16,7 @@ import {
   planIdSchema,
   preflightReleaseRequestSchema,
   themePreferenceSchema,
+  updateArtifactOutputDirectoryRequestSchema,
   updateApplicationRequestSchema,
 } from '@shared/validation';
 import type { PathSelectionResult } from '@shared/contracts/domain';
@@ -84,6 +85,19 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
       throw new Error(toSafeErrorMessage(error));
     }
   });
+  ipcMain.handle(
+    IPC_CHANNELS.applicationUpdateArtifactOutputDirectory,
+    async (event, payload: unknown) => {
+      assertTrustedSender(event);
+      try {
+        return await dependencies.applicationService.updateArtifactOutputDirectory(
+          updateArtifactOutputDirectoryRequestSchema.parse(payload),
+        );
+      } catch (error) {
+        throw new Error(toSafeErrorMessage(error));
+      }
+    },
+  );
   ipcMain.handle(IPC_CHANNELS.applicationDelete, (event, payload: unknown) => {
     assertTrustedSender(event);
     return { deleted: dependencies.applicationRepository.delete(applicationIdSchema.parse(payload)) };
@@ -199,6 +213,11 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     [{ extensions: ['plist'], name: 'Property List' }],
   );
   registerPicker(IPC_CHANNELS.pathChooseAndroidProject, ['openDirectory'], 'Select Android project directory');
+  registerPicker(
+    IPC_CHANNELS.pathChooseArtifactOutputDirectory,
+    ['openDirectory'],
+    'Select artifact output directory',
+  );
   registerPicker(IPC_CHANNELS.pathChooseIosProject, ['openDirectory'], 'Select iOS project directory');
   registerPicker(
     IPC_CHANNELS.pathChooseIosWorkspaceOrProject,
@@ -210,8 +229,8 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
   registerPicker(
     IPC_CHANNELS.pathChooseAndroidArtifact,
     ['openFile'],
-    'Select APK file to upload',
-    [{ extensions: ['apk'], name: 'Android APK' }],
+    'Select APK or AAB file to upload',
+    [{ extensions: ['apk', 'aab'], name: 'Android artifact' }],
   );
   registerPicker(
     IPC_CHANNELS.pathChooseIosArtifact,

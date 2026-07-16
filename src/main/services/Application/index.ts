@@ -12,6 +12,7 @@ import {
   resolveExistingBundlePath,
   resolveExistingDirectory,
   resolveExistingFile,
+  resolveWritableDirectory,
 } from '@main/utils/FileSystem';
 import type {
   AndroidConfiguration,
@@ -19,6 +20,7 @@ import type {
   CreateApplicationRequest,
   IosConfiguration,
   PipelineHook,
+  UpdateArtifactOutputDirectoryRequest,
   UpdateApplicationRequest,
 } from '@shared/contracts/domain';
 
@@ -118,6 +120,7 @@ const resolveAndroid = async (
   return {
     configuration: {
       ...configuration,
+      aabArtifactPath: resolveOutputPath(projectPath, configuration.aabArtifactPath, '.aab'),
       artifactPath: resolveOutputPath(projectPath, configuration.artifactPath, '.apk'),
       firebaseAppId: metadata.appId,
       googleServicesJsonPath,
@@ -192,6 +195,10 @@ export class ApplicationService {
     }
     return {
       android: android.configuration,
+      artifactOutputDirectoryPath:
+        request.artifactOutputDirectoryPath === null
+          ? null
+          : await resolveWritableDirectory(request.artifactOutputDirectoryPath),
       distributionGroups: [...new Set(request.distributionGroups.map((group) => group.trim()))],
       firebaseProjectId,
       hooks,
@@ -213,6 +220,7 @@ export class ApplicationService {
     }
     const createRequest: CreateApplicationRequest = {
       android: request.android,
+      artifactOutputDirectoryPath: request.artifactOutputDirectoryPath,
       distributionGroups: request.distributionGroups,
       firebaseProjectId: request.firebaseProjectId,
       hooks: request.hooks,
@@ -221,5 +229,12 @@ export class ApplicationService {
       serviceAccountPath: request.serviceAccountPath ?? currentApplication.serviceAccountPath,
     };
     return this.repository.update(request.id, await this.resolveInput(createRequest));
+  }
+
+  public async updateArtifactOutputDirectory(
+    request: UpdateArtifactOutputDirectoryRequest,
+  ): Promise<ApplicationDetail> {
+    const directoryPath = await resolveWritableDirectory(request.directoryPath);
+    return this.repository.updateArtifactOutputDirectory(request.applicationId, directoryPath);
   }
 }

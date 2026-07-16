@@ -1,6 +1,9 @@
 import path from 'node:path';
 import { lstat } from 'node:fs/promises';
-import type { AndroidConfiguration } from '@shared/contracts/domain';
+import type {
+  AndroidArtifactType,
+  AndroidConfiguration,
+} from '@shared/contracts/domain';
 import type { ProcessOutput } from '@main/utils/ChildProcess/index.types';
 import { resolveExecutableFile, resolveExistingFile } from '@main/utils/FileSystem';
 import { runExecutable } from '@main/utils/ChildProcess';
@@ -13,10 +16,22 @@ export class AndroidBuilder {
 
   public async build(
     configuration: AndroidConfiguration,
+    artifactType: AndroidArtifactType,
     signal: AbortSignal,
     onOutput: (output: ProcessOutput) => void,
   ): Promise<string> {
     const gradleWrapperPath = await this.resolveGradleWrapper(configuration);
+    const buildTarget =
+      artifactType === 'aab'
+        ? { artifactPath: configuration.aabArtifactPath, gradleTask: configuration.aabGradleTask }
+        : { artifactPath: configuration.artifactPath, gradleTask: configuration.gradleTask };
+    let previousArtifact: { mtimeMs: number; size: number } | null = null;
+    try {
+      const previousStats = await lstat(buildTarget.artifactPath);
+      previousArtifact = { mtimeMs: previousStats.mtimeMs, size: previousStats.size };
+    } catch {
+      previousArtifact = null;
+    }
     const isWindows = process.platform === 'win32';
     const hasUnsafeWindowsShellCharacter =
       /["&|<>^%!]/u.test(gradleWrapperPath) ||
@@ -35,9 +50,9 @@ export class AndroidBuilder {
           '/d',
           '/s',
           '/c',
-          `"${gradleWrapperPath}" ${configuration.gradleTask} --rerun-tasks --console=plain`,
+          `"${gradleWrapperPath}" ${buildTarget.gradleTask} --rerun-tasks --console=plain`,
         ]
-      : [configuration.gradleTask, '--rerun-tasks', '--console=plain'];
+      : [buildTarget.gradleTask, '--rerun-tasks', '--console=plain'];
     const result = await runExecutable({
       args,
       cwdPath: configuration.projectPath,
@@ -48,10 +63,17 @@ export class AndroidBuilder {
     if (result.exitCode !== 0) {
       throw new Error(`Android build failed with exit code ${result.exitCode}.`);
     }
-    const artifactPath = await resolveExistingFile(configuration.artifactPath, ['.apk']);
+    const artifactPath = await resolveExistingFile(buildTarget.artifactPath, [`.${artifactType}`]);
     const artifactStats = await lstat(artifactPath);
     if (artifactStats.size === 0) {
-      throw new Error('The generated APK file is empty.');
+      throw new Error(`The generated ${artifactType.toUpperCase()} file is empty.`);
+    }
+    if (
+      previousArtifact !== null &&
+      previousArtifact.mtimeMs === artifactStats.mtimeMs &&
+      previousArtifact.size === artifactStats.size
+    ) {
+      throw new Error(`The ${artifactType.toUpperCase()} artifact was not updated by this build.`);
     }
     return artifactPath;
   }

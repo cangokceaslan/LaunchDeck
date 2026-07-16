@@ -7,6 +7,8 @@ export const desktopApi: DesktopApi = {
   cancelRelease: (runId) => ipcRenderer.invoke(IPC_CHANNELS.releaseCancel, runId),
   chooseAndroidArtifact: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidArtifact),
   chooseAndroidProjectDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidProject),
+  chooseArtifactOutputDirectory: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.pathChooseArtifactOutputDirectory),
   chooseGoogleServiceInfoPlist: () =>
     ipcRenderer.invoke(IPC_CHANNELS.pathChooseGoogleServiceInfoPlist),
   chooseGoogleServicesJson: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseGoogleServicesJson),
@@ -37,6 +39,8 @@ export const desktopApi: DesktopApi = {
   runDoctor: () => ipcRenderer.invoke(IPC_CHANNELS.doctorRun),
   startRelease: (planId) => ipcRenderer.invoke(IPC_CHANNELS.releaseStart, planId),
   updateApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationUpdate, request),
+  updateArtifactOutputDirectory: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.applicationUpdateArtifactOutputDirectory, request),
   updateTheme: (theme) => ipcRenderer.invoke(IPC_CHANNELS.settingsUpdateTheme, theme),
   windowClose: () => ipcRenderer.invoke(IPC_CHANNELS.windowClose),
   windowMinimize: () => ipcRenderer.invoke(IPC_CHANNELS.windowMinimize),

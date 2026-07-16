@@ -78,8 +78,11 @@ export const ApplicationDetail = ({
               <dl>
                 <div><dt>Project</dt><dd>{application.android.projectPath}</dd></div>
                 <div><dt>Google Services</dt><dd>{application.android.googleServicesJsonPath}</dd></div>
-                <div><dt>Gradle task</dt><dd>{application.android.gradleTask}</dd></div>
-                <div><dt>Artifact</dt><dd>{application.android.artifactPath}</dd></div>
+                <div><dt>Default artifact</dt><dd>{application.android.defaultArtifactType.toUpperCase()}</dd></div>
+                <div><dt>APK Gradle task</dt><dd>{application.android.gradleTask}</dd></div>
+                <div><dt>APK source</dt><dd>{application.android.artifactPath}</dd></div>
+                <div><dt>AAB Gradle task</dt><dd>{application.android.aabGradleTask}</dd></div>
+                <div><dt>AAB source</dt><dd>{application.android.aabArtifactPath}</dd></div>
               </dl>
             </article>
           )}
@@ -94,6 +97,15 @@ export const ApplicationDetail = ({
               </dl>
             </article>
           )}
+          <article>
+            <h3>Local output</h3>
+            <dl>
+              <div>
+                <dt>Directory</dt>
+                <dd>{application.artifactOutputDirectoryPath ?? 'Selected during the first local pipeline'}</dd>
+              </div>
+            </dl>
+          </article>
         </div>
       </section>
 

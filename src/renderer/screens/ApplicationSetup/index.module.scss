@@ -83,6 +83,11 @@
         margin-bottom: var(--space-5);
       }
 
+      .compactField {
+        margin: var(--space-5) 0;
+        max-width: 320px;
+      }
+
       .platformPanel {
         border-top: 1px solid var(--color-border);
         margin-top: var(--space-5);

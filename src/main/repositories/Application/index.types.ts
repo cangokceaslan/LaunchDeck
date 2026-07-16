@@ -10,6 +10,7 @@ export type StoredApplication = ApplicationDetail & {
 
 export type PersistApplicationInput = {
   android: AndroidConfiguration | null;
+  artifactOutputDirectoryPath: string | null;
   distributionGroups: string[];
   firebaseProjectId: string;
   hooks: ApplicationDetail['hooks'];

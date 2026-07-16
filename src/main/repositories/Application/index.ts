@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import type { ApplicationDatabase } from '@main/database';
 import type { CredentialVault } from '@main/services/CredentialVault';
 import { isRecord } from '@main/utils/FileSystem';
@@ -53,7 +54,12 @@ const parseAndroidConfiguration = (serializedValue: unknown): AndroidConfigurati
   if (typeof serializedValue !== 'string') {
     throw new Error('Invalid SQLite platform configuration.');
   }
-  return androidConfigurationSchema.parse(parseJson(serializedValue));
+  const configuration = androidConfigurationSchema.parse(parseJson(serializedValue));
+  return {
+    ...configuration,
+    aabArtifactPath: path.resolve(configuration.projectPath, configuration.aabArtifactPath),
+    artifactPath: path.resolve(configuration.projectPath, configuration.artifactPath),
+  };
 };
 
 const parseIosConfiguration = (serializedValue: unknown): IosConfiguration | null => {
@@ -121,6 +127,10 @@ export class ApplicationRepository {
     const id = readRequiredString(row, 'id');
     const android = parseAndroidConfiguration(row.android_json);
     const ios = parseIosConfiguration(row.ios_json);
+    const artifactOutputDirectoryPath = row.artifact_output_directory_path;
+    if (artifactOutputDirectoryPath !== null && typeof artifactOutputDirectoryPath !== 'string') {
+      throw new Error('Invalid SQLite artifact output directory.');
+    }
     const platforms: ReleasePlatform[] = [];
     if (android !== null) {
       platforms.push('android');
@@ -130,6 +140,7 @@ export class ApplicationRepository {
     }
     const detail: ApplicationDetail = {
       android,
+      artifactOutputDirectoryPath,
       createdAt: readRequiredString(row, 'created_at'),
       distributionGroups: parseStringArray(readRequiredString(row, 'distribution_groups_json')),
       firebaseProjectId: readRequiredString(row, 'firebase_project_id'),
@@ -163,8 +174,8 @@ export class ApplicationRepository {
           `INSERT INTO applications (
             id, name, firebase_project_id, service_account_path_encrypted,
             service_account_file_name, distribution_groups_json, android_json,
-            ios_json, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ios_json, artifact_output_directory_path, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           id,
@@ -175,6 +186,7 @@ export class ApplicationRepository {
           JSON.stringify(input.distributionGroups),
           input.android === null ? null : JSON.stringify(input.android),
           input.ios === null ? null : JSON.stringify(input.ios),
+          input.artifactOutputDirectoryPath,
           timestamp,
           timestamp,
         );
@@ -195,7 +207,8 @@ export class ApplicationRepository {
         .prepare(
           `UPDATE applications SET name = ?, firebase_project_id = ?,
             service_account_path_encrypted = ?, service_account_file_name = ?,
-            distribution_groups_json = ?, android_json = ?, ios_json = ?, updated_at = ?
+            distribution_groups_json = ?, android_json = ?, ios_json = ?,
+            artifact_output_directory_path = ?, updated_at = ?
            WHERE id = ?`,
         )
         .run(
@@ -206,6 +219,7 @@ export class ApplicationRepository {
           JSON.stringify(input.distributionGroups),
           input.android === null ? null : JSON.stringify(input.android),
           input.ios === null ? null : JSON.stringify(input.ios),
+          input.artifactOutputDirectoryPath,
           timestamp,
           id,
         );
@@ -219,6 +233,25 @@ export class ApplicationRepository {
       throw new Error('The application record could not be updated.');
     }
     return updatedApplication;
+  }
+
+  public updateArtifactOutputDirectory(
+    id: string,
+    artifactOutputDirectoryPath: string,
+  ): ApplicationDetail {
+    const result = this.database
+      .prepare(
+        'UPDATE applications SET artifact_output_directory_path = ?, updated_at = ? WHERE id = ?',
+      )
+      .run(artifactOutputDirectoryPath, new Date().toISOString(), id);
+    if (result.changes !== 1) {
+      throw new Error('The application to update was not found.');
+    }
+    const application = this.get(id);
+    if (application === null) {
+      throw new Error('The updated application could not be read.');
+    }
+    return application;
   }
 
   private replaceHooks(applicationId: string, hooks: PipelineHook[]): void {
