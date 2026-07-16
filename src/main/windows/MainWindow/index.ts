@@ -21,6 +21,7 @@ export const createMainWindow = async (options: MainWindowOptions): Promise<Brow
   }
   const mainWindow = new BrowserWindow({
     backgroundColor: '#F7F8FA',
+    frame: false,
     height: 820,
     ...(!app.isPackaged && process.platform !== 'darwin' ? { icon: developmentIconPath } : {}),
     minHeight: 680,
@@ -75,7 +76,10 @@ export const createMainWindow = async (options: MainWindowOptions): Promise<Brow
       });
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
+    mainWindow.show();
+  });
   const developmentUrl = process.env.ELECTRON_RENDERER_URL;
   if (developmentUrl !== undefined) {
     await mainWindow.loadURL(developmentUrl);

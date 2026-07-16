@@ -21,19 +21,21 @@ const bootstrap = async (): Promise<void> => {
   const historyRepository = new RunHistoryRepository(database);
   const settingsRepository = new SettingsRepository(database);
   const firebaseCli = new FirebaseCliIntegration();
+  const iosBuilder = new IosBuilder();
   const releaseRunner = new ReleaseRunner(
     applicationRepository,
     historyRepository,
     firebaseCli,
     new AndroidBuilder(),
-    new IosBuilder(),
+    iosBuilder,
     path.join(app.getPath('userData'), 'runs'),
   );
   registerIpcHandlers({
     applicationRepository,
-    applicationService: new ApplicationService(applicationRepository),
+    applicationService: new ApplicationService(applicationRepository, iosBuilder),
     doctorService: new DoctorService(firebaseCli),
     historyRepository,
+    iosBuilder,
     releaseRunner,
     settingsRepository,
   });

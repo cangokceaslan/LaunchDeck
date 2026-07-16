@@ -73,5 +73,6 @@ export const preflightReleaseRequestSchema = z.object({
 });
 
 export const applicationIdSchema = z.string().uuid();
+export const iosSchemeListRequestSchema = nonEmptyPathSchema;
 export const planIdSchema = z.string().uuid();
 export const themePreferenceSchema = z.enum(['light', 'dark', 'system']);

@@ -55,7 +55,7 @@
   .summaryGrid {
     display: grid;
     gap: var(--space-4);
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     margin-bottom: var(--space-8);
 
     .summaryCard {
@@ -198,9 +198,4 @@
     }
   }
 
-  @media (max-width: 1080px) {
-    .summaryGrid {
-      grid-template-columns: 1fr;
-    }
-  }
 }

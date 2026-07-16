@@ -4,7 +4,8 @@
   color: var(--color-text);
   display: flex;
   justify-content: center;
-  min-height: 100vh;
+  height: 100%;
+  overflow: auto;
   padding: var(--space-8);
 
   .card {

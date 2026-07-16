@@ -84,9 +84,13 @@ export const ReleasePipeline = ({
         <Button disabled={releaseRun.status === 'running' || releaseRun.status === 'cancelling'} onClick={onClose} variant="outline-secondary">Close</Button>
       </header>
 
-      <ol className={styles.stepper}>
+      <ol aria-label="Release steps" className={styles.stepper}>
         {['Operation', 'Platform', 'Release details', 'Pipeline'].map((label, index) => (
-          <li className={step === index + 1 ? styles.active : step > index + 1 ? styles.complete : ''} key={label}>
+          <li
+            aria-current={step === index + 1 ? 'step' : undefined}
+            className={step === index + 1 ? styles.active : step > index + 1 ? styles.complete : ''}
+            key={label}
+          >
             <span>{index + 1}</span><strong>{label}</strong>
           </li>
         ))}
@@ -98,7 +102,7 @@ export const ReleasePipeline = ({
             <header><span>Step 1</span><h2>What would you like to do?</h2><p>Build and upload outcomes are tracked separately.</p></header>
             <div className={styles.choiceGrid}>
               {modes.map((modeOption) => (
-                <button className={mode === modeOption.value ? styles.choiceSelected : styles.choice} key={modeOption.value} onClick={() => setMode(modeOption.value)} type="button">
+                <button aria-pressed={mode === modeOption.value} className={mode === modeOption.value ? styles.choiceSelected : styles.choice} key={modeOption.value} onClick={() => setMode(modeOption.value)} type="button">
                   <span aria-hidden="true" className={styles.radio}>{mode === modeOption.value ? '●' : '○'}</span>
                   <strong>{modeOption.label}</strong><small>{modeOption.description}</small>
                 </button>
@@ -113,7 +117,7 @@ export const ReleasePipeline = ({
             <header><span>Step 2</span><h2>Select platforms</h2><p>iOS is available on macOS only.</p></header>
             <div className={styles.choiceGrid}>
               {availablePlatforms.map((platform) => (
-                <button className={platforms.includes(platform) ? styles.choiceSelected : styles.choice} key={platform} onClick={() => togglePlatform(platform)} type="button">
+                <button aria-pressed={platforms.includes(platform)} className={platforms.includes(platform) ? styles.choiceSelected : styles.choice} key={platform} onClick={() => togglePlatform(platform)} type="button">
                   <span aria-hidden="true" className={styles.platformMark}>{platform === 'android' ? 'A' : 'i'}</span>
                   <strong>{formatPlatform(platform)}</strong><small>{platform === 'android' ? 'Gradle + APK' : 'Xcode + IPA'}</small>
                 </button>

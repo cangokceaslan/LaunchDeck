@@ -1,4 +1,4 @@
-import { access, lstat, readFile, realpath } from 'node:fs/promises';
+import { access, lstat, readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { constants } from 'node:fs';
 
@@ -27,7 +27,12 @@ export const resolveExistingFile = async (
 };
 
 export const resolveExecutableFile = async (selectedPath: string): Promise<string> => {
-  const resolvedPath = await resolveExistingFile(selectedPath);
+  const normalizedPath = path.resolve(selectedPath.trim());
+  const resolvedPath = await realpath(normalizedPath);
+  const fileStats = await stat(resolvedPath);
+  if (!fileStats.isFile()) {
+    throw new Error(`Expected an executable file: ${normalizedPath}`);
+  }
   await access(resolvedPath, process.platform === 'win32' ? constants.F_OK : constants.X_OK);
   return resolvedPath;
 };

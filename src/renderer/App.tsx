@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Spinner } from 'react-bootstrap';
 import { AppShell } from '@components/AppShell';
+import { WindowFrame } from '@components/WindowFrame';
 import { ApplicationDetail } from '@screens/ApplicationDetail';
 import { ApplicationList } from '@screens/ApplicationList';
 import { ApplicationSetup } from '@screens/ApplicationSetup';
@@ -155,28 +156,31 @@ export const App = (): React.JSX.Element => {
 
   if (!hasPassedDoctor) {
     return (
-      <Doctor
-        errorMessage={doctorError}
-        isChecking={isCheckingDoctor}
-        onContinue={() => void handleContinue()}
-        onRetry={() => void runDoctor()}
-        report={doctorReport}
-      />
+      <WindowFrame>
+        <Doctor
+          errorMessage={doctorError}
+          isChecking={isCheckingDoctor}
+          onContinue={() => void handleContinue()}
+          onRetry={() => void runDoctor()}
+          report={doctorReport}
+        />
+      </WindowFrame>
     );
   }
 
   const supportedPlatforms: ReleasePlatform[] = doctorReport?.supportedPlatforms ?? ['android'];
 
   return (
-    <AppShell
-      applications={applications}
-      onAddApplication={() => { setSelectedApplication(null); setView('setup'); }}
-      onOpenApplication={(applicationId) => void openApplication(applicationId)}
-      onOpenHome={() => setView('home')}
-      onThemeChange={(nextTheme) => void handleThemeChange(nextTheme)}
-      selectedApplicationId={selectedApplication?.id ?? null}
-      theme={theme}
-    >
+    <WindowFrame>
+      <AppShell
+        applications={applications}
+        onAddApplication={() => { setSelectedApplication(null); setView('setup'); }}
+        onOpenApplication={(applicationId) => void openApplication(applicationId)}
+        onOpenHome={() => setView('home')}
+        onThemeChange={(nextTheme) => void handleThemeChange(nextTheme)}
+        selectedApplicationId={selectedApplication?.id ?? null}
+        theme={theme}
+      >
       {globalError !== null && <Alert className={styles.globalAlert} dismissible onClose={() => setGlobalError(null)} variant="danger">{globalError}</Alert>}
       {view === 'home' && (
         <ApplicationList
@@ -223,6 +227,7 @@ export const App = (): React.JSX.Element => {
       {view !== 'home' && selectedApplication === null && view !== 'setup' && (
         <div className={styles.loading}><Spinner animation="border" size="sm" /> Loading application…</div>
       )}
-    </AppShell>
+      </AppShell>
+    </WindowFrame>
   );
 };

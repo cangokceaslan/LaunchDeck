@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { parse as parsePlist } from 'plist';
 import type { ApplicationRepository } from '@main/repositories/Application';
 import type { PersistApplicationInput } from '@main/repositories/Application/index.types';
+import type { IosBuilder } from '@main/services/IosBuilder';
 import {
   isRecord,
   readJsonConfiguration,
@@ -134,6 +135,7 @@ const resolveAndroid = async (
 
 const resolveIos = async (
   configuration: CreateApplicationRequest['ios'],
+  iosBuilder: IosBuilder,
 ): Promise<{ configuration: IosConfiguration | null; projectId: string | null }> => {
   if (configuration === null) {
     return { configuration: null, projectId: null };
@@ -150,6 +152,10 @@ const resolveIos = async (
     '.xcworkspace',
     '.xcodeproj',
   ]);
+  const { schemes } = await iosBuilder.listSchemes(workspaceOrProjectPath);
+  if (!schemes.includes(configuration.scheme)) {
+    throw new Error(`The selected scheme was not found in the Xcode project: ${configuration.scheme}`);
+  }
   const metadata = await inspectGoogleServiceInfoPlist(googleServiceInfoPlistPath);
   return {
     configuration: {
@@ -165,7 +171,10 @@ const resolveIos = async (
 };
 
 export class ApplicationService {
-  public constructor(private readonly repository: ApplicationRepository) {}
+  public constructor(
+    private readonly repository: ApplicationRepository,
+    private readonly iosBuilder: IosBuilder,
+  ) {}
 
   private async resolveInput(
     request: CreateApplicationRequest,
@@ -176,7 +185,7 @@ export class ApplicationService {
     );
     const [android, ios, hooks] = await Promise.all([
       resolveAndroid(request.android),
-      resolveIos(request.ios),
+      resolveIos(request.ios, this.iosBuilder),
       resolveHooks(request.hooks),
     ]);
     const requestedProjectId = request.firebaseProjectId.trim();

@@ -5,6 +5,7 @@ export type PathFieldProps = {
   label: string;
   onBrowse: () => void;
   onChange?: (value: string) => void;
+  placeholder?: string;
   required?: boolean;
   value: string;
 };

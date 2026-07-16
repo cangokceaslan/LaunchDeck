@@ -5,12 +5,14 @@ import type { RunHistoryRepository } from '@main/repositories/RunHistory';
 import type { SettingsRepository } from '@main/repositories/Settings';
 import type { ApplicationService } from '@main/services/Application';
 import type { DoctorService } from '@main/services/Doctor';
+import type { IosBuilder } from '@main/services/IosBuilder';
 import type { ReleaseRunner } from '@main/services/ReleaseRunner';
 import { assertTrustedSender, toSafeErrorMessage } from '@main/ipc/index.utils';
 import { IPC_CHANNELS } from '@shared/contracts/ipc';
 import {
   applicationIdSchema,
   createApplicationRequestSchema,
+  iosSchemeListRequestSchema,
   planIdSchema,
   preflightReleaseRequestSchema,
   themePreferenceSchema,
@@ -23,6 +25,7 @@ type HandlerDependencies = {
   applicationService: ApplicationService;
   doctorService: DoctorService;
   historyRepository: RunHistoryRepository;
+  iosBuilder: IosBuilder;
   releaseRunner: ReleaseRunner;
   settingsRepository: SettingsRepository;
 };
@@ -84,6 +87,15 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     return { deleted: dependencies.applicationRepository.delete(applicationIdSchema.parse(payload)) };
   });
 
+  ipcMain.handle(IPC_CHANNELS.iosSchemeList, async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return await dependencies.iosBuilder.listSchemes(iosSchemeListRequestSchema.parse(payload));
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+
   ipcMain.handle(IPC_CHANNELS.historyList, (event, payload: unknown) => {
     assertTrustedSender(event);
     return dependencies.historyRepository.list(applicationIdSchema.parse(payload));
@@ -118,6 +130,27 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
   ipcMain.handle(IPC_CHANNELS.releaseCancel, async (event, payload: unknown) => {
     assertTrustedSender(event);
     return dependencies.releaseRunner.cancel(applicationIdSchema.parse(payload));
+  });
+
+  ipcMain.handle(IPC_CHANNELS.windowMinimize, (event) => {
+    assertTrustedSender(event);
+    BrowserWindow.fromWebContents(event.sender)?.minimize();
+  });
+  ipcMain.handle(IPC_CHANNELS.windowToggleMaximize, (event) => {
+    assertTrustedSender(event);
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (senderWindow === null) {
+      return;
+    }
+    if (senderWindow.isMaximized()) {
+      senderWindow.unmaximize();
+    } else {
+      senderWindow.maximize();
+    }
+  });
+  ipcMain.handle(IPC_CHANNELS.windowClose, (event) => {
+    assertTrustedSender(event);
+    BrowserWindow.fromWebContents(event.sender)?.close();
   });
 
   const registerPicker = (

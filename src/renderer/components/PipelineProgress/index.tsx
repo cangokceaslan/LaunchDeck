@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { Button, ProgressBar } from 'react-bootstrap';
 import { StatusPill } from '@components/StatusPill';
 import { formatOutcome, formatPlatform } from '@renderer/utils/formatting';
@@ -26,6 +27,8 @@ export const PipelineProgress = ({
   result,
   totalPhases,
 }: PipelineProgressProps): React.JSX.Element => {
+  const logViewerRef = useRef<HTMLDivElement>(null);
+  const shouldFollowLogs = useRef(true);
   const isFinished = result !== null;
   const outcomeTone =
     result?.outcome === 'succeeded'
@@ -35,6 +38,20 @@ export const PipelineProgress = ({
         : result?.outcome === 'cancelled'
           ? 'neutral'
           : 'danger';
+
+  useLayoutEffect(() => {
+    const logViewer = logViewerRef.current;
+    if (logViewer !== null && shouldFollowLogs.current) {
+      logViewer.scrollTop = logViewer.scrollHeight;
+    }
+  }, [logs]);
+
+  const handleLogScroll = (): void => {
+    const logViewer = logViewerRef.current;
+    if (logViewer === null) return;
+    const distanceFromBottom = logViewer.scrollHeight - logViewer.scrollTop - logViewer.clientHeight;
+    shouldFollowLogs.current = distanceFromBottom <= 24;
+  };
 
   return (
     <div className={styles.progressPanel} aria-live="polite">
@@ -69,7 +86,7 @@ export const PipelineProgress = ({
 
       <section className={styles.logSection}>
         <header><h3>Recent logs</h3><span>Up to 500 lines · sensitive values masked</span></header>
-        <div className={styles.logViewer} role="log">
+        <div className={styles.logViewer} onScroll={handleLogScroll} ref={logViewerRef} role="log">
           {logs.length === 0 ? <p>Waiting for command output…</p> : logs.map((entry) => (
             <div className={styles[entry.level]} key={entry.sequence}>
               <time>{new Date(entry.timestamp).toLocaleTimeString('en-US')}</time>

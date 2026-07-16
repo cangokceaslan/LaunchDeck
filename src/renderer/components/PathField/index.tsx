@@ -9,6 +9,7 @@ export const PathField = ({
   label,
   onBrowse,
   onChange,
+  placeholder = 'Not selected yet',
   required = false,
   value,
 }: PathFieldProps): React.JSX.Element => (
@@ -19,7 +20,7 @@ export const PathField = ({
         className={styles.pathInput}
         disabled={disabled}
         onChange={(event) => onChange?.(event.target.value)}
-        placeholder="Not selected yet"
+        placeholder={placeholder}
         readOnly={onChange === undefined}
         required={required}
         value={value}

@@ -74,4 +74,8 @@ export type PathSelectionResult =
   | { status: 'cancelled' }
   | { fileName: string; path: string; status: 'selected' };
 
+export type IosSchemeListResult = {
+  schemes: string[];
+};
+
 export type DeleteApplicationResult = { deleted: boolean };

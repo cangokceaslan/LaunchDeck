@@ -1,0 +1,116 @@
+.header {
+  align-items: stretch;
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  display: flex;
+  flex: 0 0 46px;
+  height: 46px;
+  justify-content: space-between;
+  user-select: none;
+
+  .dragRegion {
+    -webkit-app-region: drag;
+    align-items: center;
+    display: flex;
+    flex: 1;
+    gap: var(--space-3);
+    min-width: 0;
+    padding-left: var(--space-4);
+
+    .monogram {
+      align-items: center;
+      background: var(--color-primary);
+      border-radius: var(--radius-sm);
+      color: var(--color-on-primary);
+      display: flex;
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      font-weight: 800;
+      height: 25px;
+      justify-content: center;
+      letter-spacing: -0.04em;
+      transform: rotate(-3deg);
+      width: 25px;
+    }
+
+    .productTitle {
+      align-items: baseline;
+      display: flex;
+      gap: var(--space-2);
+      min-width: 0;
+
+      strong {
+        font-size: 0.8rem;
+        letter-spacing: -0.01em;
+      }
+
+      > span {
+        color: var(--color-text-muted);
+        font-size: 0.67rem;
+      }
+    }
+
+    .context {
+      align-items: center;
+      color: var(--color-text-muted);
+      display: flex;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      gap: var(--space-2);
+      margin-left: auto;
+      padding-right: var(--space-4);
+
+      .statusDot {
+        background: var(--color-success);
+        border-radius: 50%;
+        height: 6px;
+        width: 6px;
+      }
+    }
+  }
+
+  .windowControls {
+    -webkit-app-region: no-drag;
+    display: flex;
+
+    button {
+      align-items: center;
+      background: transparent;
+      border: 0;
+      color: var(--color-text-muted);
+      display: flex;
+      justify-content: center;
+      padding: 0;
+      transition: background var(--motion-fast), color var(--motion-fast);
+      width: 46px;
+
+      &:hover {
+        background: var(--color-surface-subtle);
+        color: var(--color-text);
+      }
+
+      svg {
+        fill: none;
+        height: 16px;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.35;
+        width: 16px;
+      }
+
+      &.closeButton:hover {
+        background: var(--color-danger-soft);
+        color: var(--color-danger);
+      }
+    }
+  }
+
+  @media (max-width: 780px) {
+    .dragRegion .context,
+    .dragRegion .productTitle > span {
+      display: none;
+    }
+  }
+}

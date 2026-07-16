@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Alert, Button, Form, Spinner } from 'react-bootstrap';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Form, InputGroup, Spinner } from 'react-bootstrap';
 import { HookEditor } from '@components/HookEditor';
 import { PathField } from '@components/PathField';
 import { normalizeErrorMessage } from '@renderer/utils/formatting';
@@ -78,6 +78,12 @@ export const ApplicationSetup = ({
   const [groupsText, setGroupsText] = useState(form.distributionGroups.join(', '));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [iosSchemes, setIosSchemes] = useState<string[]>(
+    application?.ios === null || application?.ios === undefined ? [] : [application.ios.scheme],
+  );
+  const [iosSchemeError, setIosSchemeError] = useState<string | null>(null);
+  const [isLoadingIosSchemes, setIsLoadingIosSchemes] = useState(false);
+  const iosSchemeRequestId = useRef(0);
 
   const choosePath = async (
     picker: () => Promise<{ status: 'cancelled' } | { path: string; status: 'selected' }>,
@@ -96,6 +102,58 @@ export const ApplicationSetup = ({
 
   const updateIos = (patch: Partial<IosSetupConfiguration>): void => {
     setForm((current) => ({ ...current, ios: { ...(current.ios ?? defaultIos()), ...patch } }));
+  };
+
+  const loadIosSchemes = async (workspaceOrProjectPath: string): Promise<void> => {
+    const requestId = iosSchemeRequestId.current + 1;
+    iosSchemeRequestId.current = requestId;
+    setIosSchemeError(null);
+    setIsLoadingIosSchemes(true);
+    try {
+      const result = await window.desktopApi.listIosSchemes(workspaceOrProjectPath);
+      if (iosSchemeRequestId.current !== requestId) return;
+      setIosSchemes(result.schemes);
+      setForm((current) => {
+        if (current.ios === null || current.ios.workspaceOrProjectPath !== workspaceOrProjectPath) {
+          return current;
+        }
+        const scheme = result.schemes.includes(current.ios.scheme)
+          ? current.ios.scheme
+          : (result.schemes[0] ?? '');
+        return { ...current, ios: { ...current.ios, scheme } };
+      });
+    } catch (error) {
+      if (iosSchemeRequestId.current !== requestId) return;
+      setIosSchemes([]);
+      setIosSchemeError(normalizeErrorMessage(error));
+    } finally {
+      if (iosSchemeRequestId.current === requestId) setIsLoadingIosSchemes(false);
+    }
+  };
+
+  useEffect(() => {
+    const workspaceOrProjectPath = application?.ios?.workspaceOrProjectPath;
+    if (workspaceOrProjectPath !== undefined) {
+      void loadIosSchemes(workspaceOrProjectPath);
+    }
+    return () => {
+      iosSchemeRequestId.current += 1;
+    };
+  }, []);
+
+  const chooseIosWorkspaceOrProject = async (): Promise<void> => {
+    const result = await window.desktopApi.chooseIosWorkspaceOrProject();
+    if (result.status !== 'selected') return;
+    updateIos({ scheme: '', workspaceOrProjectPath: result.path });
+    await loadIosSchemes(result.path);
+  };
+
+  const handleIosEnabledChange = (isEnabled: boolean): void => {
+    iosSchemeRequestId.current += 1;
+    setIosSchemes([]);
+    setIosSchemeError(null);
+    setIsLoadingIosSchemes(false);
+    setForm((current) => ({ ...current, ios: isEnabled ? defaultIos() : null }));
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -165,6 +223,7 @@ export const ApplicationSetup = ({
               helpText={application === null ? 'The path is encrypted using secure operating system storage.' : `Current: ${application.serviceAccountFileName}. Leave this empty to keep the existing file.`}
               label="Firebase Service Account JSON"
               onBrowse={() => void choosePath(window.desktopApi.chooseServiceAccountFile, (selectedPath) => setForm((current) => ({ ...current, serviceAccountPath: selectedPath })))}
+              placeholder={application === null ? 'Not selected yet' : 'The existing file will be kept'}
               required={application === null}
               value={form.serviceAccountPath}
             />
@@ -190,7 +249,7 @@ export const ApplicationSetup = ({
                 checked={form.ios !== null}
                 disabled={!supportedPlatforms.includes('ios')}
                 label="Use iOS (macOS only)"
-                onChange={(event) => setForm((current) => ({ ...current, ios: event.target.checked ? defaultIos() : null }))}
+                onChange={(event) => handleIosEnabledChange(event.target.checked)}
                 type="switch"
               />
             </div>
@@ -212,9 +271,37 @@ export const ApplicationSetup = ({
                 <h3>iOS</h3>
                 <PathField label="iOS application directory" onBrowse={() => void choosePath(window.desktopApi.chooseIosProjectDirectory, (projectPath) => updateIos({ projectPath }))} required value={form.ios.projectPath} />
                 <PathField label="GoogleService-Info.plist" onBrowse={() => void choosePath(window.desktopApi.chooseGoogleServiceInfoPlist, (googleServiceInfoPlistPath) => updateIos({ googleServiceInfoPlistPath }))} required value={form.ios.googleServiceInfoPlistPath} />
-                <PathField label="Xcode workspace / project" onBrowse={() => void choosePath(window.desktopApi.chooseIosWorkspaceOrProject, (workspaceOrProjectPath) => updateIos({ workspaceOrProjectPath }))} required value={form.ios.workspaceOrProjectPath} />
+                <PathField label="Xcode workspace / project" onBrowse={() => void chooseIosWorkspaceOrProject()} required value={form.ios.workspaceOrProjectPath} />
                 <div className={styles.threeColumns}>
-                  <Form.Group><Form.Label>Scheme</Form.Label><Form.Control onChange={(event) => updateIos({ scheme: event.target.value })} required value={form.ios.scheme} /></Form.Group>
+                  <Form.Group>
+                    <Form.Label>Scheme</Form.Label>
+                    <InputGroup>
+                      <Form.Select
+                        aria-describedby="ios-scheme-feedback"
+                        disabled={isLoadingIosSchemes || iosSchemes.length === 0}
+                        onChange={(event) => updateIos({ scheme: event.target.value })}
+                        required
+                        value={form.ios.scheme}
+                      >
+                        {iosSchemes.length === 0 && (
+                          <option value="">{isLoadingIosSchemes ? 'Loading schemes…' : 'Select a workspace or project'}</option>
+                        )}
+                        {iosSchemes.map((scheme) => <option key={scheme} value={scheme}>{scheme}</option>)}
+                      </Form.Select>
+                      <Button
+                        aria-label="Refresh Xcode scheme list"
+                        disabled={isLoadingIosSchemes || form.ios.workspaceOrProjectPath === ''}
+                        onClick={() => void loadIosSchemes(form.ios?.workspaceOrProjectPath ?? '')}
+                        type="button"
+                        variant="outline-secondary"
+                      >
+                        {isLoadingIosSchemes ? <Spinner animation="border" size="sm" /> : 'Refresh'}
+                      </Button>
+                    </InputGroup>
+                    <Form.Text className={iosSchemeError === null ? undefined : styles.fieldError} id="ios-scheme-feedback">
+                      {iosSchemeError ?? 'Schemes are loaded automatically from the selected Xcode project.'}
+                    </Form.Text>
+                  </Form.Group>
                   <Form.Group><Form.Label>Configuration</Form.Label><Form.Control onChange={(event) => updateIos({ configuration: event.target.value })} required value={form.ios.configuration} /></Form.Group>
                   <Form.Group><Form.Label>Export method</Form.Label><Form.Select onChange={(event) => { if (isIosExportMethod(event.target.value)) updateIos({ exportMethod: event.target.value }); }} value={form.ios.exportMethod}><option value="release-testing">Release testing</option><option value="enterprise">Enterprise</option><option value="development">Development</option></Form.Select></Form.Group>
                 </div>
@@ -235,7 +322,14 @@ export const ApplicationSetup = ({
         {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
         <footer className={styles.formFooter}>
           <Button disabled={isSaving} onClick={onCancel} type="button" variant="outline-secondary">Cancel</Button>
-          <Button disabled={isSaving || (form.android === null && form.ios === null)} type="submit">
+          <Button
+            disabled={
+              isSaving ||
+              (form.android === null && form.ios === null) ||
+              (form.ios !== null && (isLoadingIosSchemes || iosSchemes.length === 0))
+            }
+            type="submit"
+          >
             {isSaving && <Spinner animation="border" className={styles.buttonSpinner} size="sm" />}
             {application === null ? 'Complete setup' : 'Save changes'}
           </Button>

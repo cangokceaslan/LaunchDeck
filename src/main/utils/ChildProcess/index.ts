@@ -32,17 +32,33 @@ const createControlledEnvironment = (
   return { ...environment, ...overrides };
 };
 
-const emitLines = (
-  chunk: Buffer,
+const emitLine = (
+  line: string,
   level: ProcessOutput['level'],
   onOutput: RunExecutableOptions['onOutput'],
 ): void => {
-  for (const line of chunk.toString('utf8').split(/\r?\n/u)) {
-    const trimmedLine = line.trimEnd();
-    if (trimmedLine !== '') {
-      onOutput({ level, line: trimmedLine.slice(0, 8_000) });
-    }
+  const trimmedLine = line.trimEnd();
+  if (trimmedLine !== '') {
+    onOutput({ level, line: trimmedLine.slice(0, 8_000) });
   }
+};
+
+const createLineEmitter = (
+  level: ProcessOutput['level'],
+  onOutput: RunExecutableOptions['onOutput'],
+): { flush: () => void; write: (chunk: Buffer) => void } => {
+  let bufferedLine = '';
+  return {
+    flush: () => {
+      emitLine(bufferedLine, level, onOutput);
+      bufferedLine = '';
+    },
+    write: (chunk) => {
+      const lines = `${bufferedLine}${chunk.toString('utf8')}`.split(/\r?\n/u);
+      bufferedLine = lines.pop() ?? '';
+      for (const line of lines) emitLine(line, level, onOutput);
+    },
+  };
 };
 
 const terminateProcessTree = (childProcess: ChildProcessWithoutNullStreams): void => {
@@ -84,16 +100,20 @@ export const runExecutable = (options: RunExecutableOptions): Promise<ProcessExe
     });
 
     const handleAbort = (): void => terminateProcessTree(childProcess);
+    const stdoutEmitter = createLineEmitter('info', options.onOutput);
+    const stderrEmitter = createLineEmitter('error', options.onOutput);
     options.signal.addEventListener('abort', handleAbort, { once: true });
 
-    childProcess.stdout.on('data', (chunk: Buffer) => emitLines(chunk, 'info', options.onOutput));
-    childProcess.stderr.on('data', (chunk: Buffer) => emitLines(chunk, 'error', options.onOutput));
+    childProcess.stdout.on('data', stdoutEmitter.write);
+    childProcess.stderr.on('data', stderrEmitter.write);
     childProcess.once('error', (error) => {
       options.signal.removeEventListener('abort', handleAbort);
       reject(error);
     });
     childProcess.once('close', (exitCode, signal) => {
       options.signal.removeEventListener('abort', handleAbort);
+      stdoutEmitter.flush();
+      stderrEmitter.flush();
       if (options.signal.aborted) {
         reject(new Error('The operation was cancelled.'));
         return;

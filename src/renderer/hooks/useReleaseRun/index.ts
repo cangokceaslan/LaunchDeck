@@ -4,6 +4,7 @@ import type {
   ReleaseRunViewState,
   UseReleaseRunResult,
 } from '@hooks/useReleaseRun/index.types';
+import type { ReleaseEvent } from '@shared/contracts/release';
 
 const initialState: ReleaseRunViewState = {
   activePhase: null,
@@ -21,37 +22,49 @@ export const useReleaseRun = (): UseReleaseRunResult => {
   const [state, setState] = useState<ReleaseRunViewState>(initialState);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const activeRunId = useRef<string | null>(null);
+  const isStarting = useRef(false);
+  const pendingEvents = useRef<ReleaseEvent[]>([]);
+
+  const applyEvent = (event: ReleaseEvent): void => {
+    if (event.type === 'logReceived') {
+      setState((current) => ({
+        ...current,
+        logs: [...current.logs, event.entry].slice(-500),
+      }));
+      return;
+    }
+    if (event.type === 'phaseChanged') {
+      setState((current) => ({
+        ...current,
+        activePhase: event.activePhase,
+        completedPhases: event.completedPhases,
+        percent: event.percent,
+        platform: event.platform ?? null,
+        status: current.status === 'cancelling' ? 'cancelling' : 'running',
+        totalPhases: event.totalPhases,
+      }));
+      return;
+    }
+    setState((current) => ({ ...current, percent: 100, result: event.result, status: 'finished' }));
+  };
 
   useEffect(() =>
     window.desktopApi.onReleaseEvent((event) => {
       if (activeRunId.current !== event.runId) {
+        if (activeRunId.current === null && isStarting.current) {
+          pendingEvents.current = [...pendingEvents.current, event].slice(-500);
+        }
         return;
       }
-      if (event.type === 'logReceived') {
-        setState((current) => ({
-          ...current,
-          logs: [...current.logs, event.entry].slice(-500),
-        }));
-        return;
-      }
-      if (event.type === 'phaseChanged') {
-        setState((current) => ({
-          ...current,
-          activePhase: event.activePhase,
-          completedPhases: event.completedPhases,
-          percent: event.percent,
-          platform: event.platform ?? null,
-          status: current.status === 'cancelling' ? 'cancelling' : 'running',
-          totalPhases: event.totalPhases,
-        }));
-        return;
-      }
-      setState((current) => ({ ...current, percent: 100, result: event.result, status: 'finished' }));
+      applyEvent(event);
     }), []);
 
   const start = async (planId: string): Promise<void> => {
     setErrorMessage(null);
     setState({ ...initialState, status: 'starting' });
+    activeRunId.current = null;
+    pendingEvents.current = [];
+    isStarting.current = true;
     try {
       const startResult = await window.desktopApi.startRelease(planId);
       if (!startResult.started) {
@@ -61,9 +74,15 @@ export const useReleaseRun = (): UseReleaseRunResult => {
       }
       activeRunId.current = startResult.runId;
       setState((current) => ({ ...current, runId: startResult.runId, status: 'running' }));
+      for (const event of pendingEvents.current) {
+        if (event.runId === startResult.runId) applyEvent(event);
+      }
+      pendingEvents.current = [];
     } catch (error) {
       setErrorMessage(normalizeErrorMessage(error));
       setState((current) => ({ ...current, status: 'failedToStart' }));
+    } finally {
+      isStarting.current = false;
     }
   };
 

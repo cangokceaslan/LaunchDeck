@@ -1,10 +1,42 @@
 import { chmod, copyFile, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { IosConfiguration } from '@shared/contracts/domain';
+import type { IosConfiguration, IosSchemeListResult } from '@shared/contracts/domain';
 import type { ProcessOutput } from '@main/utils/ChildProcess/index.types';
 import { findExecutable } from '@main/utils/Executable';
-import { resolveExistingFile } from '@main/utils/FileSystem';
+import {
+  isRecord,
+  resolveExistingBundlePath,
+  resolveExistingFile,
+} from '@main/utils/FileSystem';
 import { runExecutable } from '@main/utils/ChildProcess';
+
+const MAX_SCHEME_OUTPUT_LENGTH = 1024 * 1024;
+
+const readSchemes = (output: string): string[] => {
+  const jsonStart = output.indexOf('{');
+  const jsonEnd = output.lastIndexOf('}');
+  if (jsonStart === -1 || jsonEnd < jsonStart) {
+    throw new Error('The Xcode scheme list did not return readable JSON.');
+  }
+  const parsedOutput: unknown = JSON.parse(output.slice(jsonStart, jsonEnd + 1));
+  if (!isRecord(parsedOutput)) {
+    throw new Error('The Xcode scheme list is invalid.');
+  }
+  const container = isRecord(parsedOutput.workspace)
+    ? parsedOutput.workspace
+    : isRecord(parsedOutput.project)
+      ? parsedOutput.project
+      : null;
+  if (container === null || !Array.isArray(container.schemes)) {
+    throw new Error('No scheme list was found in the selected Xcode project.');
+  }
+  const schemes = container.schemes.filter(
+    (scheme): scheme is string => typeof scheme === 'string' && scheme.trim() !== '',
+  );
+  return [...new Set(schemes.map((scheme) => scheme.trim()))].sort((left, right) =>
+    left.localeCompare(right, 'en-US'),
+  );
+};
 
 const createExportOptions = (configuration: IosConfiguration): string => `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -22,6 +54,40 @@ export class IosBuilder {
       throw new Error('xcodebuild was not found.');
     }
     return executablePath;
+  }
+
+  public async listSchemes(workspaceOrProjectPath: string): Promise<IosSchemeListResult> {
+    if (process.platform !== 'darwin') {
+      throw new Error('Xcode schemes can be read only on macOS.');
+    }
+    const resolvedBundlePath = await resolveExistingBundlePath(workspaceOrProjectPath, [
+      '.xcworkspace',
+      '.xcodeproj',
+    ]);
+    const xcodeBuildPath = await this.resolveXcodeBuild();
+    const projectFlag = resolvedBundlePath.endsWith('.xcworkspace') ? '-workspace' : '-project';
+    const outputLines: string[] = [];
+    let outputLength = 0;
+    const result = await runExecutable({
+      args: ['-list', '-json', projectFlag, resolvedBundlePath],
+      cwdPath: path.dirname(resolvedBundlePath),
+      executablePath: xcodeBuildPath,
+      onOutput: ({ level, line }) => {
+        if (level === 'info' && outputLength < MAX_SCHEME_OUTPUT_LENGTH) {
+          outputLines.push(line);
+          outputLength += line.length + 1;
+        }
+      },
+      signal: new AbortController().signal,
+    });
+    if (result.exitCode !== 0) {
+      throw new Error(`The Xcode scheme list could not be read. Exit code: ${result.exitCode}.`);
+    }
+    const schemes = readSchemes(outputLines.join('\n'));
+    if (schemes.length === 0) {
+      throw new Error('No available schemes were found in the selected Xcode project.');
+    }
+    return { schemes };
   }
 
   public async build(

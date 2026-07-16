@@ -109,7 +109,14 @@ export const HookEditor = ({
                   </Form.Select>
                 </Form.Group>
               </div>
-              <PathField label="Executable file" onBrowse={() => void chooseExecutable(index)} required value={hook.executablePath} />
+              <PathField
+                buttonLabel="Select file"
+                helpText="Select a binary or executable script. Symbolic links are resolved safely to their real target."
+                label="Executable file"
+                onBrowse={() => void chooseExecutable(index)}
+                required
+                value={hook.executablePath}
+              />
               <PathField label="Working directory" onBrowse={() => void chooseDirectory(index)} required value={hook.cwdPath} />
               <Form.Group>
                 <Form.Label>Arguments</Form.Label>

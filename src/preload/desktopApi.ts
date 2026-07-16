@@ -24,6 +24,8 @@ export const desktopApi: DesktopApi = {
   getApplication: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.applicationGet, applicationId),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.settingsGet),
   listApplications: () => ipcRenderer.invoke(IPC_CHANNELS.applicationList),
+  listIosSchemes: (workspaceOrProjectPath) =>
+    ipcRenderer.invoke(IPC_CHANNELS.iosSchemeList, workspaceOrProjectPath),
   listRunHistory: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.historyList, applicationId),
   onReleaseEvent: (listener) => {
     const wrappedListener = (_event: Electron.IpcRendererEvent, releaseEvent: ReleaseEvent): void => {
@@ -37,4 +39,7 @@ export const desktopApi: DesktopApi = {
   startRelease: (planId) => ipcRenderer.invoke(IPC_CHANNELS.releaseStart, planId),
   updateApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationUpdate, request),
   updateTheme: (theme) => ipcRenderer.invoke(IPC_CHANNELS.settingsUpdateTheme, theme),
+  windowClose: () => ipcRenderer.invoke(IPC_CHANNELS.windowClose),
+  windowMinimize: () => ipcRenderer.invoke(IPC_CHANNELS.windowMinimize),
+  windowToggleMaximize: () => ipcRenderer.invoke(IPC_CHANNELS.windowToggleMaximize),
 };

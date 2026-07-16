@@ -3,14 +3,14 @@
   color: var(--color-text);
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100%;
 
   .sidebar {
     background: var(--color-sidebar);
     color: var(--color-on-sidebar);
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    min-height: 100%;
     padding: var(--space-4);
 
     .brand {

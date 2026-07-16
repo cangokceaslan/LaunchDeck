@@ -39,6 +39,7 @@ export const AppShell = ({
         ) : (
           applications.map((application) => (
             <button
+              aria-current={application.id === selectedApplicationId ? 'page' : undefined}
               className={
                 application.id === selectedApplicationId
                   ? `${styles.appLink} ${styles.appLinkActive}`

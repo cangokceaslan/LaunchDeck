@@ -7,6 +7,7 @@ export const IPC_CHANNELS = {
   doctorRun: 'doctor:run',
   historyClear: 'history:clear',
   historyList: 'history:list',
+  iosSchemeList: 'ios:scheme-list',
   pathChooseAndroidArtifact: 'path:choose-android-artifact',
   pathChooseAndroidProject: 'path:choose-android-project',
   pathChooseGoogleServiceInfoPlist: 'path:choose-google-service-info-plist',
@@ -23,4 +24,7 @@ export const IPC_CHANNELS = {
   releaseStart: 'release:start',
   settingsGet: 'settings:get',
   settingsUpdateTheme: 'settings:update-theme',
+  windowClose: 'window:close',
+  windowMinimize: 'window:minimize',
+  windowToggleMaximize: 'window:toggle-maximize',
 } as const;

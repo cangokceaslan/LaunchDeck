@@ -3,6 +3,7 @@ import type {
   ApplicationSummary,
   CreateApplicationRequest,
   DeleteApplicationResult,
+  IosSchemeListResult,
   PathSelectionResult,
   ThemePreference,
   UpdateApplicationRequest,
@@ -36,6 +37,7 @@ export type DesktopApi = {
   getApplication: (applicationId: string) => Promise<ApplicationDetail | null>;
   getSettings: () => Promise<AppSettings>;
   listApplications: () => Promise<ApplicationSummary[]>;
+  listIosSchemes: (workspaceOrProjectPath: string) => Promise<IosSchemeListResult>;
   listRunHistory: (applicationId: string) => Promise<RunHistorySummary[]>;
   onReleaseEvent: (listener: (event: ReleaseEvent) => void) => () => void;
   preflightRelease: (request: PreflightReleaseRequest) => Promise<PreflightResult>;
@@ -43,4 +45,7 @@ export type DesktopApi = {
   startRelease: (planId: string) => Promise<StartReleaseResult>;
   updateApplication: (request: UpdateApplicationRequest) => Promise<ApplicationDetail>;
   updateTheme: (theme: ThemePreference) => Promise<AppSettings>;
+  windowClose: () => Promise<void>;
+  windowMinimize: () => Promise<void>;
+  windowToggleMaximize: () => Promise<void>;
 };
