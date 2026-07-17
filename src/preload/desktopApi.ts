@@ -41,6 +41,10 @@ export const desktopApi: DesktopApi = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.releaseEvent, wrappedListener);
   },
   preflightRelease: (request) => ipcRenderer.invoke(IPC_CHANNELS.releasePreflight, request),
+  resolveAndroidProjectMetadata: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.androidProjectMetadataResolve, request),
+  resolveIosProjectMetadata: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.iosProjectMetadataResolve, request),
   runDoctor: () => ipcRenderer.invoke(IPC_CHANNELS.doctorRun),
   startRelease: (planId) => ipcRenderer.invoke(IPC_CHANNELS.releaseStart, planId),
   updateApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationUpdate, request),

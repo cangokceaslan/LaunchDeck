@@ -10,6 +10,15 @@ const packageNameSchema = z
   .min(3)
   .max(255)
   .regex(/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$/u);
+const bundleIdentifierSchema = z
+  .string()
+  .trim()
+  .max(255)
+  .refine(
+    (bundleIdentifier) =>
+      bundleIdentifier === '' || /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u.test(bundleIdentifier),
+    { message: 'The iOS bundle identifier is invalid.' },
+  );
 const playTrackSchema = z.string().trim().min(1).max(80).regex(/^[A-Za-z0-9._:-]+$/u);
 const languageTagSchema = z.string().trim().min(2).max(35).regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/u);
 const MAX_BUILD_NUMBER = 2_147_483_647;
@@ -76,13 +85,26 @@ export const androidConfigurationSchema = z.object({
   projectPath: nonEmptyPathSchema,
 });
 
+export const androidProjectMetadataRequestSchema = z.object({
+  googleServicesJsonPath: optionalPathSchema.nullable(),
+  gradleTask: gradleTaskSchema,
+  projectPath: nonEmptyPathSchema,
+});
+
 export const iosConfigurationSchema = z.object({
   artifactPath: nonEmptyPathSchema,
+  bundleIdentifier: bundleIdentifierSchema.default(''),
   configuration: z.string().trim().min(1).max(120),
   exportMethod: z.enum(['release-testing', 'enterprise', 'development']),
   firebaseAppId: identifierSchema.nullable(),
   googleServiceInfoPlistPath: nonEmptyPathSchema.nullable(),
   projectPath: nonEmptyPathSchema,
+  scheme: z.string().trim().min(1).max(160),
+  workspaceOrProjectPath: nonEmptyPathSchema,
+});
+
+export const iosProjectMetadataRequestSchema = z.object({
+  configuration: z.string().trim().min(1).max(120),
   scheme: z.string().trim().min(1).max(160),
   workspaceOrProjectPath: nonEmptyPathSchema,
 });
@@ -268,8 +290,8 @@ export const createApplicationRequestSchema = z
       (request.appStoreConnect !== null ||
         (request.artifactGeneration.isEnabled && request.artifactGeneration.requiresIosSigning) ||
         (request.firebaseDistribution.isEnabled && request.firebaseDistribution.requiresIosSigning));
-    if (needsIosSigning && (!request.iosSigning.isEnabled || request.iosSigning.developmentTeamId === '')) {
-      context.addIssue({ code: 'custom', message: 'Automatic iOS signing and a development team ID are required for IPA distribution.', path: ['iosSigning'] });
+    if (needsIosSigning && !request.iosSigning.isEnabled) {
+      context.addIssue({ code: 'custom', message: 'Automatic iOS signing is required for IPA distribution.', path: ['iosSigning'] });
     }
     if (request.googlePlay !== null && request.android === null) {
       context.addIssue({ code: 'custom', message: 'Google Play distribution requires Android configuration.', path: ['googlePlay'] });
@@ -329,8 +351,8 @@ export const updateApplicationRequestSchema = z
       (request.artifactGeneration.isEnabled && request.artifactGeneration.requiresIosSigning) ||
       (request.firebaseDistribution.isEnabled && request.firebaseDistribution.requiresIosSigning)
     );
-    if (needsIosSigning && (!request.iosSigning.isEnabled || request.iosSigning.developmentTeamId === '')) {
-      context.addIssue({ code: 'custom', message: 'Automatic iOS signing and a development team ID are required for IPA distribution.', path: ['iosSigning'] });
+    if (needsIosSigning && !request.iosSigning.isEnabled) {
+      context.addIssue({ code: 'custom', message: 'Automatic iOS signing is required for IPA distribution.', path: ['iosSigning'] });
     }
     if (request.googlePlay !== null && request.android === null) {
       context.addIssue({ code: 'custom', message: 'Google Play distribution requires Android configuration.', path: ['googlePlay'] });

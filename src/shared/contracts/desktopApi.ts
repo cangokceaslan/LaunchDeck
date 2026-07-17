@@ -1,8 +1,12 @@
 import type {
+  AndroidProjectMetadataRequest,
+  AndroidProjectMetadataResult,
   ApplicationDetail,
   ApplicationSummary,
   CreateApplicationRequest,
   DeleteApplicationResult,
+  IosProjectMetadataRequest,
+  IosProjectMetadataResult,
   IosSchemeListResult,
   PathSelectionResult,
   ThemePreference,
@@ -45,6 +49,12 @@ export type DesktopApi = {
   listRunHistory: (applicationId: string) => Promise<RunHistorySummary[]>;
   onReleaseEvent: (listener: (event: ReleaseEvent) => void) => () => void;
   preflightRelease: (request: PreflightReleaseRequest) => Promise<PreflightResult>;
+  resolveAndroidProjectMetadata: (
+    request: AndroidProjectMetadataRequest,
+  ) => Promise<AndroidProjectMetadataResult>;
+  resolveIosProjectMetadata: (
+    request: IosProjectMetadataRequest,
+  ) => Promise<IosProjectMetadataResult>;
   runDoctor: () => Promise<DoctorReport>;
   startRelease: (planId: string) => Promise<StartReleaseResult>;
   updateApplication: (request: UpdateApplicationRequest) => Promise<ApplicationDetail>;

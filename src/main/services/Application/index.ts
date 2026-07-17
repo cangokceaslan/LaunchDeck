@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { parse as parsePlist } from 'plist';
 import type { ApplicationRepository } from '@main/repositories/Application';
 import type { PersistApplicationInput } from '@main/repositories/Application/index.types';
@@ -16,6 +16,8 @@ import {
 } from '@main/utils/FileSystem';
 import type {
   AndroidConfiguration,
+  AndroidProjectMetadataRequest,
+  AndroidProjectMetadataResult,
   AndroidSigningSetupConfiguration,
   AppStoreConnectSetupConfiguration,
   ApplicationDetail,
@@ -27,7 +29,15 @@ import type {
   UpdateApplicationRequest,
 } from '@shared/contracts/domain';
 
-type FirebaseFileMetadata = { appId: string; projectId: string | null };
+type FirebaseFileMetadata = {
+  appId: string;
+  packageName: string | null;
+  projectId: string | null;
+};
+
+const MAX_ANDROID_BUILD_FILE_BYTES = 2 * 1024 * 1024;
+const ANDROID_PACKAGE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$/u;
+const ANDROID_APPLICATION_ID_PATTERN = /\bapplicationId\s*(?:=\s*)?["']([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+)["']/gu;
 
 const resolveOutputPath = (projectPath: string, outputPath: string, extension: string): string => {
   const resolvedOutputPath = path.resolve(projectPath, outputPath);
@@ -79,7 +89,21 @@ const inspectGoogleServicesJson = async (filePath: string): Promise<FirebaseFile
   if (appId === null) {
     throw new Error('mobilesdk_app_id was not found in google-services.json.');
   }
-  return { appId, projectId: readStringProperty(projectInfo, 'project_id') };
+  const packageNames = clients.flatMap((client) => {
+    if (!isRecord(client) || !isRecord(client.client_info)) return [];
+    const androidClientInfo = client.client_info.android_client_info;
+    if (!isRecord(androidClientInfo)) return [];
+    const packageName = readStringProperty(androidClientInfo, 'package_name');
+    return packageName !== null && ANDROID_PACKAGE_NAME_PATTERN.test(packageName)
+      ? [packageName]
+      : [];
+  });
+  const uniquePackageNames = [...new Set(packageNames)];
+  return {
+    appId,
+    packageName: uniquePackageNames.length === 1 ? uniquePackageNames[0] ?? null : null,
+    projectId: readStringProperty(projectInfo, 'project_id'),
+  };
 };
 
 const inspectGoogleServiceInfoPlist = async (filePath: string): Promise<FirebaseFileMetadata> => {
@@ -93,7 +117,62 @@ const inspectGoogleServiceInfoPlist = async (filePath: string): Promise<Firebase
   if (appId === null) {
     throw new Error('GOOGLE_APP_ID was not found in GoogleService-Info.plist.');
   }
-  return { appId, projectId: readStringProperty(configuration, 'PROJECT_ID') };
+  return {
+    appId,
+    packageName: null,
+    projectId: readStringProperty(configuration, 'PROJECT_ID'),
+  };
+};
+
+const readGradlePackageName = async (
+  projectPath: string,
+  gradleTask: string,
+): Promise<string | null> => {
+  const taskSegments = gradleTask.split(':').filter(Boolean);
+  const moduleSegments = taskSegments.slice(0, -1);
+  const candidateDirectories = [
+    moduleSegments.length === 0 ? path.join(projectPath, 'app') : path.join(projectPath, ...moduleSegments),
+    path.join(projectPath, 'app'),
+    projectPath,
+  ];
+  const packageNames: string[] = [];
+  for (const candidateDirectory of [...new Set(candidateDirectories)]) {
+    for (const fileName of ['build.gradle', 'build.gradle.kts']) {
+      const candidatePath = path.join(candidateDirectory, fileName);
+      try {
+        const resolvedPath = await resolveExistingFile(candidatePath, ['.gradle', '.gradle.kts']);
+        const stats = await lstat(resolvedPath);
+        if (stats.size > MAX_ANDROID_BUILD_FILE_BYTES) {
+          throw new Error('The Android Gradle configuration exceeds the supported size.');
+        }
+        const contents = await readFile(resolvedPath, 'utf8');
+        packageNames.push(
+          ...[...contents.matchAll(ANDROID_APPLICATION_ID_PATTERN)].flatMap((match) =>
+            match[1] === undefined ? [] : [match[1]],
+          ),
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('exceeds the supported size')) {
+          throw error;
+        }
+      }
+    }
+  }
+  const uniquePackageNames = [...new Set(packageNames)];
+  return uniquePackageNames.length === 1 ? uniquePackageNames[0] ?? null : null;
+};
+
+const inspectAndroidProjectMetadata = async (
+  request: AndroidProjectMetadataRequest,
+): Promise<AndroidProjectMetadataResult> => {
+  const projectPath = await resolveExistingDirectory(request.projectPath);
+  if (request.googleServicesJsonPath !== null && request.googleServicesJsonPath.trim() !== '') {
+    const firebaseMetadata = await inspectGoogleServicesJson(request.googleServicesJsonPath);
+    if (firebaseMetadata.packageName !== null) {
+      return { packageName: firebaseMetadata.packageName };
+    }
+  }
+  return { packageName: await readGradlePackageName(projectPath, request.gradleTask) };
 };
 
 const resolveHooks = async (hooks: PipelineHook[]): Promise<PipelineHook[]> =>
@@ -112,9 +191,13 @@ const resolveHooks = async (hooks: PipelineHook[]): Promise<PipelineHook[]> =>
 const resolveAndroid = async (
   configuration: CreateApplicationRequest['android'],
   isFirebaseEnabled: boolean,
-): Promise<{ configuration: AndroidConfiguration | null; projectId: string | null }> => {
+): Promise<{
+  configuration: AndroidConfiguration | null;
+  packageName: string | null;
+  projectId: string | null;
+}> => {
   if (configuration === null) {
-    return { configuration: null, projectId: null };
+    return { configuration: null, packageName: null, projectId: null };
   }
   const projectPath = await resolveExistingDirectory(configuration.projectPath);
   const googleServicesJsonPath = isFirebaseEnabled
@@ -123,6 +206,10 @@ const resolveAndroid = async (
   const metadata = googleServicesJsonPath === null
     ? null
     : await inspectGoogleServicesJson(googleServicesJsonPath);
+  const packageName = metadata?.packageName ?? await readGradlePackageName(
+    projectPath,
+    configuration.gradleTask,
+  );
   return {
     configuration: {
       ...configuration,
@@ -132,6 +219,7 @@ const resolveAndroid = async (
       googleServicesJsonPath,
       projectPath,
     },
+    packageName,
     projectId: metadata?.projectId ?? null,
   };
 };
@@ -140,9 +228,14 @@ const resolveIos = async (
   configuration: CreateApplicationRequest['ios'],
   iosBuilder: IosBuilder,
   isFirebaseEnabled: boolean,
-): Promise<{ configuration: IosConfiguration | null; projectId: string | null }> => {
+  shouldResolveProjectMetadata: boolean,
+): Promise<{
+  configuration: IosConfiguration | null;
+  developmentTeamId: string | null;
+  projectId: string | null;
+}> => {
   if (configuration === null) {
-    return { configuration: null, projectId: null };
+    return { configuration: null, developmentTeamId: null, projectId: null };
   }
   if (process.platform !== 'darwin') {
     throw new Error('iOS configuration is available only on macOS.');
@@ -159,6 +252,13 @@ const resolveIos = async (
   if (!schemes.includes(configuration.scheme)) {
     throw new Error(`The selected scheme was not found in the Xcode project: ${configuration.scheme}`);
   }
+  const projectMetadata = shouldResolveProjectMetadata
+    ? await iosBuilder.resolveProjectMetadata({
+        configuration: configuration.configuration,
+        scheme: configuration.scheme,
+        workspaceOrProjectPath,
+      })
+    : null;
   const metadata = googleServiceInfoPlistPath === null
     ? null
     : await inspectGoogleServiceInfoPlist(googleServiceInfoPlistPath);
@@ -166,11 +266,13 @@ const resolveIos = async (
     configuration: {
       ...configuration,
       artifactPath: resolveOutputPath(projectPath, configuration.artifactPath, '.ipa'),
+      bundleIdentifier: projectMetadata?.bundleIdentifier ?? configuration.bundleIdentifier,
       firebaseAppId: metadata?.appId ?? null,
       googleServiceInfoPlistPath,
       projectPath,
       workspaceOrProjectPath,
     },
+    developmentTeamId: projectMetadata?.developmentTeamId ?? null,
     projectId: metadata?.projectId ?? null,
   };
 };
@@ -247,6 +349,12 @@ export class ApplicationService {
     private readonly iosBuilder: IosBuilder,
   ) {}
 
+  public async resolveAndroidProjectMetadata(
+    request: AndroidProjectMetadataRequest,
+  ): Promise<AndroidProjectMetadataResult> {
+    return inspectAndroidProjectMetadata(request);
+  }
+
   private async resolveInput(
     request: CreateApplicationRequest,
     retainedApplication?: ReturnType<ApplicationRepository['getStored']>,
@@ -257,9 +365,19 @@ export class ApplicationService {
     const serviceAccount = request.firebaseDistribution.isEnabled
       ? await inspectServiceAccount(requestedServiceAccountPath)
       : null;
+    const shouldResolveIosProjectMetadata = request.ios !== null && (
+      request.appStoreConnect !== null ||
+      (request.artifactGeneration.isEnabled && request.artifactGeneration.requiresIosSigning) ||
+      (request.firebaseDistribution.isEnabled && request.firebaseDistribution.requiresIosSigning)
+    );
     const [android, ios, hooks, androidSigning, googlePlay, appStoreConnect] = await Promise.all([
       resolveAndroid(request.android, request.firebaseDistribution.isEnabled),
-      resolveIos(request.ios, this.iosBuilder, request.firebaseDistribution.isEnabled),
+      resolveIos(
+        request.ios,
+        this.iosBuilder,
+        request.firebaseDistribution.isEnabled,
+        shouldResolveIosProjectMetadata,
+      ),
       resolveHooks(request.hooks),
       resolveAndroidSigning(request.androidSigning, retainedApplication?.androidSigning),
       resolveGooglePlay(request.googlePlay, retainedApplication?.googlePlay),
@@ -287,10 +405,14 @@ export class ApplicationService {
       distributionGroups: [...new Set(request.distributionGroups.map((group) => group.trim()))],
       firebaseDistribution: request.firebaseDistribution,
       firebaseProjectId,
-      googlePlay,
+      googlePlay: googlePlay === null
+        ? null
+        : { ...googlePlay, packageName: android.packageName ?? googlePlay.packageName },
       hooks,
       ios: ios.configuration,
-      iosSigning: request.iosSigning,
+      iosSigning: ios.developmentTeamId === null
+        ? request.iosSigning
+        : { ...request.iosSigning, developmentTeamId: ios.developmentTeamId },
       name: request.name.trim(),
       serviceAccountFileName: serviceAccount === null ? '' : path.basename(serviceAccount.path),
       serviceAccountPath: serviceAccount?.path ?? null,

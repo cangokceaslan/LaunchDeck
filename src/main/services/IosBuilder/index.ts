@@ -5,6 +5,8 @@ import path from 'node:path';
 import type {
   AppStoreConnectSetupConfiguration,
   IosConfiguration,
+  IosProjectMetadataRequest,
+  IosProjectMetadataResult,
   IosSchemeListResult,
   IosSigningConfiguration,
 } from '@shared/contracts/domain';
@@ -21,6 +23,7 @@ import { runExecutable } from '@main/utils/ChildProcess';
 import type { ResolvedReleaseVersion } from '@shared/contracts/release';
 
 const MAX_SCHEME_OUTPUT_LENGTH = 1024 * 1024;
+const MAX_BUILD_SETTINGS_OUTPUT_LENGTH = 4 * 1024 * 1024;
 const MAX_VERSION_FILE_BYTES = 8 * 1024 * 1024;
 const MARKETING_VERSION_PATTERN = /^([ \t]*MARKETING_VERSION[ \t]*=[ \t]*)[^;\r\n]+([ \t]*;[^\r\n]*\r?)$/gmu;
 const BUILD_NUMBER_PATTERN = /^([ \t]*CURRENT_PROJECT_VERSION[ \t]*=[ \t]*)[^;\r\n]+([ \t]*;[^\r\n]*\r?)$/gmu;
@@ -126,7 +129,12 @@ const readSchemes = (output: string): string[] => {
   if (jsonStart === -1 || jsonEnd < jsonStart) {
     throw new Error('The Xcode scheme list did not return readable JSON.');
   }
-  const parsedOutput: unknown = JSON.parse(output.slice(jsonStart, jsonEnd + 1));
+  let parsedOutput: unknown;
+  try {
+    parsedOutput = JSON.parse(output.slice(jsonStart, jsonEnd + 1));
+  } catch {
+    throw new Error('The Xcode scheme list returned invalid JSON.');
+  }
   if (!isRecord(parsedOutput)) {
     throw new Error('The Xcode scheme list is invalid.');
   }
@@ -144,6 +152,69 @@ const readSchemes = (output: string): string[] => {
   return [...new Set(schemes.map((scheme) => scheme.trim()))].sort((left, right) =>
     left.localeCompare(right, 'en-US'),
   );
+};
+
+const readProjectMetadata = (output: string): IosProjectMetadataResult => {
+  const jsonStart = output.indexOf('[');
+  const jsonEnd = output.lastIndexOf(']');
+  if (jsonStart === -1 || jsonEnd < jsonStart) {
+    throw new Error('The Xcode build settings did not return readable JSON.');
+  }
+  let parsedOutput: unknown;
+  try {
+    parsedOutput = JSON.parse(output.slice(jsonStart, jsonEnd + 1));
+  } catch {
+    throw new Error('The Xcode build settings returned invalid JSON.');
+  }
+  if (!Array.isArray(parsedOutput)) {
+    throw new Error('The Xcode build settings are invalid.');
+  }
+  const applicationBuildSettings = parsedOutput.flatMap((targetSettings) => {
+    if (!isRecord(targetSettings) || !isRecord(targetSettings.buildSettings)) {
+      return [];
+    }
+    const productType = targetSettings.buildSettings.PRODUCT_TYPE;
+    const wrapperExtension = targetSettings.buildSettings.WRAPPER_EXTENSION;
+    return productType === 'com.apple.product-type.application' || wrapperExtension === 'app'
+      ? [targetSettings.buildSettings]
+      : [];
+  });
+  if (applicationBuildSettings.length === 0) {
+    throw new Error('No iOS application target was found for the selected Xcode scheme.');
+  }
+  const developmentTeamIds = applicationBuildSettings.flatMap((buildSettings) => {
+    const developmentTeamId = buildSettings.DEVELOPMENT_TEAM;
+    return typeof developmentTeamId === 'string' && /^[A-Z0-9]{1,64}$/u.test(developmentTeamId)
+      ? [developmentTeamId]
+      : [];
+  });
+  const bundleIdentifiers = applicationBuildSettings.flatMap((buildSettings) => {
+    const bundleIdentifier = buildSettings.PRODUCT_BUNDLE_IDENTIFIER;
+    return typeof bundleIdentifier === 'string' &&
+      /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u.test(bundleIdentifier)
+      ? [bundleIdentifier]
+      : [];
+  });
+  const uniqueDevelopmentTeamIds = [...new Set(developmentTeamIds)];
+  const uniqueBundleIdentifiers = [...new Set(bundleIdentifiers)];
+  if (uniqueDevelopmentTeamIds.length === 0) {
+    throw new Error('No Apple Development Team ID was found for the selected Xcode scheme and configuration.');
+  }
+  if (uniqueDevelopmentTeamIds.length > 1) {
+    throw new Error('More than one Apple Development Team ID is configured for the selected Xcode scheme and configuration.');
+  }
+  if (uniqueBundleIdentifiers.length === 0) {
+    throw new Error('No Bundle ID was found for the selected Xcode scheme and configuration.');
+  }
+  if (uniqueBundleIdentifiers.length > 1) {
+    throw new Error('More than one Bundle ID is configured for the selected Xcode scheme and configuration.');
+  }
+  const developmentTeamId = uniqueDevelopmentTeamIds[0];
+  const bundleIdentifier = uniqueBundleIdentifiers[0];
+  if (developmentTeamId === undefined || bundleIdentifier === undefined) {
+    throw new Error('The iOS project signing metadata could not be resolved.');
+  }
+  return { bundleIdentifier, developmentTeamId };
 };
 
 const createExportOptions = (method: string, destination: 'export' | 'upload'): string => `<?xml version="1.0" encoding="UTF-8"?>
@@ -262,6 +333,55 @@ export class IosBuilder {
       throw new Error('No available schemes were found in the selected Xcode project.');
     }
     return { schemes };
+  }
+
+  public async resolveProjectMetadata(
+    request: IosProjectMetadataRequest,
+  ): Promise<IosProjectMetadataResult> {
+    if (process.platform !== 'darwin') {
+      throw new Error('Xcode project metadata can be read only on macOS.');
+    }
+    const resolvedBundlePath = await resolveExistingBundlePath(request.workspaceOrProjectPath, [
+      '.xcworkspace',
+      '.xcodeproj',
+    ]);
+    const xcodeBuildPath = await this.resolveXcodeBuild();
+    const projectFlag = resolvedBundlePath.endsWith('.xcworkspace') ? '-workspace' : '-project';
+    const outputLines: string[] = [];
+    let isOutputTruncated = false;
+    let outputLength = 0;
+    const result = await runExecutable({
+      args: [
+        projectFlag,
+        resolvedBundlePath,
+        '-scheme',
+        request.scheme,
+        '-configuration',
+        request.configuration,
+        '-showBuildSettings',
+        '-json',
+      ],
+      cwdPath: path.dirname(resolvedBundlePath),
+      executablePath: xcodeBuildPath,
+      maxLineLength: MAX_BUILD_SETTINGS_OUTPUT_LENGTH + 1,
+      onOutput: ({ level, line }) => {
+        if (level !== 'info') return;
+        if (outputLength + line.length + 1 > MAX_BUILD_SETTINGS_OUTPUT_LENGTH) {
+          isOutputTruncated = true;
+          return;
+        }
+        outputLines.push(line);
+        outputLength += line.length + 1;
+      },
+      signal: new AbortController().signal,
+    });
+    if (result.exitCode !== 0) {
+      throw new Error(`The Xcode build settings could not be read. Exit code: ${result.exitCode}.`);
+    }
+    if (isOutputTruncated) {
+      throw new Error('The Xcode build settings exceed the supported size.');
+    }
+    return readProjectMetadata(outputLines.join('\n'));
   }
 
   public async build(

@@ -8,6 +8,7 @@ export type RunExecutableOptions = {
   cwdPath: string;
   environment?: Readonly<Record<string, string>>;
   executablePath: string;
+  maxLineLength?: number;
   onOutput: (output: ProcessOutput) => void;
   signal: AbortSignal;
 };

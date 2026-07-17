@@ -10,8 +10,10 @@ import type { ReleaseRunner } from '@main/services/ReleaseRunner';
 import { assertTrustedSender, toSafeErrorMessage } from '@main/ipc/index.utils';
 import { IPC_CHANNELS } from '@shared/contracts/ipc';
 import {
+  androidProjectMetadataRequestSchema,
   applicationIdSchema,
   createApplicationRequestSchema,
+  iosProjectMetadataRequestSchema,
   iosSchemeListRequestSchema,
   planIdSchema,
   preflightReleaseRequestSchema,
@@ -103,10 +105,32 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     return { deleted: dependencies.applicationRepository.delete(applicationIdSchema.parse(payload)) };
   });
 
+  ipcMain.handle(IPC_CHANNELS.androidProjectMetadataResolve, async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return await dependencies.applicationService.resolveAndroidProjectMetadata(
+        androidProjectMetadataRequestSchema.parse(payload),
+      );
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+
   ipcMain.handle(IPC_CHANNELS.iosSchemeList, async (event, payload: unknown) => {
     assertTrustedSender(event);
     try {
       return await dependencies.iosBuilder.listSchemes(iosSchemeListRequestSchema.parse(payload));
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.iosProjectMetadataResolve, async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return await dependencies.iosBuilder.resolveProjectMetadata(
+        iosProjectMetadataRequestSchema.parse(payload),
+      );
     } catch (error) {
       throw new Error(toSafeErrorMessage(error));
     }

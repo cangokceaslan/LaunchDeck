@@ -94,6 +94,7 @@ export type AndroidConfiguration = {
 
 export type IosConfiguration = {
   artifactPath: string;
+  bundleIdentifier: string;
   configuration: string;
   exportMethod: 'release-testing' | 'enterprise' | 'development';
   firebaseAppId: string | null;
@@ -105,6 +106,16 @@ export type IosConfiguration = {
 
 export type AndroidSetupConfiguration = Omit<AndroidConfiguration, 'firebaseAppId'>;
 export type IosSetupConfiguration = Omit<IosConfiguration, 'firebaseAppId'>;
+
+export type AndroidProjectMetadataRequest = {
+  googleServicesJsonPath: string | null;
+  gradleTask: string;
+  projectPath: string;
+};
+
+export type AndroidProjectMetadataResult = {
+  packageName: string | null;
+};
 
 export type CreateApplicationRequest = {
   android: AndroidSetupConfiguration | null;
@@ -164,6 +175,17 @@ export type PathSelectionResult =
 
 export type IosSchemeListResult = {
   schemes: string[];
+};
+
+export type IosProjectMetadataRequest = {
+  configuration: string;
+  scheme: string;
+  workspaceOrProjectPath: string;
+};
+
+export type IosProjectMetadataResult = {
+  bundleIdentifier: string;
+  developmentTeamId: string;
 };
 
 export type DeleteApplicationResult = { deleted: boolean };

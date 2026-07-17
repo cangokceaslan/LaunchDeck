@@ -35,28 +35,30 @@ const createControlledEnvironment = (
 const emitLine = (
   line: string,
   level: ProcessOutput['level'],
+  maxLineLength: number,
   onOutput: RunExecutableOptions['onOutput'],
 ): void => {
   const trimmedLine = line.trimEnd();
   if (trimmedLine !== '') {
-    onOutput({ level, line: trimmedLine.slice(0, 8_000) });
+    onOutput({ level, line: trimmedLine.slice(0, maxLineLength) });
   }
 };
 
 const createLineEmitter = (
   level: ProcessOutput['level'],
+  maxLineLength: number,
   onOutput: RunExecutableOptions['onOutput'],
 ): { flush: () => void; write: (chunk: Buffer) => void } => {
   let bufferedLine = '';
   return {
     flush: () => {
-      emitLine(bufferedLine, level, onOutput);
+      emitLine(bufferedLine, level, maxLineLength, onOutput);
       bufferedLine = '';
     },
     write: (chunk) => {
       const lines = `${bufferedLine}${chunk.toString('utf8')}`.split(/\r?\n/u);
       bufferedLine = lines.pop() ?? '';
-      for (const line of lines) emitLine(line, level, onOutput);
+      for (const line of lines) emitLine(line, level, maxLineLength, onOutput);
     },
   };
 };
@@ -100,8 +102,9 @@ export const runExecutable = (options: RunExecutableOptions): Promise<ProcessExe
     });
 
     const handleAbort = (): void => terminateProcessTree(childProcess);
-    const stdoutEmitter = createLineEmitter('info', options.onOutput);
-    const stderrEmitter = createLineEmitter('error', options.onOutput);
+    const maxLineLength = options.maxLineLength ?? 8_000;
+    const stdoutEmitter = createLineEmitter('info', maxLineLength, options.onOutput);
+    const stderrEmitter = createLineEmitter('error', maxLineLength, options.onOutput);
     options.signal.addEventListener('abort', handleAbort, { once: true });
 
     childProcess.stdout.on('data', stdoutEmitter.write);

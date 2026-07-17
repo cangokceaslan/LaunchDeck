@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  androidProjectMetadataResolve: 'android:project-metadata-resolve',
   applicationCreate: 'application:create',
   applicationDelete: 'application:delete',
   applicationGet: 'application:get',
@@ -8,6 +9,7 @@ export const IPC_CHANNELS = {
   doctorRun: 'doctor:run',
   historyClear: 'history:clear',
   historyList: 'history:list',
+  iosProjectMetadataResolve: 'ios:project-metadata-resolve',
   iosSchemeList: 'ios:scheme-list',
   pathChooseAndroidArtifact: 'path:choose-android-artifact',
   pathChooseAndroidKeystore: 'path:choose-android-keystore',

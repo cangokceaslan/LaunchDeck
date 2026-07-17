@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Form, InputGroup, Spinner } from 'react-bootstrap';
 import { HookEditor } from '@components/HookEditor';
 import { Select } from '@components/Inputs/Select';
 import { Switch } from '@components/Inputs/Switch';
 import { PathField } from '@components/PathField';
+import { useAndroidProjectConfiguration } from '@hooks/useAndroidProjectConfiguration';
+import { useIosProjectConfiguration } from '@hooks/useIosProjectConfiguration';
 import { normalizeErrorMessage } from '@renderer/utils/formatting';
 import type {
   AndroidSetupConfiguration,
@@ -27,6 +29,7 @@ const defaultAndroid = (): AndroidSetupConfiguration => ({
 
 const defaultIos = (): IosSetupConfiguration => ({
   artifactPath: 'release/application.ipa',
+  bundleIdentifier: '',
   configuration: 'Release',
   exportMethod: 'release-testing',
   googleServiceInfoPlistPath: '',
@@ -113,6 +116,7 @@ const createInitialForm = (application: ApplicationDetail | null): CreateApplica
         ? null
         : {
             artifactPath: application.ios.artifactPath,
+            bundleIdentifier: application.ios.bundleIdentifier,
             configuration: application.ios.configuration,
             exportMethod: application.ios.exportMethod,
             googleServiceInfoPlistPath: application.ios.googleServiceInfoPlistPath ?? '',
@@ -148,18 +152,28 @@ export const ApplicationSetup = ({
   const [groupsText, setGroupsText] = useState(form.distributionGroups.join(', '));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [iosSchemes, setIosSchemes] = useState<string[]>(
-    application?.ios === null || application?.ios === undefined ? [] : [application.ios.scheme],
-  );
-  const [iosSchemeError, setIosSchemeError] = useState<string | null>(null);
-  const [isLoadingIosSchemes, setIsLoadingIosSchemes] = useState(false);
-  const iosSchemeRequestId = useRef(0);
+  const {
+    error: androidProjectMetadataError,
+    isLoading: isLoadingAndroidProjectMetadata,
+    reset: resetAndroidProjectMetadata,
+    resolveProjectMetadata: resolveAndroidProjectMetadata,
+  } = useAndroidProjectConfiguration();
+  const {
+    developmentTeamError: iosDevelopmentTeamError,
+    isLoadingDevelopmentTeam: isLoadingIosDevelopmentTeam,
+    isLoadingSchemes: isLoadingIosSchemes,
+    loadSchemes,
+    reset: resetIosProjectConfiguration,
+    resetDevelopmentTeam: resetIosDevelopmentTeam,
+    resolveProjectMetadata,
+    schemeError: iosSchemeError,
+    schemes: iosSchemes,
+  } = useIosProjectConfiguration();
   const needsAndroidSigning = form.android !== null && (
     form.googlePlay !== null ||
     (form.artifactGeneration.isEnabled && form.artifactGeneration.requiresAndroidSigning) ||
     (form.firebaseDistribution.isEnabled && form.firebaseDistribution.requiresAndroidSigning)
   );
-  const isStoreDistributionEnabled = form.googlePlay !== null || form.appStoreConnect !== null;
   const needsIosSigning = form.ios !== null && (
     form.appStoreConnect !== null ||
     (form.artifactGeneration.isEnabled && form.artifactGeneration.requiresIosSigning) ||
@@ -194,73 +208,258 @@ export const ApplicationSetup = ({
     }));
   };
 
-  const handleStoreDistributionChange = (isEnabled: boolean): void => {
+  const loadAndroidProjectMetadata = async (
+    projectPath: string,
+    googleServicesJsonPath: string | null,
+    gradleTask: string,
+  ): Promise<void> => {
+    const metadata = await resolveAndroidProjectMetadata({
+      googleServicesJsonPath,
+      gradleTask,
+      projectPath,
+    });
+    if (metadata?.packageName === null || metadata?.packageName === undefined) return;
+    setForm((current) => {
+      if (
+        current.android === null ||
+        current.googlePlay === null ||
+        current.android.projectPath !== projectPath ||
+        current.android.gradleTask !== gradleTask ||
+        current.android.googleServicesJsonPath !== googleServicesJsonPath
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        googlePlay: { ...current.googlePlay, packageName: metadata.packageName },
+      };
+    });
+  };
+
+  const chooseAndroidProject = async (): Promise<void> => {
+    const result = await window.desktopApi.chooseAndroidProjectDirectory();
+    if (result.status !== 'selected') return;
+    const currentAndroid = form.android ?? defaultAndroid();
+    setForm((current) => ({
+      ...current,
+      android: { ...(current.android ?? defaultAndroid()), projectPath: result.path },
+      googlePlay: current.googlePlay === null
+        ? null
+        : { ...current.googlePlay, packageName: '' },
+    }));
+    if (form.googlePlay !== null) {
+      await loadAndroidProjectMetadata(
+        result.path,
+        currentAndroid.googleServicesJsonPath,
+        currentAndroid.gradleTask,
+      );
+    }
+  };
+
+  const chooseGoogleServicesJson = async (): Promise<void> => {
+    const result = await window.desktopApi.chooseGoogleServicesJson();
+    if (result.status !== 'selected' || form.android === null) return;
+    const { gradleTask, projectPath } = form.android;
+    setForm((current) => ({
+      ...current,
+      android: current.android === null
+        ? null
+        : { ...current.android, googleServicesJsonPath: result.path },
+      googlePlay: current.googlePlay === null
+        ? null
+        : { ...current.googlePlay, packageName: '' },
+    }));
+    if (form.googlePlay !== null && projectPath !== '') {
+      await loadAndroidProjectMetadata(projectPath, result.path, gradleTask);
+    }
+  };
+
+  const handleGooglePlayEnabledChange = (isEnabled: boolean): void => {
+    setForm((current) => ({
+      ...current,
+      googlePlay: isEnabled && current.android !== null
+        ? current.googlePlay ?? defaultGooglePlay()
+        : null,
+    }));
+    if (isEnabled && form.android !== null && form.android.projectPath !== '') {
+      void loadAndroidProjectMetadata(
+        form.android.projectPath,
+        form.android.googleServicesJsonPath,
+        form.android.gradleTask,
+      );
+    }
+  };
+
+  const handleAppStoreConnectEnabledChange = (isEnabled: boolean): void => {
     setForm((current) => ({
       ...current,
       appStoreConnect: isEnabled && current.ios !== null
         ? current.appStoreConnect ?? defaultAppStoreConnect()
         : null,
-      googlePlay: isEnabled && current.android !== null
-        ? current.googlePlay ?? defaultGooglePlay()
-        : null,
     }));
   };
 
-  const loadIosSchemes = async (workspaceOrProjectPath: string): Promise<void> => {
-    const requestId = iosSchemeRequestId.current + 1;
-    iosSchemeRequestId.current = requestId;
-    setIosSchemeError(null);
-    setIsLoadingIosSchemes(true);
-    try {
-      const result = await window.desktopApi.listIosSchemes(workspaceOrProjectPath);
-      if (iosSchemeRequestId.current !== requestId) return;
-      setIosSchemes(result.schemes);
-      setForm((current) => {
-        if (current.ios === null || current.ios.workspaceOrProjectPath !== workspaceOrProjectPath) {
-          return current;
-        }
-        const scheme = result.schemes.includes(current.ios.scheme)
-          ? current.ios.scheme
-          : (result.schemes[0] ?? '');
-        return { ...current, ios: { ...current.ios, scheme } };
-      });
-    } catch (error) {
-      if (iosSchemeRequestId.current !== requestId) return;
-      setIosSchemes([]);
-      setIosSchemeError(normalizeErrorMessage(error));
-    } finally {
-      if (iosSchemeRequestId.current === requestId) setIsLoadingIosSchemes(false);
+  const chooseAppStoreConnectApiKey = async (): Promise<void> => {
+    const result = await window.desktopApi.chooseAppStoreConnectApiKey();
+    if (result.status !== 'selected') return;
+    const detectedApiKeyId = /^AuthKey_([A-Z0-9]+)\.p8$/u.exec(result.fileName)?.[1];
+    setForm((current) => current.appStoreConnect === null
+      ? current
+      : {
+          ...current,
+          appStoreConnect: {
+            ...current.appStoreConnect,
+            apiKeyId: detectedApiKeyId ?? current.appStoreConnect.apiKeyId,
+            apiKeyPath: result.path,
+          },
+        });
+  };
+
+  const loadIosDevelopmentTeam = async (
+    workspaceOrProjectPath: string,
+    scheme: string,
+    configuration: string,
+  ): Promise<void> => {
+    setForm((current) => {
+      if (
+        current.ios === null ||
+        current.ios.workspaceOrProjectPath !== workspaceOrProjectPath ||
+        current.ios.scheme !== scheme ||
+        current.ios.configuration !== configuration
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        ios: { ...current.ios, bundleIdentifier: '' },
+        iosSigning: { ...current.iosSigning, developmentTeamId: '' },
+      };
+    });
+    const projectMetadata = await resolveProjectMetadata({
+      configuration,
+      scheme,
+      workspaceOrProjectPath,
+    });
+    if (projectMetadata === null) return;
+    setForm((current) => {
+      if (
+        current.ios === null ||
+        current.ios.workspaceOrProjectPath !== workspaceOrProjectPath ||
+        current.ios.scheme !== scheme ||
+        current.ios.configuration !== configuration
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        ios: { ...current.ios, bundleIdentifier: projectMetadata.bundleIdentifier },
+        iosSigning: {
+          ...current.iosSigning,
+          developmentTeamId: projectMetadata.developmentTeamId,
+        },
+      };
+    });
+  };
+
+  const loadIosSchemes = async (
+    workspaceOrProjectPath: string,
+    preferredScheme: string,
+    configuration: string,
+  ): Promise<void> => {
+    const schemes = await loadSchemes(workspaceOrProjectPath);
+    if (schemes === null) return;
+    const scheme = schemes.includes(preferredScheme) ? preferredScheme : (schemes[0] ?? '');
+    setForm((current) => {
+      if (current.ios === null || current.ios.workspaceOrProjectPath !== workspaceOrProjectPath) {
+        return current;
+      }
+      return {
+        ...current,
+        ios: { ...current.ios, bundleIdentifier: '', scheme },
+        iosSigning: { ...current.iosSigning, developmentTeamId: '' },
+      };
+    });
+    if (scheme !== '') {
+      void loadIosDevelopmentTeam(workspaceOrProjectPath, scheme, configuration);
     }
   };
 
   useEffect(() => {
-    const workspaceOrProjectPath = application?.ios?.workspaceOrProjectPath;
-    if (workspaceOrProjectPath !== undefined) {
-      void loadIosSchemes(workspaceOrProjectPath);
+    const androidConfiguration = application?.android;
+    if (
+      androidConfiguration !== null &&
+      androidConfiguration !== undefined &&
+      application?.googlePlay !== null &&
+      application?.googlePlay !== undefined
+    ) {
+      void loadAndroidProjectMetadata(
+        androidConfiguration.projectPath,
+        androidConfiguration.googleServicesJsonPath,
+        androidConfiguration.gradleTask,
+      );
     }
-    return () => {
-      iosSchemeRequestId.current += 1;
-    };
+    const iosConfiguration = application?.ios;
+    if (iosConfiguration !== null && iosConfiguration !== undefined) {
+      void loadIosSchemes(
+        iosConfiguration.workspaceOrProjectPath,
+        iosConfiguration.scheme,
+        iosConfiguration.configuration,
+      );
+    }
   }, []);
 
   const chooseIosWorkspaceOrProject = async (): Promise<void> => {
     const result = await window.desktopApi.chooseIosWorkspaceOrProject();
     if (result.status !== 'selected') return;
-    updateIos({ scheme: '', workspaceOrProjectPath: result.path });
-    await loadIosSchemes(result.path);
+    const configuration = form.ios?.configuration ?? defaultIos().configuration;
+    setForm((current) => ({
+      ...current,
+      ios: {
+        ...(current.ios ?? defaultIos()),
+        bundleIdentifier: '',
+        scheme: '',
+        workspaceOrProjectPath: result.path,
+      },
+      iosSigning: { ...current.iosSigning, developmentTeamId: '' },
+    }));
+    await loadIosSchemes(result.path, '', configuration);
+  };
+
+  const handleIosSchemeChange = (scheme: string): void => {
+    const iosConfiguration = form.ios;
+    if (iosConfiguration === null) return;
+    setForm((current) => ({
+      ...current,
+      ios: current.ios === null ? null : { ...current.ios, bundleIdentifier: '', scheme },
+      iosSigning: { ...current.iosSigning, developmentTeamId: '' },
+    }));
+    if (scheme !== '') {
+      void loadIosDevelopmentTeam(
+        iosConfiguration.workspaceOrProjectPath,
+        scheme,
+        iosConfiguration.configuration,
+      );
+    }
+  };
+
+  const handleIosConfigurationChange = (configuration: string): void => {
+    resetIosDevelopmentTeam();
+    setForm((current) => ({
+      ...current,
+      ios: current.ios === null
+        ? null
+        : { ...current.ios, bundleIdentifier: '', configuration },
+      iosSigning: { ...current.iosSigning, developmentTeamId: '' },
+    }));
   };
 
   const handleIosEnabledChange = (isEnabled: boolean): void => {
-    iosSchemeRequestId.current += 1;
-    setIosSchemes([]);
-    setIosSchemeError(null);
-    setIsLoadingIosSchemes(false);
+    resetIosProjectConfiguration();
     setForm((current) => ({
       ...current,
-      appStoreConnect: isEnabled && current.googlePlay !== null
-        ? current.appStoreConnect ?? defaultAppStoreConnect()
-        : isEnabled ? current.appStoreConnect : null,
+      appStoreConnect: isEnabled ? current.appStoreConnect : null,
       ios: isEnabled ? defaultIos() : null,
+      iosSigning: { ...current.iosSigning, developmentTeamId: '' },
     }));
   };
 
@@ -320,7 +519,8 @@ export const ApplicationSetup = ({
             <div className={styles.outcomeGrid}>
               <Switch checked={form.artifactGeneration.isEnabled} description="Generate APK, AAB, or IPA output." label="Artifact generation" onChange={(isEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, isEnabled } }))} />
               <Switch checked={form.firebaseDistribution.isEnabled} description="Send builds to configured tester groups." label="Firebase App Distribution" onChange={(isEnabled) => setForm((current) => ({ ...current, firebaseDistribution: { ...current.firebaseDistribution, isEnabled } }))} />
-              <Switch checked={isStoreDistributionEnabled} description="Send signed builds to Google Play or App Store Connect." label="Store Distribution" onChange={handleStoreDistributionChange} />
+              <Switch checked={form.googlePlay !== null} description="Upload Android releases and manage Play tracks." disabled={form.android === null} label="Google Play" onChange={handleGooglePlayEnabledChange} />
+              <Switch checked={form.appStoreConnect !== null} description="Upload signed iOS archives for TestFlight processing." disabled={form.ios === null} label="App Store Connect" onChange={handleAppStoreConnectEnabledChange} />
             </div>
           </div>
         </section>
@@ -335,9 +535,7 @@ export const ApplicationSetup = ({
                 onChange={(isEnabled) => setForm((current) => ({
                   ...current,
                   android: isEnabled ? defaultAndroid() : null,
-                  googlePlay: isEnabled && current.appStoreConnect !== null
-                    ? current.googlePlay ?? defaultGooglePlay()
-                    : isEnabled ? current.googlePlay : null,
+                  googlePlay: isEnabled ? current.googlePlay : null,
                 }))}
               />
               <Switch
@@ -351,8 +549,8 @@ export const ApplicationSetup = ({
             {form.android !== null && (
               <div className={styles.platformPanel}>
                 <h3>Android</h3>
-                <PathField label="Android application directory" onBrowse={() => void choosePath(window.desktopApi.chooseAndroidProjectDirectory, (projectPath) => updateAndroid({ projectPath }))} required value={form.android.projectPath} />
-                {form.firebaseDistribution.isEnabled && <PathField label="google-services.json" onBrowse={() => void choosePath(window.desktopApi.chooseGoogleServicesJson, (googleServicesJsonPath) => updateAndroid({ googleServicesJsonPath }))} required value={form.android.googleServicesJsonPath ?? ''} />}
+                <PathField label="Android application directory" onBrowse={() => void chooseAndroidProject()} required value={form.android.projectPath} />
+                {form.firebaseDistribution.isEnabled && <PathField label="google-services.json" onBrowse={() => void chooseGoogleServicesJson()} required value={form.android.googleServicesJsonPath ?? ''} />}
               </div>
             )}
 
@@ -369,7 +567,7 @@ export const ApplicationSetup = ({
                       <Select
                         aria-describedby="ios-scheme-feedback"
                         disabled={isLoadingIosSchemes || iosSchemes.length === 0}
-                        onChange={(event) => updateIos({ scheme: event.target.value })}
+                        onChange={(event) => handleIosSchemeChange(event.target.value)}
                         required
                         value={form.ios.scheme}
                       >
@@ -381,7 +579,16 @@ export const ApplicationSetup = ({
                       <Button
                         aria-label="Refresh Xcode scheme list"
                         disabled={isLoadingIosSchemes || form.ios.workspaceOrProjectPath === ''}
-                        onClick={() => void loadIosSchemes(form.ios?.workspaceOrProjectPath ?? '')}
+                        onClick={() => {
+                          const iosConfiguration = form.ios;
+                          if (iosConfiguration !== null) {
+                            void loadIosSchemes(
+                              iosConfiguration.workspaceOrProjectPath,
+                              iosConfiguration.scheme,
+                              iosConfiguration.configuration,
+                            );
+                          }
+                        }}
                         type="button"
                         variant="outline-secondary"
                       >
@@ -392,7 +599,7 @@ export const ApplicationSetup = ({
                       {iosSchemeError ?? 'Schemes are loaded automatically from the selected Xcode project.'}
                     </Form.Text>
                   </Form.Group>
-                  <Form.Group><Form.Label>Configuration</Form.Label><Form.Control onChange={(event) => updateIos({ configuration: event.target.value })} required value={form.ios.configuration} /></Form.Group>
+                  <Form.Group><Form.Label>Configuration</Form.Label><Form.Control onBlur={(event) => { const iosConfiguration = form.ios; if (iosConfiguration !== null && event.currentTarget.value !== '') void loadIosDevelopmentTeam(iosConfiguration.workspaceOrProjectPath, iosConfiguration.scheme, event.currentTarget.value); }} onChange={(event) => handleIosConfigurationChange(event.target.value)} required value={form.ios.configuration} /></Form.Group>
                   <Form.Group><Form.Label>Export method</Form.Label><Select onChange={(event) => { if (isIosExportMethod(event.target.value)) updateIos({ exportMethod: event.target.value }); }} value={form.ios.exportMethod}><option value="release-testing">Release testing</option><option value="enterprise">Enterprise</option><option value="development">Development</option></Select></Form.Group>
                 </div>
               </div>
@@ -460,7 +667,7 @@ export const ApplicationSetup = ({
                   <Form.Text>The artifact type can be changed for each pipeline run.</Form.Text>
                 </Form.Group>
                 <div className={styles.twoColumns}>
-                  <Form.Group><Form.Label>APK Gradle task</Form.Label><Form.Control onChange={(event) => updateAndroid({ gradleTask: event.target.value })} required value={form.android.gradleTask} /></Form.Group>
+                  <Form.Group><Form.Label>APK Gradle task</Form.Label><Form.Control onBlur={() => { const androidConfiguration = form.android; if (androidConfiguration !== null && form.googlePlay !== null && androidConfiguration.projectPath !== '') void loadAndroidProjectMetadata(androidConfiguration.projectPath, androidConfiguration.googleServicesJsonPath, androidConfiguration.gradleTask); }} onChange={(event) => { resetAndroidProjectMetadata(); updateAndroid({ gradleTask: event.target.value }); }} required value={form.android.gradleTask} /></Form.Group>
                   <Form.Group><Form.Label>APK source path</Form.Label><Form.Control onChange={(event) => updateAndroid({ artifactPath: event.target.value })} required value={form.android.artifactPath} /><Form.Text>Required. May be relative to the Android project directory.</Form.Text></Form.Group>
                 </div>
                 <div className={styles.twoColumns}>
@@ -484,47 +691,100 @@ export const ApplicationSetup = ({
         </section>
         )}
 
-        {isStoreDistributionEnabled && (
+        {form.googlePlay !== null && (
         <section className={styles.section}>
-          <header><span>05</span><div><h2>Store Distribution</h2><p>Platform-specific store delivery; signing stays separate</p></div></header>
+          <header><span>05</span><div><h2>Google Play configuration</h2><p>Android store delivery and track management</p></div></header>
           <div className={styles.sectionBody}>
-            {form.googlePlay !== null && (
-              <div className={styles.platformPanel}>
-                <h3>Google Play</h3>
-                <Alert variant="info">Signed builds are committed to internal testing first. Optional promotion uses a second committed Play edit.</Alert>
-                <div className={styles.threeColumns}>
-                  <Form.Group><Form.Label>Package name</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ packageName: event.target.value })} placeholder="com.example.app" required value={form.googlePlay.packageName} /></Form.Group>
-                  <Form.Group><Form.Label>Store artifact</Form.Label><Select onChange={(event) => updateGooglePlay({ artifactType: event.target.value === 'apk' ? 'apk' : 'aab' })} value={form.googlePlay.artifactType}><option value="aab">AAB (recommended)</option><option value="apk">APK</option></Select></Form.Group>
-                  <Form.Group><Form.Label>Internal track ID</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ initialTrack: event.target.value })} required value={form.googlePlay.initialTrack} /></Form.Group>
-                </div>
-                <Form.Group className={styles.compactField}><Form.Label>Release notes language</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ releaseNotesLanguage: event.target.value })} placeholder="en-US" required value={form.googlePlay.releaseNotesLanguage} /><Form.Text>BCP 47 language tag used by Google Play.</Form.Text></Form.Group>
-                <PathField helpText={application?.googlePlay === null || application?.googlePlay === undefined ? 'Use a dedicated service account granted access in Play Console.' : `Current: ${application.googlePlay.serviceAccountFileName}. Leave empty to keep it.`} label="Google Play Service Account JSON" onBrowse={() => void choosePath(window.desktopApi.chooseGooglePlayServiceAccount, (serviceAccountPath) => updateGooglePlay({ serviceAccountPath }))} placeholder={application?.googlePlay === null || application?.googlePlay === undefined ? 'Not selected yet' : 'The existing file will be kept'} required={application?.googlePlay === null || application?.googlePlay === undefined} value={form.googlePlay.serviceAccountPath} />
-                <Switch checked={form.googlePlay.promoteAfterUpload} label="Promote after internal testing upload" onChange={(promoteAfterUpload) => updateGooglePlay({ promoteAfterUpload })} />
-                {form.googlePlay.promoteAfterUpload && <div className={styles.threeColumns}>
-                  <Form.Group><Form.Label>Promotion track</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ promotionTrack: event.target.value })} required value={form.googlePlay.promotionTrack} /></Form.Group>
-                  <Form.Group><Form.Label>Release status</Form.Label><Select onChange={(event) => updateGooglePlay({ promotionStatus: event.target.value === 'draft' ? 'draft' : event.target.value === 'inProgress' ? 'inProgress' : 'completed', rolloutFraction: event.target.value === 'inProgress' ? (form.googlePlay?.rolloutFraction ?? 0.1) : null })} value={form.googlePlay.promotionStatus}><option value="completed">Completed</option><option value="draft">Draft</option><option value="inProgress">Staged rollout</option></Select></Form.Group>
-                  {form.googlePlay.promotionStatus === 'inProgress' && <Form.Group><Form.Label>Rollout fraction</Form.Label><Form.Control max="0.99" min="0.01" onChange={(event) => updateGooglePlay({ rolloutFraction: Number(event.target.value) })} required step="0.01" type="number" value={form.googlePlay.rolloutFraction ?? 0.1} /><Form.Text>0.01–0.99</Form.Text></Form.Group>}
-                </div>}
-              </div>
-            )}
-            {form.appStoreConnect !== null && (
-              <div className={styles.platformPanel}>
-                <h3>App Store Connect</h3>
-                <Alert variant="info">Xcode uploads the signed archive to App Store Connect. The build appears in TestFlight after Apple processing; App Store review and release remain explicit App Store Connect actions.</Alert>
-                <div className={styles.twoColumns}>
-                  <Form.Group><Form.Label>API Key ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, apiKeyId: event.target.value } }))} required value={form.appStoreConnect.apiKeyId} /></Form.Group>
-                  <Form.Group><Form.Label>Issuer ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, issuerId: event.target.value } }))} placeholder="UUID" required value={form.appStoreConnect.issuerId} /></Form.Group>
-                </div>
-                <PathField helpText={application?.appStoreConnect === null || application?.appStoreConnect === undefined ? 'The .p8 key is encrypted at rest and is used only by the main process.' : `Current: ${application.appStoreConnect.apiKeyFileName}. Leave empty to keep it.`} label="App Store Connect API key (.p8)" onBrowse={() => void choosePath(window.desktopApi.chooseAppStoreConnectApiKey, (apiKeyPath) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, apiKeyPath } })))} placeholder={application?.appStoreConnect === null || application?.appStoreConnect === undefined ? 'Not selected yet' : 'The existing file will be kept'} required={application?.appStoreConnect === null || application?.appStoreConnect === undefined} value={form.appStoreConnect.apiKeyPath} />
-              </div>
-            )}
+            <Alert variant="info">Signed builds are committed to internal testing first. Optional promotion uses a second committed Play edit.</Alert>
+            <div className={styles.threeColumns}>
+              <Form.Group>
+                <Form.Label>Package name</Form.Label>
+                <InputGroup>
+                  <Form.Control
+                    aria-busy={isLoadingAndroidProjectMetadata}
+                    aria-describedby="android-package-name-feedback"
+                    onChange={(event) => {
+                      resetAndroidProjectMetadata();
+                      updateGooglePlay({ packageName: event.target.value });
+                    }}
+                    placeholder="com.example.app"
+                    required
+                    value={form.googlePlay.packageName}
+                  />
+                  <Button
+                    aria-label="Refresh Android package name"
+                    disabled={
+                      isLoadingAndroidProjectMetadata ||
+                      form.android === null ||
+                      form.android.projectPath === ''
+                    }
+                    onClick={() => {
+                      const androidConfiguration = form.android;
+                      if (androidConfiguration !== null) {
+                        void loadAndroidProjectMetadata(
+                          androidConfiguration.projectPath,
+                          androidConfiguration.googleServicesJsonPath,
+                          androidConfiguration.gradleTask,
+                        );
+                      }
+                    }}
+                    type="button"
+                    variant="outline-secondary"
+                  >
+                    {isLoadingAndroidProjectMetadata ? <Spinner animation="border" size="sm" /> : 'Refresh'}
+                  </Button>
+                </InputGroup>
+                <Form.Text
+                  className={androidProjectMetadataError === null ? undefined : styles.fieldError}
+                  id="android-package-name-feedback"
+                >
+                  {androidProjectMetadataError ?? 'Detected from google-services.json or a literal Gradle applicationId when available. You can enter it manually.'}
+                </Form.Text>
+              </Form.Group>
+              <Form.Group><Form.Label>Store artifact</Form.Label><Select onChange={(event) => updateGooglePlay({ artifactType: event.target.value === 'apk' ? 'apk' : 'aab' })} value={form.googlePlay.artifactType}><option value="aab">AAB (recommended)</option><option value="apk">APK</option></Select></Form.Group>
+              <Form.Group><Form.Label>Internal track ID</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ initialTrack: event.target.value })} required value={form.googlePlay.initialTrack} /></Form.Group>
+            </div>
+            <Form.Group className={styles.compactField}><Form.Label>Release notes language</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ releaseNotesLanguage: event.target.value })} placeholder="en-US" required value={form.googlePlay.releaseNotesLanguage} /><Form.Text>BCP 47 language tag used by Google Play.</Form.Text></Form.Group>
+            <PathField helpText={application?.googlePlay === null || application?.googlePlay === undefined ? 'Use a dedicated service account granted access in Play Console.' : `Current: ${application.googlePlay.serviceAccountFileName}. Leave empty to keep it.`} label="Google Play Service Account JSON" onBrowse={() => void choosePath(window.desktopApi.chooseGooglePlayServiceAccount, (serviceAccountPath) => updateGooglePlay({ serviceAccountPath }))} placeholder={application?.googlePlay === null || application?.googlePlay === undefined ? 'Not selected yet' : 'The existing file will be kept'} required={application?.googlePlay === null || application?.googlePlay === undefined} value={form.googlePlay.serviceAccountPath} />
+            <Switch checked={form.googlePlay.promoteAfterUpload} label="Promote after internal testing upload" onChange={(promoteAfterUpload) => updateGooglePlay({ promoteAfterUpload })} />
+            {form.googlePlay.promoteAfterUpload && <div className={styles.threeColumns}>
+              <Form.Group><Form.Label>Promotion track</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ promotionTrack: event.target.value })} required value={form.googlePlay.promotionTrack} /></Form.Group>
+              <Form.Group><Form.Label>Release status</Form.Label><Select onChange={(event) => updateGooglePlay({ promotionStatus: event.target.value === 'draft' ? 'draft' : event.target.value === 'inProgress' ? 'inProgress' : 'completed', rolloutFraction: event.target.value === 'inProgress' ? (form.googlePlay?.rolloutFraction ?? 0.1) : null })} value={form.googlePlay.promotionStatus}><option value="completed">Completed</option><option value="draft">Draft</option><option value="inProgress">Staged rollout</option></Select></Form.Group>
+              {form.googlePlay.promotionStatus === 'inProgress' && <Form.Group><Form.Label>Rollout fraction</Form.Label><Form.Control max="0.99" min="0.01" onChange={(event) => updateGooglePlay({ rolloutFraction: Number(event.target.value) })} required step="0.01" type="number" value={form.googlePlay.rolloutFraction ?? 0.1} /><Form.Text>0.01–0.99</Form.Text></Form.Group>}
+            </div>}
           </div>
         </section>
         )}
 
+        {form.appStoreConnect !== null && (
+          <section className={styles.section}>
+            <header><span>06</span><div><h2>App Store Connect configuration</h2><p>iOS archive upload and API authentication</p></div></header>
+            <div className={styles.sectionBody}>
+              <Alert variant="info">Xcode uploads the signed archive to App Store Connect. The build appears in TestFlight after Apple processing; App Store review and release remain explicit App Store Connect actions.</Alert>
+              <div className={styles.threeColumns}>
+                <Form.Group>
+                  <Form.Label>Bundle ID</Form.Label>
+                  <Form.Control
+                    aria-busy={isLoadingIosDevelopmentTeam}
+                    placeholder={isLoadingIosDevelopmentTeam ? 'Reading from Xcode project…' : 'Not detected'}
+                    readOnly
+                    value={form.ios?.bundleIdentifier ?? ''}
+                  />
+                  <Form.Text className={iosDevelopmentTeamError === null ? undefined : styles.fieldError}>
+                    {iosDevelopmentTeamError ?? 'Detected from the selected Xcode project.'}
+                  </Form.Text>
+                </Form.Group>
+                <Form.Group><Form.Label>API Key ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, apiKeyId: event.target.value } }))} required value={form.appStoreConnect.apiKeyId} /></Form.Group>
+                <Form.Group><Form.Label>Issuer ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, issuerId: event.target.value } }))} placeholder="UUID" required value={form.appStoreConnect.issuerId} /></Form.Group>
+              </div>
+              <PathField helpText={application?.appStoreConnect === null || application?.appStoreConnect === undefined ? 'The .p8 key is encrypted at rest. A standard AuthKey_KEYID.p8 filename also fills the Key ID.' : `Current: ${application.appStoreConnect.apiKeyFileName}. Leave empty to keep it.`} label="App Store Connect API key (.p8)" onBrowse={() => void chooseAppStoreConnectApiKey()} placeholder={application?.appStoreConnect === null || application?.appStoreConnect === undefined ? 'Not selected yet' : 'The existing file will be kept'} required={application?.appStoreConnect === null || application?.appStoreConnect === undefined} value={form.appStoreConnect.apiKeyPath} />
+            </div>
+          </section>
+        )}
+
         {(needsAndroidSigning || needsIosSigning) && (
           <section className={styles.section}>
-            <header><span>06</span><div><h2>Signing configuration</h2><p>Shown only because a selected outcome requires signed artifacts</p></div></header>
+            <header><span>07</span><div><h2>Signing configuration</h2><p>Shown only because a selected outcome requires signed artifacts</p></div></header>
             <div className={styles.sectionBody}>
               {needsAndroidSigning && (
                 <div className={styles.platformPanel}>
@@ -542,7 +802,53 @@ export const ApplicationSetup = ({
                 <div className={styles.platformPanel}>
                   <h3>iOS automatic signing</h3>
                   <Switch checked={form.iosSigning.isEnabled} label="Use Xcode automatic signing" onChange={(isEnabled) => setForm((current) => ({ ...current, iosSigning: { ...current.iosSigning, isEnabled } }))} />
-                  <Form.Group className={styles.compactField}><Form.Label>Apple Development Team ID</Form.Label><Form.Control onChange={(event) => setForm((current) => ({ ...current, iosSigning: { ...current.iosSigning, developmentTeamId: event.target.value } }))} required value={form.iosSigning.developmentTeamId} /><Form.Text>Xcode resolves the distribution certificate and provisioning profile for this team.</Form.Text></Form.Group>
+                  <Form.Group className={styles.compactField}>
+                    <Form.Label>Apple Development Team ID</Form.Label>
+                    <InputGroup>
+                      <Form.Control
+                        aria-busy={isLoadingIosDevelopmentTeam}
+                        aria-describedby="ios-development-team-feedback"
+                        placeholder={isLoadingIosDevelopmentTeam ? 'Reading from Xcode project…' : 'Not detected'}
+                        readOnly
+                        required
+                        value={form.iosSigning.developmentTeamId}
+                      />
+                      <Button
+                        aria-label="Refresh Apple Development Team ID"
+                        disabled={
+                          isLoadingIosDevelopmentTeam ||
+                          form.ios === null ||
+                          form.ios.workspaceOrProjectPath === '' ||
+                          form.ios.scheme === '' ||
+                          form.ios.configuration === ''
+                        }
+                        onClick={() => {
+                          const iosConfiguration = form.ios;
+                          if (iosConfiguration !== null) {
+                            void loadIosDevelopmentTeam(
+                              iosConfiguration.workspaceOrProjectPath,
+                              iosConfiguration.scheme,
+                              iosConfiguration.configuration,
+                            );
+                          }
+                        }}
+                        type="button"
+                        variant="outline-secondary"
+                      >
+                        {isLoadingIosDevelopmentTeam ? <Spinner animation="border" size="sm" /> : 'Refresh'}
+                      </Button>
+                    </InputGroup>
+                    <Form.Text
+                      className={iosDevelopmentTeamError === null ? undefined : styles.fieldError}
+                      id="ios-development-team-feedback"
+                    >
+                      {iosDevelopmentTeamError ?? (
+                        form.iosSigning.developmentTeamId === ''
+                          ? 'Select an Xcode project, scheme, and configuration to detect its team.'
+                          : 'Detected from the selected Xcode project. Xcode resolves the certificate and provisioning profile for this team.'
+                      )}
+                    </Form.Text>
+                  </Form.Group>
                 </div>
               )}
             </div>
@@ -550,7 +856,7 @@ export const ApplicationSetup = ({
         )}
 
         <section className={styles.section}>
-          <header><span>07</span><div><h2>Pipeline extensions</h2><p>Optional safe command steps</p></div></header>
+          <header><span>08</span><div><h2>Pipeline extensions</h2><p>Optional safe command steps</p></div></header>
           <div className={styles.sectionBody}>
             <Alert variant="warning">These commands run on the local machine. Use only commands and directories you trust.</Alert>
             <HookEditor hooks={form.hooks} onChange={(hooks) => setForm((current) => ({ ...current, hooks }))} supportedPlatforms={supportedPlatforms} />
@@ -563,8 +869,14 @@ export const ApplicationSetup = ({
           <Button
             disabled={
               isSaving ||
+              (form.googlePlay !== null && isLoadingAndroidProjectMetadata) ||
               (form.android === null && form.ios === null) ||
-              (form.ios !== null && (isLoadingIosSchemes || iosSchemes.length === 0))
+              (form.ios !== null && (isLoadingIosSchemes || iosSchemes.length === 0)) ||
+              (needsIosSigning && (
+                isLoadingIosDevelopmentTeam ||
+                !form.iosSigning.isEnabled ||
+                form.iosSigning.developmentTeamId === ''
+              ))
             }
             type="submit"
           >
