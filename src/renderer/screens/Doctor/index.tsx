@@ -40,7 +40,7 @@ export const Doctor = ({
       {isChecking && report === null ? (
         <div className={styles.loading}>
           <Spinner animation="border" role="status" size="sm" />
-          <span>Checking Firebase CLI and system tools…</span>
+          <span>Checking optional distribution tools and platform capabilities…</span>
         </div>
       ) : (
         <div className={styles.checks}>
@@ -60,7 +60,7 @@ export const Doctor = ({
       {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
       {report !== null && !report.isReady && (
         <Alert variant="warning">
-          Firebase CLI is required to access the release workspace. Install it, then check again.
+          A required platform capability is unavailable. Review the checks, then try again.
         </Alert>
       )}
       <footer className={styles.footer}>

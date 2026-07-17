@@ -23,14 +23,17 @@ import type { AppSettings } from '@shared/contracts/settings';
 export type DesktopApi = {
   cancelRelease: (runId: string) => Promise<CancelReleaseResult>;
   chooseAndroidArtifact: () => Promise<PathSelectionResult>;
+  chooseAndroidKeystore: () => Promise<PathSelectionResult>;
   chooseAndroidProjectDirectory: () => Promise<PathSelectionResult>;
   chooseArtifactOutputDirectory: () => Promise<PathSelectionResult>;
   chooseGoogleServiceInfoPlist: () => Promise<PathSelectionResult>;
   chooseGoogleServicesJson: () => Promise<PathSelectionResult>;
+  chooseGooglePlayServiceAccount: () => Promise<PathSelectionResult>;
   chooseHookDirectory: () => Promise<PathSelectionResult>;
   chooseIosArtifact: () => Promise<PathSelectionResult>;
   chooseIosProjectDirectory: () => Promise<PathSelectionResult>;
   chooseIosWorkspaceOrProject: () => Promise<PathSelectionResult>;
+  chooseAppStoreConnectApiKey: () => Promise<PathSelectionResult>;
   chooseServiceAccountFile: () => Promise<PathSelectionResult>;
   clearRunHistory: (applicationId: string) => Promise<void>;
   createApplication: (request: CreateApplicationRequest) => Promise<ApplicationDetail>;

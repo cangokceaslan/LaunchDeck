@@ -2,6 +2,8 @@ import path from 'node:path';
 import { app, BrowserWindow, dialog } from 'electron';
 import { openApplicationDatabase } from '@main/database';
 import { FirebaseCliIntegration } from '@main/integrations/FirebaseCli';
+import { AppStoreConnectIntegration } from '@main/integrations/AppStoreConnect';
+import { GooglePlayIntegration } from '@main/integrations/GooglePlay';
 import { registerIpcHandlers, removeIpcHandlers } from '@main/ipc/registerHandlers';
 import { ApplicationRepository } from '@main/repositories/Application';
 import { RunHistoryRepository } from '@main/repositories/RunHistory';
@@ -26,6 +28,8 @@ const bootstrap = async (): Promise<void> => {
     applicationRepository,
     historyRepository,
     firebaseCli,
+    new GooglePlayIntegration(),
+    new AppStoreConnectIntegration(),
     new AndroidBuilder(),
     iosBuilder,
     path.join(app.getPath('userData'), 'runs'),

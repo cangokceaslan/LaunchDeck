@@ -1,5 +1,8 @@
 import launchIcon from '@renderer/assets/launch-icon.png';
+import devIcon from '@renderer/assets/dev-icon.png';
 import styles from '@components/WindowHeader/index.module.scss';
+
+const productIcon = import.meta.env.DEV ? devIcon : launchIcon;
 
 export const WindowHeader = (): React.JSX.Element => (
   <header className={styles.header}>
@@ -7,14 +10,14 @@ export const WindowHeader = (): React.JSX.Element => (
       className={styles.dragRegion}
       onDoubleClick={() => void window.desktopApi.windowToggleMaximize()}
     >
-      <img alt="" aria-hidden="true" className={styles.productIcon} src={launchIcon} />
+      <img alt="" aria-hidden="true" className={styles.productIcon} src={productIcon} />
       <div className={styles.productTitle}>
         <strong>LaunchDeck</strong>
         <span>Distribution operations</span>
       </div>
       <div className={styles.context}>
         <span aria-hidden="true" className={styles.statusDot} />
-        Firebase App Distribution
+        Release distribution
       </div>
     </div>
     <div className={styles.windowControls}>

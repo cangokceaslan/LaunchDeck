@@ -16,8 +16,11 @@ import {
 } from '@main/utils/FileSystem';
 import type {
   AndroidConfiguration,
+  AndroidSigningSetupConfiguration,
+  AppStoreConnectSetupConfiguration,
   ApplicationDetail,
   CreateApplicationRequest,
+  GooglePlaySetupConfiguration,
   IosConfiguration,
   PipelineHook,
   UpdateArtifactOutputDirectoryRequest,
@@ -108,31 +111,35 @@ const resolveHooks = async (hooks: PipelineHook[]): Promise<PipelineHook[]> =>
 
 const resolveAndroid = async (
   configuration: CreateApplicationRequest['android'],
+  isFirebaseEnabled: boolean,
 ): Promise<{ configuration: AndroidConfiguration | null; projectId: string | null }> => {
   if (configuration === null) {
     return { configuration: null, projectId: null };
   }
   const projectPath = await resolveExistingDirectory(configuration.projectPath);
-  const googleServicesJsonPath = await resolveExistingFile(configuration.googleServicesJsonPath, [
-    '.json',
-  ]);
-  const metadata = await inspectGoogleServicesJson(googleServicesJsonPath);
+  const googleServicesJsonPath = isFirebaseEnabled
+    ? await resolveExistingFile(configuration.googleServicesJsonPath ?? '', ['.json'])
+    : null;
+  const metadata = googleServicesJsonPath === null
+    ? null
+    : await inspectGoogleServicesJson(googleServicesJsonPath);
   return {
     configuration: {
       ...configuration,
       aabArtifactPath: resolveOutputPath(projectPath, configuration.aabArtifactPath, '.aab'),
       artifactPath: resolveOutputPath(projectPath, configuration.artifactPath, '.apk'),
-      firebaseAppId: metadata.appId,
+      firebaseAppId: metadata?.appId ?? null,
       googleServicesJsonPath,
       projectPath,
     },
-    projectId: metadata.projectId,
+    projectId: metadata?.projectId ?? null,
   };
 };
 
 const resolveIos = async (
   configuration: CreateApplicationRequest['ios'],
   iosBuilder: IosBuilder,
+  isFirebaseEnabled: boolean,
 ): Promise<{ configuration: IosConfiguration | null; projectId: string | null }> => {
   if (configuration === null) {
     return { configuration: null, projectId: null };
@@ -141,10 +148,9 @@ const resolveIos = async (
     throw new Error('iOS configuration is available only on macOS.');
   }
   const projectPath = await resolveExistingDirectory(configuration.projectPath);
-  const googleServiceInfoPlistPath = await resolveExistingFile(
-    configuration.googleServiceInfoPlistPath,
-    ['.plist'],
-  );
+  const googleServiceInfoPlistPath = isFirebaseEnabled
+    ? await resolveExistingFile(configuration.googleServiceInfoPlistPath ?? '', ['.plist'])
+    : null;
   const workspaceOrProjectPath = await resolveExistingBundlePath(configuration.workspaceOrProjectPath, [
     '.xcworkspace',
     '.xcodeproj',
@@ -153,17 +159,85 @@ const resolveIos = async (
   if (!schemes.includes(configuration.scheme)) {
     throw new Error(`The selected scheme was not found in the Xcode project: ${configuration.scheme}`);
   }
-  const metadata = await inspectGoogleServiceInfoPlist(googleServiceInfoPlistPath);
+  const metadata = googleServiceInfoPlistPath === null
+    ? null
+    : await inspectGoogleServiceInfoPlist(googleServiceInfoPlistPath);
   return {
     configuration: {
       ...configuration,
       artifactPath: resolveOutputPath(projectPath, configuration.artifactPath, '.ipa'),
-      firebaseAppId: metadata.appId,
+      firebaseAppId: metadata?.appId ?? null,
       googleServiceInfoPlistPath,
       projectPath,
       workspaceOrProjectPath,
     },
-    projectId: metadata.projectId,
+    projectId: metadata?.projectId ?? null,
+  };
+};
+
+const resolveAndroidSigning = async (
+  configuration: AndroidSigningSetupConfiguration | null,
+  retainedConfiguration?: AndroidSigningSetupConfiguration | null,
+): Promise<AndroidSigningSetupConfiguration | null> => {
+  if (configuration === null) return null;
+  const keystorePath = configuration.keystorePath.trim() === ''
+    ? retainedConfiguration?.keystorePath ?? ''
+    : configuration.keystorePath;
+  const storePassword = configuration.storePassword === ''
+    ? retainedConfiguration?.storePassword ?? ''
+    : configuration.storePassword;
+  const keyPassword = configuration.keyPassword === ''
+    ? retainedConfiguration?.keyPassword ?? ''
+    : configuration.keyPassword;
+  if (keystorePath === '' || storePassword === '' || keyPassword === '') {
+    throw new Error('Android signing credentials are incomplete.');
+  }
+  return {
+    keyAlias: configuration.keyAlias.trim(),
+    keyPassword,
+    keystorePath: await resolveExistingFile(keystorePath, ['.jks', '.keystore']),
+    storePassword,
+  };
+};
+
+const resolveGooglePlay = async (
+  configuration: GooglePlaySetupConfiguration | null,
+  retainedConfiguration?: GooglePlaySetupConfiguration | null,
+): Promise<GooglePlaySetupConfiguration | null> => {
+  if (configuration === null) return null;
+  const requestedPath = configuration.serviceAccountPath.trim() === ''
+    ? retainedConfiguration?.serviceAccountPath ?? ''
+    : configuration.serviceAccountPath;
+  if (requestedPath === '') {
+    throw new Error('Google Play service account credentials are required.');
+  }
+  const serviceAccount = await inspectServiceAccount(requestedPath);
+  return {
+    ...configuration,
+    initialTrack: configuration.initialTrack.trim(),
+    packageName: configuration.packageName.trim(),
+    promotionTrack: configuration.promotionTrack.trim(),
+    releaseNotesLanguage: configuration.releaseNotesLanguage.trim(),
+    serviceAccountPath: serviceAccount.path,
+  };
+};
+
+const resolveAppStoreConnect = async (
+  configuration: AppStoreConnectSetupConfiguration | null,
+  retainedConfiguration?: AppStoreConnectSetupConfiguration | null,
+): Promise<AppStoreConnectSetupConfiguration | null> => {
+  if (configuration === null) return null;
+  const requestedPath = configuration.apiKeyPath.trim() === ''
+    ? retainedConfiguration?.apiKeyPath ?? ''
+    : configuration.apiKeyPath;
+  if (requestedPath === '') {
+    throw new Error('An App Store Connect API private key is required.');
+  }
+  return {
+    ...configuration,
+    apiKeyId: configuration.apiKeyId.trim(),
+    apiKeyPath: await resolveExistingFile(requestedPath, ['.p8']),
+    issuerId: configuration.issuerId.trim(),
   };
 };
 
@@ -175,19 +249,27 @@ export class ApplicationService {
 
   private async resolveInput(
     request: CreateApplicationRequest,
-    retainedServiceAccountPath?: string,
+    retainedApplication?: ReturnType<ApplicationRepository['getStored']>,
   ): Promise<PersistApplicationInput> {
-    const serviceAccount = await inspectServiceAccount(
-      retainedServiceAccountPath ?? request.serviceAccountPath,
-    );
-    const [android, ios, hooks] = await Promise.all([
-      resolveAndroid(request.android),
-      resolveIos(request.ios, this.iosBuilder),
+    const requestedServiceAccountPath = request.serviceAccountPath.trim() === ''
+      ? retainedApplication?.serviceAccountPath ?? ''
+      : request.serviceAccountPath;
+    const serviceAccount = request.firebaseDistribution.isEnabled
+      ? await inspectServiceAccount(requestedServiceAccountPath)
+      : null;
+    const [android, ios, hooks, androidSigning, googlePlay, appStoreConnect] = await Promise.all([
+      resolveAndroid(request.android, request.firebaseDistribution.isEnabled),
+      resolveIos(request.ios, this.iosBuilder, request.firebaseDistribution.isEnabled),
       resolveHooks(request.hooks),
+      resolveAndroidSigning(request.androidSigning, retainedApplication?.androidSigning),
+      resolveGooglePlay(request.googlePlay, retainedApplication?.googlePlay),
+      resolveAppStoreConnect(request.appStoreConnect, retainedApplication?.appStoreConnect),
     ]);
     const requestedProjectId = request.firebaseProjectId.trim();
-    const firebaseProjectId = requestedProjectId || serviceAccount.projectId;
-    const observedProjectIds = [serviceAccount.projectId, android.projectId, ios.projectId].filter(
+    const firebaseProjectId = request.firebaseDistribution.isEnabled
+      ? requestedProjectId || serviceAccount?.projectId || ''
+      : '';
+    const observedProjectIds = [serviceAccount?.projectId ?? null, android.projectId, ios.projectId].filter(
       (projectId): projectId is string => projectId !== null,
     );
     if (observedProjectIds.some((projectId) => projectId !== firebaseProjectId)) {
@@ -195,22 +277,28 @@ export class ApplicationService {
     }
     return {
       android: android.configuration,
+      androidSigning,
+      appStoreConnect,
+      artifactGeneration: request.artifactGeneration,
       artifactOutputDirectoryPath:
         request.artifactOutputDirectoryPath === null
           ? null
           : await resolveWritableDirectory(request.artifactOutputDirectoryPath),
       distributionGroups: [...new Set(request.distributionGroups.map((group) => group.trim()))],
+      firebaseDistribution: request.firebaseDistribution,
       firebaseProjectId,
+      googlePlay,
       hooks,
       ios: ios.configuration,
+      iosSigning: request.iosSigning,
       name: request.name.trim(),
-      serviceAccountFileName: path.basename(serviceAccount.path),
-      serviceAccountPath: serviceAccount.path,
+      serviceAccountFileName: serviceAccount === null ? '' : path.basename(serviceAccount.path),
+      serviceAccountPath: serviceAccount?.path ?? null,
     };
   }
 
   public async create(request: CreateApplicationRequest): Promise<ApplicationDetail> {
-    return this.repository.create(await this.resolveInput(request));
+    return this.repository.create(await this.resolveInput(request, null));
   }
 
   public async update(request: UpdateApplicationRequest): Promise<ApplicationDetail> {
@@ -220,15 +308,21 @@ export class ApplicationService {
     }
     const createRequest: CreateApplicationRequest = {
       android: request.android,
+      androidSigning: request.androidSigning,
+      appStoreConnect: request.appStoreConnect,
+      artifactGeneration: request.artifactGeneration,
       artifactOutputDirectoryPath: request.artifactOutputDirectoryPath,
       distributionGroups: request.distributionGroups,
+      firebaseDistribution: request.firebaseDistribution,
       firebaseProjectId: request.firebaseProjectId,
+      googlePlay: request.googlePlay,
       hooks: request.hooks,
       ios: request.ios,
+      iosSigning: request.iosSigning,
       name: request.name,
-      serviceAccountPath: request.serviceAccountPath ?? currentApplication.serviceAccountPath,
+      serviceAccountPath: request.serviceAccountPath ?? '',
     };
-    return this.repository.update(request.id, await this.resolveInput(createRequest));
+    return this.repository.update(request.id, await this.resolveInput(createRequest, currentApplication));
   }
 
   public async updateArtifactOutputDirectory(

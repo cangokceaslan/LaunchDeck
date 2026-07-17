@@ -1,9 +1,75 @@
 export type ReleasePlatform = 'android' | 'ios';
 export type ReleaseMode = 'buildOnly' | 'uploadOnly' | 'buildAndUpload';
 export type AndroidArtifactType = 'apk' | 'aab';
+export type DistributionDestination = 'artifact' | 'firebase' | 'store';
 export type HookPhase = 'preBuild' | 'postBuild' | 'preUpload' | 'postUpload';
 export type HookPlatform = ReleasePlatform | 'all';
 export type ThemePreference = 'light' | 'dark' | 'system';
+
+export type ArtifactGenerationConfiguration = {
+  androidArtifactTypes: AndroidArtifactType[];
+  isEnabled: boolean;
+  isIosIpaEnabled: boolean;
+  requiresAndroidSigning: boolean;
+  requiresIosSigning: boolean;
+};
+
+export type FirebaseDistributionConfiguration = {
+  isEnabled: boolean;
+  requiresAndroidSigning: boolean;
+  requiresIosSigning: boolean;
+};
+
+export type AndroidSigningSetupConfiguration = {
+  keyAlias: string;
+  keyPassword: string;
+  keystorePath: string;
+  storePassword: string;
+};
+
+export type AndroidSigningConfiguration = {
+  isConfigured: boolean;
+  keyAlias: string;
+  keystoreFileName: string;
+};
+
+export type IosSigningConfiguration = {
+  developmentTeamId: string;
+  isEnabled: boolean;
+};
+
+export type GooglePlayReleaseStatus = 'draft' | 'completed' | 'inProgress';
+
+export type GooglePlaySetupConfiguration = {
+  artifactType: AndroidArtifactType;
+  initialTrack: string;
+  packageName: string;
+  promoteAfterUpload: boolean;
+  promotionStatus: GooglePlayReleaseStatus;
+  promotionTrack: string;
+  releaseNotesLanguage: string;
+  rolloutFraction: number | null;
+  serviceAccountPath: string;
+};
+
+export type GooglePlayConfiguration = Omit<GooglePlaySetupConfiguration, 'serviceAccountPath'> & {
+  hasServiceAccount: boolean;
+  serviceAccountFileName: string;
+};
+
+export type AppStoreConnectSetupConfiguration = {
+  apiKeyId: string;
+  apiKeyPath: string;
+  issuerId: string;
+};
+
+export type AppStoreConnectConfiguration = Omit<
+  AppStoreConnectSetupConfiguration,
+  'apiKeyPath'
+> & {
+  apiKeyFileName: string;
+  hasApiKey: boolean;
+};
 
 export type PipelineHook = {
   command: string;
@@ -20,8 +86,8 @@ export type AndroidConfiguration = {
   aabGradleTask: string;
   artifactPath: string;
   defaultArtifactType: AndroidArtifactType;
-  firebaseAppId: string;
-  googleServicesJsonPath: string;
+  firebaseAppId: string | null;
+  googleServicesJsonPath: string | null;
   gradleTask: string;
   projectPath: string;
 };
@@ -30,8 +96,8 @@ export type IosConfiguration = {
   artifactPath: string;
   configuration: string;
   exportMethod: 'release-testing' | 'enterprise' | 'development';
-  firebaseAppId: string;
-  googleServiceInfoPlistPath: string;
+  firebaseAppId: string | null;
+  googleServiceInfoPlistPath: string | null;
   projectPath: string;
   scheme: string;
   workspaceOrProjectPath: string;
@@ -42,11 +108,17 @@ export type IosSetupConfiguration = Omit<IosConfiguration, 'firebaseAppId'>;
 
 export type CreateApplicationRequest = {
   android: AndroidSetupConfiguration | null;
+  androidSigning: AndroidSigningSetupConfiguration | null;
+  appStoreConnect: AppStoreConnectSetupConfiguration | null;
+  artifactGeneration: ArtifactGenerationConfiguration;
   artifactOutputDirectoryPath: string | null;
   distributionGroups: string[];
+  firebaseDistribution: FirebaseDistributionConfiguration;
   firebaseProjectId: string;
+  googlePlay: GooglePlaySetupConfiguration | null;
   hooks: PipelineHook[];
   ios: IosSetupConfiguration | null;
+  iosSigning: IosSigningConfiguration;
   name: string;
   serviceAccountPath: string;
 };
@@ -72,11 +144,17 @@ export type ApplicationSummary = {
 
 export type ApplicationDetail = ApplicationSummary & {
   android: AndroidConfiguration | null;
+  androidSigning: AndroidSigningConfiguration | null;
+  appStoreConnect: AppStoreConnectConfiguration | null;
+  artifactGeneration: ArtifactGenerationConfiguration;
   artifactOutputDirectoryPath: string | null;
   distributionGroups: string[];
+  firebaseDistribution: FirebaseDistributionConfiguration;
   hasServiceAccount: boolean;
+  googlePlay: GooglePlayConfiguration | null;
   hooks: PipelineHook[];
   ios: IosConfiguration | null;
+  iosSigning: IosSigningConfiguration;
   serviceAccountFileName: string;
 };
 

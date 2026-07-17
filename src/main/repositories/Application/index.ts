@@ -9,16 +9,49 @@ import type {
 } from '@main/repositories/Application/index.types';
 import type {
   AndroidConfiguration,
+  AndroidSigningConfiguration,
+  AppStoreConnectConfiguration,
   ApplicationDetail,
   ApplicationSummary,
+  GooglePlayConfiguration,
   IosConfiguration,
   PipelineHook,
   ReleasePlatform,
 } from '@shared/contracts/domain';
 import {
+  applicationReleaseConfigurationSchema,
   androidConfigurationSchema,
   iosConfigurationSchema,
 } from '@shared/validation';
+
+type StoredReleaseConfiguration = {
+  androidSigning: AndroidSigningConfiguration | null;
+  appStoreConnect: AppStoreConnectConfiguration | null;
+  artifactGeneration: ApplicationDetail['artifactGeneration'];
+  firebaseDistribution: ApplicationDetail['firebaseDistribution'];
+  googlePlay: GooglePlayConfiguration | null;
+  iosSigning: ApplicationDetail['iosSigning'];
+};
+
+const parseEncryptedJson = (
+  encryptedValue: unknown,
+  credentialVault: CredentialVault,
+): Record<string, unknown> | null => {
+  if (encryptedValue === null) return null;
+  if (typeof encryptedValue !== 'string') {
+    throw new Error('Invalid encrypted application credential field.');
+  }
+  const parsedValue: unknown = JSON.parse(credentialVault.decryptString(encryptedValue));
+  if (!isRecord(parsedValue)) {
+    throw new Error('Invalid encrypted application credential payload.');
+  }
+  return parsedValue;
+};
+
+const encryptJson = (
+  value: Record<string, string> | null,
+  credentialVault: CredentialVault,
+): string | null => value === null ? null : credentialVault.encryptString(JSON.stringify(value));
 
 const readRequiredString = (record: Record<string, unknown>, key: string): string => {
   const value = record[key];
@@ -138,16 +171,25 @@ export class ApplicationRepository {
     if (ios !== null) {
       platforms.push('ios');
     }
+    const releaseConfiguration = applicationReleaseConfigurationSchema.parse(
+      parseJson(readRequiredString(row, 'release_configuration_json')),
+    ) satisfies StoredReleaseConfiguration;
     const detail: ApplicationDetail = {
       android,
+      androidSigning: releaseConfiguration.androidSigning,
+      appStoreConnect: releaseConfiguration.appStoreConnect,
+      artifactGeneration: releaseConfiguration.artifactGeneration,
       artifactOutputDirectoryPath,
       createdAt: readRequiredString(row, 'created_at'),
       distributionGroups: parseStringArray(readRequiredString(row, 'distribution_groups_json')),
+      firebaseDistribution: releaseConfiguration.firebaseDistribution,
       firebaseProjectId: readRequiredString(row, 'firebase_project_id'),
-      hasServiceAccount: true,
+      googlePlay: releaseConfiguration.googlePlay,
+      hasServiceAccount: readRequiredString(row, 'service_account_file_name') !== '',
       hooks: this.getHooks(id),
       id,
       ios,
+      iosSigning: releaseConfiguration.iosSigning,
       name: readRequiredString(row, 'name'),
       platforms,
       serviceAccountFileName: readRequiredString(row, 'service_account_file_name'),
@@ -157,11 +199,48 @@ export class ApplicationRepository {
     if (!includeCredential) {
       return detail;
     }
+    const androidSigningCredentials = parseEncryptedJson(
+      row.android_signing_credentials_encrypted,
+      this.credentialVault,
+    );
+    const googlePlayCredentials = parseEncryptedJson(
+      row.google_play_credentials_encrypted,
+      this.credentialVault,
+    );
+    const appStoreConnectCredentials = parseEncryptedJson(
+      row.app_store_connect_credentials_encrypted,
+      this.credentialVault,
+    );
     return {
       ...detail,
-      serviceAccountPath: this.credentialVault.decryptPath(
-        readRequiredString(row, 'service_account_path_encrypted'),
-      ),
+      androidSigning:
+        detail.androidSigning === null || androidSigningCredentials === null
+          ? null
+          : {
+              keyAlias: detail.androidSigning.keyAlias,
+              keyPassword: readRequiredString(androidSigningCredentials, 'keyPassword'),
+              keystorePath: readRequiredString(androidSigningCredentials, 'keystorePath'),
+              storePassword: readRequiredString(androidSigningCredentials, 'storePassword'),
+            },
+      appStoreConnect:
+        detail.appStoreConnect === null || appStoreConnectCredentials === null
+          ? null
+          : {
+              apiKeyId: detail.appStoreConnect.apiKeyId,
+              apiKeyPath: readRequiredString(appStoreConnectCredentials, 'apiKeyPath'),
+              issuerId: detail.appStoreConnect.issuerId,
+            },
+      googlePlay:
+        detail.googlePlay === null || googlePlayCredentials === null
+          ? null
+          : {
+              ...detail.googlePlay,
+              serviceAccountPath: readRequiredString(googlePlayCredentials, 'serviceAccountPath'),
+            },
+      serviceAccountPath:
+        detail.hasServiceAccount
+          ? this.credentialVault.decryptPath(readRequiredString(row, 'service_account_path_encrypted'))
+          : null,
     };
   }
 
@@ -174,19 +253,44 @@ export class ApplicationRepository {
           `INSERT INTO applications (
             id, name, firebase_project_id, service_account_path_encrypted,
             service_account_file_name, distribution_groups_json, android_json,
-            ios_json, artifact_output_directory_path, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ios_json, artifact_output_directory_path, release_configuration_json,
+            android_signing_credentials_encrypted, google_play_credentials_encrypted,
+            app_store_connect_credentials_encrypted, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           id,
           input.name,
           input.firebaseProjectId,
-          this.credentialVault.encryptPath(input.serviceAccountPath),
+          this.credentialVault.encryptPath(input.serviceAccountPath ?? ''),
           input.serviceAccountFileName,
           JSON.stringify(input.distributionGroups),
           input.android === null ? null : JSON.stringify(input.android),
           input.ios === null ? null : JSON.stringify(input.ios),
           input.artifactOutputDirectoryPath,
+          JSON.stringify(this.createReleaseConfiguration(input)),
+          encryptJson(
+            input.androidSigning === null
+              ? null
+              : {
+                  keyPassword: input.androidSigning.keyPassword,
+                  keystorePath: input.androidSigning.keystorePath,
+                  storePassword: input.androidSigning.storePassword,
+                },
+            this.credentialVault,
+          ),
+          encryptJson(
+            input.googlePlay === null
+              ? null
+              : { serviceAccountPath: input.googlePlay.serviceAccountPath },
+            this.credentialVault,
+          ),
+          encryptJson(
+            input.appStoreConnect === null
+              ? null
+              : { apiKeyPath: input.appStoreConnect.apiKeyPath },
+            this.credentialVault,
+          ),
           timestamp,
           timestamp,
         );
@@ -201,14 +305,16 @@ export class ApplicationRepository {
 
   public update(id: string, input: PersistApplicationInput): ApplicationDetail {
     const timestamp = new Date().toISOString();
-    const encryptedPath = this.credentialVault.encryptPath(input.serviceAccountPath);
+    const encryptedPath = this.credentialVault.encryptPath(input.serviceAccountPath ?? '');
     this.database.transaction(() => {
       const result = this.database
         .prepare(
           `UPDATE applications SET name = ?, firebase_project_id = ?,
             service_account_path_encrypted = ?, service_account_file_name = ?,
             distribution_groups_json = ?, android_json = ?, ios_json = ?,
-            artifact_output_directory_path = ?, updated_at = ?
+            artifact_output_directory_path = ?, release_configuration_json = ?,
+            android_signing_credentials_encrypted = ?, google_play_credentials_encrypted = ?,
+            app_store_connect_credentials_encrypted = ?, updated_at = ?
            WHERE id = ?`,
         )
         .run(
@@ -220,6 +326,29 @@ export class ApplicationRepository {
           input.android === null ? null : JSON.stringify(input.android),
           input.ios === null ? null : JSON.stringify(input.ios),
           input.artifactOutputDirectoryPath,
+          JSON.stringify(this.createReleaseConfiguration(input)),
+          encryptJson(
+            input.androidSigning === null
+              ? null
+              : {
+                  keyPassword: input.androidSigning.keyPassword,
+                  keystorePath: input.androidSigning.keystorePath,
+                  storePassword: input.androidSigning.storePassword,
+                },
+            this.credentialVault,
+          ),
+          encryptJson(
+            input.googlePlay === null
+              ? null
+              : { serviceAccountPath: input.googlePlay.serviceAccountPath },
+            this.credentialVault,
+          ),
+          encryptJson(
+            input.appStoreConnect === null
+              ? null
+              : { apiKeyPath: input.appStoreConnect.apiKeyPath },
+            this.credentialVault,
+          ),
           timestamp,
           id,
         );
@@ -233,6 +362,46 @@ export class ApplicationRepository {
       throw new Error('The application record could not be updated.');
     }
     return updatedApplication;
+  }
+
+  private createReleaseConfiguration(input: PersistApplicationInput): StoredReleaseConfiguration {
+    return {
+      androidSigning:
+        input.androidSigning === null
+          ? null
+          : {
+              isConfigured: true,
+              keyAlias: input.androidSigning.keyAlias,
+              keystoreFileName: path.basename(input.androidSigning.keystorePath),
+            },
+      appStoreConnect:
+        input.appStoreConnect === null
+          ? null
+          : {
+              apiKeyFileName: path.basename(input.appStoreConnect.apiKeyPath),
+              apiKeyId: input.appStoreConnect.apiKeyId,
+              hasApiKey: true,
+              issuerId: input.appStoreConnect.issuerId,
+            },
+      artifactGeneration: input.artifactGeneration,
+      firebaseDistribution: input.firebaseDistribution,
+      googlePlay:
+        input.googlePlay === null
+          ? null
+          : {
+              artifactType: input.googlePlay.artifactType,
+              hasServiceAccount: true,
+              initialTrack: input.googlePlay.initialTrack,
+              packageName: input.googlePlay.packageName,
+              promoteAfterUpload: input.googlePlay.promoteAfterUpload,
+              promotionStatus: input.googlePlay.promotionStatus,
+              promotionTrack: input.googlePlay.promotionTrack,
+              releaseNotesLanguage: input.googlePlay.releaseNotesLanguage,
+              rolloutFraction: input.googlePlay.rolloutFraction,
+              serviceAccountFileName: path.basename(input.googlePlay.serviceAccountPath),
+            },
+      iosSigning: input.iosSigning,
+    };
   }
 
   public updateArtifactOutputDirectory(

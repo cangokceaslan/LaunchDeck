@@ -5,6 +5,8 @@ import path from 'node:path';
 import type { AndroidBuilder } from '@main/services/AndroidBuilder';
 import type { IosBuilder } from '@main/services/IosBuilder';
 import type { FirebaseCliIntegration } from '@main/integrations/FirebaseCli';
+import type { AppStoreConnectIntegration } from '@main/integrations/AppStoreConnect';
+import type { GooglePlayIntegration } from '@main/integrations/GooglePlay';
 import type { ApplicationRepository } from '@main/repositories/Application';
 import type { RunHistoryRepository } from '@main/repositories/RunHistory';
 import { runExecutable } from '@main/utils/ChildProcess';
@@ -21,6 +23,7 @@ import type {
 } from '@main/services/ReleaseRunner/index.types';
 import type {
   PipelineHook,
+  DistributionDestination,
   ReleaseMode,
   ReleasePlatform,
 } from '@shared/contracts/domain';
@@ -34,6 +37,7 @@ import type {
   ReleaseProgressKind,
   ReleaseResult,
   ResolvedReleasePlan,
+  ResolvedReleaseVersion,
   StartReleaseResult,
   ValidationIssue,
 } from '@shared/contracts/release';
@@ -45,6 +49,10 @@ const includesBuild = (mode: ReleaseMode): boolean =>
   mode === 'buildOnly' || mode === 'buildAndUpload';
 const includesUpload = (mode: ReleaseMode): boolean =>
   mode === 'uploadOnly' || mode === 'buildAndUpload';
+const hasDestination = (
+  destinations: DistributionDestination[],
+  destination: DistributionDestination,
+): boolean => destinations.includes(destination);
 
 const formatArtifactTimestamp = (isoTimestamp: string): string => {
   const timestamp = new Date(isoTimestamp);
@@ -113,23 +121,50 @@ const countPlatformSteps = (
   hooks: PipelineHook[],
   mode: ReleaseMode,
   platform: ReleasePlatform,
+  destinations: DistributionDestination[],
 ): number => {
   const buildSteps = includesBuild(mode)
     ? hooksFor(hooks, 'preBuild', platform).length +
-      1 +
+      2 +
       hooksFor(hooks, 'postBuild', platform).length
     : 0;
-  const uploadSteps = includesUpload(mode)
+  const uploadCount = Number(hasDestination(destinations, 'firebase')) + Number(hasDestination(destinations, 'store'));
+  const uploadSteps = includesUpload(mode) && uploadCount > 0
     ? hooksFor(hooks, 'preUpload', platform).length +
-      1 +
+      uploadCount +
       hooksFor(hooks, 'postUpload', platform).length
     : 0;
-  const localSaveSteps = mode === 'buildOnly' ? 1 : 0;
+  const localSaveSteps = hasDestination(destinations, 'artifact') ? 1 : 0;
   return buildSteps + uploadSteps + localSaveSteps + 1;
 };
 
 const safeErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : 'An unexpected operation error occurred.';
+
+const resolveReleaseVersion = (
+  request: PreflightReleaseRequest,
+): ResolvedReleaseVersion | undefined => {
+  if (!includesBuild(request.mode) || request.version === undefined) return undefined;
+  const versionComponents = request.version.versionName.trim().split('.').map(Number);
+  const major = versionComponents[0];
+  const minor = versionComponents[1];
+  const patch = versionComponents[2];
+  if (major === undefined || minor === undefined || patch === undefined) {
+    throw new Error('The release version is incomplete.');
+  }
+  return {
+    androidVersionCode:
+      request.version.androidVersionCode === undefined
+        ? undefined
+        : request.version.androidVersionCode +
+          (request.version.incrementAndroidVersionCode ? 1 : 0),
+    iosBuildNumber:
+      request.version.iosBuildNumber === undefined
+        ? undefined
+        : request.version.iosBuildNumber + (request.version.incrementIosBuildNumber ? 1 : 0),
+    versionName: `${major}.${minor}.${patch + (request.version.incrementPatch ? 1 : 0)}`,
+  };
+};
 
 const readReportedPercent = (line: string): number | null => {
   const match = /(?:^|[\s[(])(\d{1,3})%(?:[\s\])]|$)/u.exec(line);
@@ -146,6 +181,8 @@ export class ReleaseRunner {
     private readonly applications: ApplicationRepository,
     private readonly history: RunHistoryRepository,
     private readonly firebaseCli: FirebaseCliIntegration,
+    private readonly googlePlay: GooglePlayIntegration,
+    private readonly appStoreConnect: AppStoreConnectIntegration,
     private readonly androidBuilder: AndroidBuilder,
     private readonly iosBuilder: IosBuilder,
     private readonly runsRootPath: string,
@@ -184,9 +221,26 @@ export class ReleaseRunner {
       if (includesBuild(planRequest.mode)) {
         if (platform === 'android' && application.android !== null) {
           await this.androidBuilder.resolveGradleWrapper(application.android);
+          await this.androidBuilder.validateVersionConfiguration(application.android);
+          const requiresSigning = hasDestination(planRequest.destinations, 'store') ||
+            (hasDestination(planRequest.destinations, 'artifact') && application.artifactGeneration.requiresAndroidSigning) ||
+            (hasDestination(planRequest.destinations, 'firebase') && application.firebaseDistribution.requiresAndroidSigning);
+          if (requiresSigning) {
+            if (application.androidSigning === null) throw new Error('Android signing configuration is required.');
+            await this.androidBuilder.validateSigningConfiguration(application.android, application.androidSigning);
+          }
         }
-        if (platform === 'ios') {
+        if (platform === 'ios' && application.ios !== null) {
           await this.iosBuilder.resolveXcodeBuild();
+          await this.iosBuilder.validateVersionConfiguration(application.ios);
+          if (
+            (hasDestination(planRequest.destinations, 'store') ||
+              (hasDestination(planRequest.destinations, 'artifact') && application.artifactGeneration.requiresIosSigning) ||
+              (hasDestination(planRequest.destinations, 'firebase') && application.firebaseDistribution.requiresIosSigning)) &&
+            (!application.iosSigning.isEnabled || application.iosSigning.developmentTeamId === '')
+          ) {
+            throw new Error('Automatic iOS signing and a development team ID are required.');
+          }
         }
       }
       const requestedArtifactPath =
@@ -203,6 +257,54 @@ export class ReleaseRunner {
               ? application.android.aabArtifactPath
               : application.android.artifactPath
             : configuration.artifactPath;
+      }
+      if (hasDestination(planRequest.destinations, 'store')) {
+        if (platform === 'android') {
+          if (application.android === null || application.googlePlay === null) {
+            throw new Error('Google Play distribution configuration is incomplete.');
+          }
+          await resolveExistingFile(application.googlePlay.serviceAccountPath, ['.json']);
+          await this.googlePlay.validateAccess(application.googlePlay, new AbortController().signal);
+          const artifactType = planRequest.mode === 'uploadOnly'
+            ? artifactPaths.android?.toLocaleLowerCase('en-US').endsWith('.aab') === true ? 'aab' : 'apk'
+            : planRequest.androidArtifactType ?? application.android.defaultArtifactType;
+          if (artifactType !== application.googlePlay.artifactType) {
+            throw new Error(`Google Play is configured for ${application.googlePlay.artifactType.toUpperCase()} artifacts.`);
+          }
+          if (planRequest.mode === 'uploadOnly' && artifactPaths.android !== undefined) {
+            await this.androidBuilder.verifySignature(application.android, artifactPaths.android, artifactType);
+          }
+        } else {
+          if (application.appStoreConnect === null) {
+            throw new Error('App Store Connect distribution configuration is incomplete.');
+          }
+          await resolveExistingFile(application.appStoreConnect.apiKeyPath, ['.p8']);
+          await this.appStoreConnect.validateAccess(application.appStoreConnect, new AbortController().signal);
+          if (planRequest.mode === 'uploadOnly') {
+            throw new Error('App Store Connect distribution requires a new Xcode archive so its signing can be verified before upload.');
+          }
+        }
+      }
+      if (
+        platform === 'android' &&
+        planRequest.mode === 'uploadOnly' &&
+        !hasDestination(planRequest.destinations, 'store') &&
+        hasDestination(planRequest.destinations, 'firebase') &&
+        application.firebaseDistribution.requiresAndroidSigning &&
+        application.android !== null &&
+        artifactPaths.android !== undefined
+      ) {
+        const artifactType = artifactPaths.android.toLocaleLowerCase('en-US').endsWith('.aab') ? 'aab' : 'apk';
+        await this.androidBuilder.verifySignature(application.android, artifactPaths.android, artifactType);
+      }
+      if (
+        platform === 'ios' &&
+        planRequest.mode === 'uploadOnly' &&
+        hasDestination(planRequest.destinations, 'firebase') &&
+        application.firebaseDistribution.requiresIosSigning &&
+        artifactPaths.ios !== undefined
+      ) {
+        await this.iosBuilder.verifyIpaSignature(artifactPaths.ios);
       }
       const relevantHooks = application.hooks.filter(
         (hook) =>
@@ -244,7 +346,28 @@ export class ReleaseRunner {
         severity: 'error',
       });
     }
-    const invalidGroup = includesUpload(request.mode)
+    if (new Set(request.destinations).size !== request.destinations.length) {
+      issues.push({ code: 'invalidConfiguration', message: 'The same destination cannot be selected more than once.', severity: 'error' });
+    }
+    for (const destination of request.destinations) {
+      const isConfigured = destination === 'artifact'
+        ? application.artifactGeneration.isEnabled && request.platforms.every((platform) =>
+            platform === 'android'
+              ? application.artifactGeneration.androidArtifactTypes.includes(
+                  request.androidArtifactType ?? application.android?.defaultArtifactType ?? 'apk',
+                )
+              : application.artifactGeneration.isIosIpaEnabled,
+          )
+        : destination === 'firebase'
+          ? application.firebaseDistribution.isEnabled
+          : request.platforms.every((platform) =>
+              platform === 'android' ? application.googlePlay !== null : application.appStoreConnect !== null,
+            );
+      if (!isConfigured) {
+        issues.push({ code: 'invalidConfiguration', message: `${destination === 'artifact' ? 'Artifact generation' : destination === 'firebase' ? 'Firebase App Distribution' : 'Store Distribution'} is not configured for the selected platforms.`, severity: 'error' });
+      }
+    }
+    const invalidGroup = hasDestination(request.destinations, 'firebase')
       ? request.distributionGroups.find((group) => !GROUP_ALIAS_PATTERN.test(group))
       : undefined;
     if (invalidGroup !== undefined) {
@@ -257,7 +380,7 @@ export class ReleaseRunner {
     }
     const artifactPaths: InternalReleasePlan['artifactPaths'] = {};
     let artifactOutputDirectoryPath: string | undefined;
-    if (request.mode === 'buildOnly') {
+    if (hasDestination(request.destinations, 'artifact')) {
       try {
         artifactOutputDirectoryPath = await resolveWritableDirectory(
           request.artifactOutputDirectoryPath ?? application.artifactOutputDirectoryPath ?? '',
@@ -276,8 +399,9 @@ export class ReleaseRunner {
         this.validatePlatform(request, application, platform, issues, artifactPaths),
       ),
     );
-    if (includesUpload(request.mode)) {
+    if (hasDestination(request.destinations, 'firebase')) {
       try {
+        if (application.serviceAccountPath === null) throw new Error('Firebase credentials are unavailable.');
         await resolveExistingFile(application.serviceAccountPath, ['.json']);
         if ((await this.firebaseCli.getExecutablePath()) === null) {
           issues.push({
@@ -307,7 +431,7 @@ export class ReleaseRunner {
     }
     const planId = randomUUID();
     const phaseCount = request.platforms.reduce(
-      (total, platform) => total + countPlatformSteps(application.hooks, request.mode, platform),
+      (total, platform) => total + countPlatformSteps(application.hooks, request.mode, platform, request.destinations),
       0,
     );
     const resolvedAndroidArtifactType = request.platforms.includes('android')
@@ -323,12 +447,14 @@ export class ReleaseRunner {
       applicationName: application.name,
       artifactOutputDirectoryPath,
       distributionGroups: [...request.distributionGroups],
+      destinations: [...request.destinations],
       expiresAt: new Date(Date.now() + PLAN_LIFETIME_MS).toISOString(),
       mode: request.mode,
       phaseCount,
       planId,
       platforms: [...request.platforms],
       releaseNotes: request.releaseNotes,
+      version: resolveReleaseVersion(request),
     };
     this.plans.set(planId, {
       application,
@@ -340,22 +466,32 @@ export class ReleaseRunner {
         platforms: [...request.platforms],
       },
     });
-    const warnings: ValidationIssue[] = application.hooks.some(
+    const warnings: ValidationIssue[] = includesBuild(request.mode)
+      ? [
+          {
+            code: 'invalidConfiguration',
+            field: 'version',
+            message: `Starting this pipeline will permanently update the selected ${request.platforms
+              .map((platform) => platform === 'android' ? 'Gradle' : 'Xcode')
+              .join(' and ')} project version ${request.platforms.length === 1 ? 'file' : 'files'}.`,
+            severity: 'warning',
+          },
+        ]
+      : [];
+    if (application.hooks.some(
       (hook) =>
         hook.isEnabled &&
         ((includesBuild(request.mode) &&
           (hook.phase === 'preBuild' || hook.phase === 'postBuild')) ||
           (includesUpload(request.mode) &&
             (hook.phase === 'preUpload' || hook.phase === 'postUpload'))),
-    )
-      ? [
-          {
-            code: 'invalidConfiguration',
-            message: 'Enabled custom pipeline commands will run in the selected working directories.',
-            severity: 'warning',
-          },
-        ]
-      : [];
+    )) {
+      warnings.push({
+        code: 'invalidConfiguration',
+        message: 'Enabled custom pipeline commands will run in the selected working directories.',
+        severity: 'warning',
+      });
+    }
     return { isValid: true, plan: publicPlan, warnings };
   }
 
@@ -399,7 +535,14 @@ export class ReleaseRunner {
     const startedAt = new Date().toISOString();
     const runWorkspacePath = path.join(this.runsRootPath, runId);
     await mkdir(runWorkspacePath, { mode: 0o700, recursive: true });
-    const redact = createRedactor([plan.application.serviceAccountPath]);
+    const redact = createRedactor([
+      plan.application.serviceAccountPath ?? '',
+      plan.application.androidSigning?.keystorePath ?? '',
+      plan.application.androidSigning?.storePassword ?? '',
+      plan.application.androidSigning?.keyPassword ?? '',
+      plan.application.googlePlay?.serviceAccountPath ?? '',
+      plan.application.appStoreConnect?.apiKeyPath ?? '',
+    ]);
     let sequence = 0;
     let completedPhases = 0;
     let lastEmittedPercent = 0;
@@ -525,15 +668,33 @@ export class ReleaseRunner {
         let failureArea: 'build' | 'upload' = includesBuild(plan.request.mode) ? 'build' : 'upload';
         const platformResult: PlatformReleaseResult = {
           buildStatus: includesBuild(plan.request.mode) ? 'failed' : 'notRequested',
+          firebaseStatus: hasDestination(plan.request.destinations, 'firebase') ? 'failed' : 'notRequested',
           platform,
+          storeStatus: hasDestination(plan.request.destinations, 'store') ? 'failed' : 'notRequested',
           uploadStatus: includesUpload(plan.request.mode) ? 'failed' : 'notRequested',
         };
         platformResults.push(platformResult);
         try {
           if (includesBuild(plan.request.mode)) {
+            await runStep('versioning', platform, 'Applying the confirmed release version.', async () => {
+              const version = plan.publicPlan.version;
+              if (version === undefined) {
+                throw new Error('The release version is missing from the confirmed plan.');
+              }
+              if (platform === 'android' && plan.application.android !== null) {
+                await this.androidBuilder.applyVersion(plan.application.android, version);
+              } else if (platform === 'ios' && plan.application.ios !== null) {
+                await this.iosBuilder.applyVersion(plan.application.ios, version);
+              } else {
+                throw new Error('Platform version configuration was not found.');
+              }
+            });
             await runHooks('preBuild', platform);
             await runStep('build', platform, `${platform === 'android' ? 'Android' : 'iOS'} build started.`, async (reportActivity) => {
               if (platform === 'android' && plan.application.android !== null) {
+                const requiresSigning = hasDestination(plan.request.destinations, 'store') ||
+                  (hasDestination(plan.request.destinations, 'artifact') && plan.application.artifactGeneration.requiresAndroidSigning) ||
+                  (hasDestination(plan.request.destinations, 'firebase') && plan.application.firebaseDistribution.requiresAndroidSigning);
                 artifactPath = await this.androidBuilder.build(
                   plan.application.android,
                   plan.publicPlan.androidArtifactType ?? plan.application.android.defaultArtifactType,
@@ -542,8 +703,12 @@ export class ReleaseRunner {
                     reportActivity(line);
                     emitLog(line, level === 'error' ? 'error' : 'info', platform);
                   },
+                  requiresSigning ? plan.application.androidSigning ?? undefined : undefined,
                 );
               } else if (platform === 'ios' && plan.application.ios !== null) {
+                const requiresSigning = hasDestination(plan.request.destinations, 'store') ||
+                  (hasDestination(plan.request.destinations, 'artifact') && plan.application.artifactGeneration.requiresIosSigning) ||
+                  (hasDestination(plan.request.destinations, 'firebase') && plan.application.firebaseDistribution.requiresIosSigning);
                 artifactPath = await this.iosBuilder.build(
                   plan.application.ios,
                   path.join(runWorkspacePath, 'ios'),
@@ -551,6 +716,10 @@ export class ReleaseRunner {
                   ({ level, line }) => {
                     reportActivity(line);
                     emitLog(line, level === 'error' ? 'error' : 'info', platform);
+                  },
+                  {
+                    appStoreConnect: plan.application.appStoreConnect ?? undefined,
+                    signing: requiresSigning ? plan.application.iosSigning : undefined,
                   },
                 );
               } else {
@@ -570,7 +739,7 @@ export class ReleaseRunner {
             );
             platformResult.artifactPath = artifactPath;
           });
-          if (plan.request.mode === 'buildOnly') {
+          if (hasDestination(plan.request.destinations, 'artifact')) {
             await runStep('saving', platform, 'Saving artifact to the selected output directory.', async () => {
               if (artifactPath === undefined || plan.publicPlan.artifactOutputDirectoryPath === undefined) {
                 throw new Error('The local artifact output configuration is incomplete.');
@@ -585,13 +754,31 @@ export class ReleaseRunner {
               platformResult.artifactPath = artifactPath;
             });
           }
-          if (includesUpload(plan.request.mode)) {
+          if (hasDestination(plan.request.destinations, 'firebase') || hasDestination(plan.request.destinations, 'store')) {
             failureArea = 'upload';
             await runHooks('preUpload', platform);
-            await runStep('upload', platform, 'Firebase App Distribution upload started.', async (reportActivity) => {
+          }
+          const uploadFailures: string[] = [];
+          const attemptUpload = async (operation: () => Promise<void>): Promise<void> => {
+            try {
+              await operation();
+            } catch (error) {
+              if (abortController.signal.aborted) throw error;
+              const message = safeErrorMessage(error);
+              uploadFailures.push(message);
+              emitLog(message, 'error', platform);
+            }
+          };
+          if (hasDestination(plan.request.destinations, 'firebase')) {
+            await attemptUpload(() => runStep('upload', platform, 'Firebase App Distribution upload started.', async (reportActivity) => {
               const platformConfiguration =
                 platform === 'android' ? plan.application.android : plan.application.ios;
-              if (platformConfiguration === null || artifactPath === undefined) {
+              if (
+                platformConfiguration === null ||
+                platformConfiguration.firebaseAppId === null ||
+                plan.application.serviceAccountPath === null ||
+                artifactPath === undefined
+              ) {
                 throw new Error('Upload configuration is incomplete.');
               }
               const uploadedArtifactPath = artifactPath;
@@ -614,25 +801,70 @@ export class ReleaseRunner {
               } catch (error) {
                 uploadError = error;
               }
-              if (plan.request.mode === 'buildAndUpload') {
-                try {
-                  await rm(uploadedArtifactPath, { force: true });
-                  artifactPath = undefined;
-                  platformResult.artifactPath = undefined;
-                  emitLog('Temporary build artifact removed after Firebase distribution.', 'info', platform);
-                } catch (cleanupError) {
-                  const cleanupMessage = `The temporary build artifact could not be deleted: ${safeErrorMessage(cleanupError)}`;
-                  throw uploadError === undefined
-                    ? new Error(cleanupMessage)
-                    : new Error(`${safeErrorMessage(uploadError)} ${cleanupMessage}`);
-                }
-              }
               if (uploadError !== undefined) {
                 throw uploadError;
               }
-              platformResult.uploadStatus = 'succeeded';
-            });
+              platformResult.firebaseStatus = 'succeeded';
+            }));
+          }
+          if (
+            hasDestination(plan.request.destinations, 'store') &&
+            platform === 'android'
+          ) {
+            await attemptUpload(() => runStep('storeUpload', platform, 'Google Play internal testing upload started.', async () => {
+              if (artifactPath === undefined || plan.application.googlePlay === null) {
+                throw new Error('Google Play upload configuration is incomplete.');
+              }
+              await this.googlePlay.upload({
+                artifactPath,
+                configuration: plan.application.googlePlay,
+                releaseName: `${plan.application.name} ${plan.publicPlan.version?.versionName ?? ''}`.trim(),
+                releaseNotes: plan.request.releaseNotes,
+                signal: abortController.signal,
+              });
+              platformResult.storeStatus = 'succeeded';
+            }));
+          }
+          if (
+            hasDestination(plan.request.destinations, 'store') &&
+            platform === 'ios'
+          ) {
+            await attemptUpload(() => runStep('storeUpload', platform, 'App Store Connect upload started.', async (reportActivity) => {
+              if (plan.application.ios === null || plan.application.appStoreConnect === null) {
+                throw new Error('App Store Connect upload configuration is incomplete.');
+              }
+              await this.iosBuilder.uploadArchiveToAppStore(
+                plan.application.ios,
+                path.join(runWorkspacePath, 'ios'),
+                plan.application.appStoreConnect,
+                abortController.signal,
+                ({ level, line }) => {
+                  reportActivity(line);
+                  emitLog(line, level === 'error' ? 'error' : 'info', platform);
+                },
+              );
+              platformResult.storeStatus = 'succeeded';
+            }));
+          }
+          if (hasDestination(plan.request.destinations, 'firebase') || hasDestination(plan.request.destinations, 'store')) {
+            platformResult.uploadStatus =
+              platformResult.firebaseStatus !== 'failed' && platformResult.storeStatus !== 'failed'
+                ? 'succeeded'
+                : 'failed';
             await runHooks('postUpload', platform);
+          }
+          if (uploadFailures.length > 0) {
+            throw new Error(uploadFailures.join(' '));
+          }
+          if (
+            includesBuild(plan.request.mode) &&
+            !hasDestination(plan.request.destinations, 'artifact') &&
+            artifactPath !== undefined
+          ) {
+            await rm(artifactPath, { force: true });
+            artifactPath = undefined;
+            platformResult.artifactPath = undefined;
+            emitLog('Temporary build artifact removed after distribution.', 'info', platform);
           }
           emitLog('Platform pipeline completed.', 'info', platform);
         } catch (error) {
@@ -662,11 +894,16 @@ export class ReleaseRunner {
           result.buildStatus !== 'failed' &&
           result.uploadStatus !== 'failed',
       ).length;
+      const hasAnySuccess = platformResults.some((result) =>
+        result.buildStatus === 'succeeded' ||
+        result.firebaseStatus === 'succeeded' ||
+        result.storeStatus === 'succeeded',
+      );
       const outcome: ReleaseResult['outcome'] = isCancelled
         ? 'cancelled'
         : succeededPlatforms === platformResults.length
           ? 'succeeded'
-          : succeededPlatforms > 0
+          : succeededPlatforms > 0 || hasAnySuccess
             ? 'partiallySucceeded'
             : 'failed';
       const result: ReleaseResult = {

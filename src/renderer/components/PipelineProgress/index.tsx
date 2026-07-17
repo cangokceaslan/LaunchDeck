@@ -12,15 +12,17 @@ const phaseLabels: Record<string, string> = {
   preBuild: 'Before build',
   preUpload: 'Before upload',
   saving: 'Save artifact',
+  storeUpload: 'Store upload',
   upload: 'Firebase upload',
   validating: 'Validation',
   verifying: 'Artifact verification',
+  versioning: 'Version update',
 };
 
 const toStageKey = (phase: string | null | undefined): string | null =>
-  phase === 'preBuild' || phase === 'postBuild'
+  phase === 'versioning' || phase === 'preBuild' || phase === 'postBuild'
     ? 'build'
-    : phase === 'preUpload' || phase === 'postUpload'
+    : phase === 'preUpload' || phase === 'postUpload' || phase === 'storeUpload'
       ? 'upload'
       : phase ?? null;
 

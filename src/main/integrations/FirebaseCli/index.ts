@@ -28,10 +28,10 @@ export class FirebaseCliIntegration {
     if (executablePath === null) {
       return {
         code: 'firebaseCli',
-        detail: 'Firebase CLI was not found. Run “npm install -g firebase-tools” in a terminal, then check again.',
-        isBlocking: true,
+        detail: 'Firebase CLI was not found. Firebase App Distribution is unavailable; artifact and store workflows remain available.',
+        isBlocking: false,
         label: 'Firebase CLI',
-        status: 'failed',
+        status: 'warning',
       };
     }
     const outputLines: string[] = [];
@@ -46,15 +46,15 @@ export class FirebaseCliIntegration {
       return {
         code: 'firebaseCli',
         detail: 'Firebase CLI ran, but its version information could not be retrieved.',
-        isBlocking: true,
+        isBlocking: false,
         label: 'Firebase CLI',
-        status: 'failed',
+        status: 'warning',
       };
     }
     return {
       code: 'firebaseCli',
       detail: `Ready: ${executablePath}`,
-      isBlocking: true,
+      isBlocking: false,
       label: 'Firebase CLI',
       status: 'passed',
       version: outputLines.at(-1)?.trim() || 'Unknown',

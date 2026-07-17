@@ -1,4 +1,5 @@
-import { access, lstat, readFile, realpath, stat } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { access, lstat, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { constants } from 'node:fs';
 
@@ -92,4 +93,25 @@ export const readStringProperty = (
 ): string | null => {
   const property = record[propertyName];
   return typeof property === 'string' && property.trim() !== '' ? property.trim() : null;
+};
+
+export const replaceTextFileAtomically = async (
+  filePath: string,
+  contents: string,
+): Promise<void> => {
+  const resolvedPath = await resolveExistingFile(filePath);
+  await access(resolvedPath, constants.W_OK);
+  const fileStats = await stat(resolvedPath);
+  const temporaryPath = `${resolvedPath}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, contents, {
+      encoding: 'utf8',
+      flag: 'wx',
+      mode: fileStats.mode & 0o777,
+    });
+    await rename(temporaryPath, resolvedPath);
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
 };

@@ -201,6 +201,24 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     [{ extensions: ['json'], name: 'JSON' }],
   );
   registerPicker(
+    IPC_CHANNELS.pathChooseGooglePlayServiceAccount,
+    ['openFile'],
+    'Select Google Play service account JSON',
+    [{ extensions: ['json'], name: 'JSON' }],
+  );
+  registerPicker(
+    IPC_CHANNELS.pathChooseAndroidKeystore,
+    ['openFile'],
+    'Select Android signing keystore',
+    [{ extensions: ['jks', 'keystore'], name: 'Android keystore' }],
+  );
+  registerPicker(
+    IPC_CHANNELS.pathChooseAppStoreConnectApiKey,
+    ['openFile'],
+    'Select App Store Connect API key',
+    [{ extensions: ['p8'], name: 'App Store Connect API key' }],
+  );
+  registerPicker(
     IPC_CHANNELS.pathChooseGoogleServicesJson,
     ['openFile'],
     'Select google-services.json',

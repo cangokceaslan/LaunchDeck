@@ -34,7 +34,7 @@ export const ApplicationDetail = ({
         <div className={styles.titleGroup}>
           <span className={styles.initial}>{application.name.slice(0, 1).toLocaleUpperCase('en-US')}</span>
           <div>
-            <span className={styles.eyebrow}>{application.firebaseProjectId}</span>
+            <span className={styles.eyebrow}>{application.firebaseProjectId || 'Local and store release configuration'}</span>
             <h1>{application.name}</h1>
             <div className={styles.platforms}>
               {application.platforms.map((platform) => (
@@ -51,14 +51,18 @@ export const ApplicationDetail = ({
 
       <div className={styles.summaryGrid}>
         <section className={styles.summaryCard}>
-          <span>Service Account</span>
-          <strong>{application.serviceAccountFileName}</strong>
-          <small>Encrypted path in secure storage</small>
+          <span>Release destinations</span>
+          <strong>{[
+            application.artifactGeneration.isEnabled ? 'Artifact' : null,
+            application.firebaseDistribution.isEnabled ? 'Firebase' : null,
+            application.googlePlay !== null || application.appStoreConnect !== null ? 'Store' : null,
+          ].filter(Boolean).join(' + ')}</strong>
+          <small>Only configured destinations appear in a pipeline</small>
         </section>
         <section className={styles.summaryCard}>
-          <span>Tester groups</span>
-          <strong>{application.distributionGroups.length}</strong>
-          <small>{application.distributionGroups.join(', ')}</small>
+          <span>Signing</span>
+          <strong>{application.androidSigning !== null || application.iosSigning.isEnabled ? 'Configured' : 'Not required'}</strong>
+          <small>{application.androidSigning?.keystoreFileName ?? (application.iosSigning.isEnabled ? `Apple team ${application.iosSigning.developmentTeamId}` : 'No managed signing')}</small>
         </section>
         <section className={styles.summaryCard}>
           <span>Custom pipeline steps</span>
@@ -77,7 +81,7 @@ export const ApplicationDetail = ({
               <h3>Android</h3>
               <dl>
                 <div><dt>Project</dt><dd>{application.android.projectPath}</dd></div>
-                <div><dt>Google Services</dt><dd>{application.android.googleServicesJsonPath}</dd></div>
+                <div><dt>Google Services</dt><dd>{application.android.googleServicesJsonPath ?? 'Not configured'}</dd></div>
                 <div><dt>Default artifact</dt><dd>{application.android.defaultArtifactType.toUpperCase()}</dd></div>
                 <div><dt>APK Gradle task</dt><dd>{application.android.gradleTask}</dd></div>
                 <div><dt>APK source</dt><dd>{application.android.artifactPath}</dd></div>
@@ -94,14 +98,18 @@ export const ApplicationDetail = ({
                 <div><dt>Workspace / Project</dt><dd>{application.ios.workspaceOrProjectPath}</dd></div>
                 <div><dt>Scheme</dt><dd>{application.ios.scheme}</dd></div>
                 <div><dt>Artifact</dt><dd>{application.ios.artifactPath}</dd></div>
+                <div><dt>Google Services</dt><dd>{application.ios.googleServiceInfoPlistPath ?? 'Not configured'}</dd></div>
               </dl>
             </article>
           )}
           <article>
-            <h3>Local output</h3>
+            <h3>Distribution</h3>
             <dl>
+              <div><dt>Firebase</dt><dd>{application.firebaseDistribution.isEnabled ? `${application.serviceAccountFileName} · ${application.distributionGroups.join(', ')}` : 'Disabled'}</dd></div>
+              <div><dt>Google Play</dt><dd>{application.googlePlay === null ? 'Disabled' : `${application.googlePlay.initialTrack} · ${application.googlePlay.artifactType.toUpperCase()}${application.googlePlay.promoteAfterUpload ? ` → ${application.googlePlay.promotionTrack}` : ''}`}</dd></div>
+              <div><dt>App Store Connect</dt><dd>{application.appStoreConnect === null ? 'Disabled' : `${application.appStoreConnect.apiKeyFileName} · TestFlight upload`}</dd></div>
               <div>
-                <dt>Directory</dt>
+                <dt>Artifact directory</dt>
                 <dd>{application.artifactOutputDirectoryPath ?? 'Selected during the first local pipeline'}</dd>
               </div>
             </dl>

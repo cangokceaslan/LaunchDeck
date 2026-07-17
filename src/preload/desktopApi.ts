@@ -6,17 +6,22 @@ import type { ReleaseEvent } from '@shared/contracts/release';
 export const desktopApi: DesktopApi = {
   cancelRelease: (runId) => ipcRenderer.invoke(IPC_CHANNELS.releaseCancel, runId),
   chooseAndroidArtifact: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidArtifact),
+  chooseAndroidKeystore: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidKeystore),
   chooseAndroidProjectDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidProject),
   chooseArtifactOutputDirectory: () =>
     ipcRenderer.invoke(IPC_CHANNELS.pathChooseArtifactOutputDirectory),
   chooseGoogleServiceInfoPlist: () =>
     ipcRenderer.invoke(IPC_CHANNELS.pathChooseGoogleServiceInfoPlist),
   chooseGoogleServicesJson: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseGoogleServicesJson),
+  chooseGooglePlayServiceAccount: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.pathChooseGooglePlayServiceAccount),
   chooseHookDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseHookDirectory),
   chooseIosArtifact: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseIosArtifact),
   chooseIosProjectDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseIosProject),
   chooseIosWorkspaceOrProject: () =>
     ipcRenderer.invoke(IPC_CHANNELS.pathChooseIosWorkspaceOrProject),
+  chooseAppStoreConnectApiKey: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.pathChooseAppStoreConnectApiKey),
   chooseServiceAccountFile: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseServiceAccount),
   clearRunHistory: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.historyClear, applicationId),
   createApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationCreate, request),

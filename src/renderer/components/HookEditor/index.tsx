@@ -1,5 +1,7 @@
 import { Button, Form } from 'react-bootstrap';
 import { PathField } from '@components/PathField';
+import { Select } from '@components/Inputs/Select';
+import { Switch } from '@components/Inputs/Switch';
 import type { HookEditorProps } from '@components/HookEditor/index.types';
 import type { PipelineHook } from '@shared/contracts/domain';
 import styles from '@components/HookEditor/index.module.scss';
@@ -52,11 +54,10 @@ export const HookEditor = ({
           {hooks.map((hook, index) => (
             <article className={styles.hookCard} key={hook.id}>
               <div className={styles.hookHeader}>
-                <Form.Check
+                <Switch
                   checked={hook.isEnabled}
                   label="Enabled"
-                  onChange={(event) => updateHook(index, { isEnabled: event.target.checked })}
-                  type="switch"
+                  onChange={(isEnabled) => updateHook(index, { isEnabled })}
                 />
                 <Button
                   aria-label={`Delete ${hook.name}`}
@@ -77,7 +78,7 @@ export const HookEditor = ({
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>Phase</Form.Label>
-                  <Form.Select
+                  <Select
                     onChange={(event) => {
                       if (isHookPhase(event.target.value)) updateHook(index, { phase: event.target.value });
                     }}
@@ -87,11 +88,11 @@ export const HookEditor = ({
                     <option value="postBuild">After build</option>
                     <option value="preUpload">Before upload</option>
                     <option value="postUpload">After upload</option>
-                  </Form.Select>
+                  </Select>
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>Platform</Form.Label>
-                  <Form.Select
+                  <Select
                     onChange={(event) => {
                       if (isHookPlatform(event.target.value)) updateHook(index, { platform: event.target.value });
                     }}
@@ -100,7 +101,7 @@ export const HookEditor = ({
                     <option value="all">All</option>
                     {supportedPlatforms.includes('android') && <option value="android">Android</option>}
                     {supportedPlatforms.includes('ios') && <option value="ios">iOS</option>}
-                  </Form.Select>
+                  </Select>
                 </Form.Group>
               </div>
               <PathField

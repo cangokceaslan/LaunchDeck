@@ -1,0 +1,35 @@
+.select {
+  appearance: none;
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+    linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 50%,
+    calc(100% - 11px) 50%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  display: block;
+  font: inherit;
+  min-height: 38px;
+  padding: var(--space-2) 34px var(--space-2) var(--space-3);
+  width: 100%;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-primary);
+  }
+
+  &:disabled {
+    background-color: var(--color-surface-subtle);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+    opacity: 0.72;
+  }
+}
+
+.invalid {
+  border-color: var(--color-danger);
+}

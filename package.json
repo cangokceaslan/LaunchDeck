@@ -57,7 +57,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "resources/launch-icon.png",
+      "icon": "resources/launch-icon-macos.png",
       "target": [
         "dmg",
         "zip"

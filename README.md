@@ -1,16 +1,20 @@
 # LaunchDeck
 
-LaunchDeck is a secure Electron desktop application for preparing Android and iOS release artifacts and distributing them through Firebase App Distribution. The product language is English (US).
+LaunchDeck is a secure Electron desktop application for preparing signed Android and iOS release artifacts and distributing them through Firebase App Distribution, Google Play, and App Store Connect. The product language is English (US).
 
 ## Core workflow
 
-1. At startup, Doctor verifies the Firebase CLI installation and platform capabilities.
-2. During initial setup, the user selects a service account JSON, mobile project directories, and Google Services files.
+1. At startup, Doctor reports optional distribution tools and platform capabilities. A missing Firebase CLI does not block artifact or store workflows.
+2. During initial setup, the user enables artifact generation, Firebase App Distribution, and/or Store Distribution. Only the matching configuration panels open.
 3. Optional commands can run before or after build and upload phases. Each command stores an executable file, an argument array, and a working directory.
-4. The release wizard collects the operation mode and platforms.
-5. The main process preflight validates tools, paths, credential access, artifact expectations, and platform support again.
-6. The pipeline displays phase-based progress, up to 500 redacted log lines, and per-platform outcomes.
-7. SQLite stores metadata for the 10 most recent releases. A migration-installed trigger removes older records automatically.
+4. The release wizard collects the operation mode, platforms, and manual release version values. Patch, Android version code, and iOS build number can be incremented independently.
+5. The main process preflight validates tools, paths, credential access, writable project version files, artifact expectations, and platform support again.
+6. Before pre-build commands run, the confirmed version permanently updates the Android module `build.gradle(.kts)` and Xcode `project.pbxproj` files.
+7. Android signing uses an encrypted keystore path, alias, and encrypted passwords; APK signatures are created and verified with `apksigner`, while AAB signatures use `jarsigner`.
+8. iOS uses Xcode automatic signing with a configured development team, verifies the archived app with `codesign`, and can upload through an App Store Connect `.p8` API key.
+9. Google Play uploads are committed to internal testing first and may be promoted through a separately configured second edit.
+10. The pipeline displays phase-based progress, up to 500 redacted log lines, and per-platform outcomes.
+11. SQLite stores metadata for the 10 most recent releases. A migration-installed trigger removes older records automatically.
 
 ## Platform support
 
@@ -25,13 +29,16 @@ iOS selection is blocked independently by both the renderer and the main process
 ## Requirements
 
 - Node.js 22.12 or later
-- Firebase CLI (`npm install -g firebase-tools`)
+- Firebase CLI (`npm install -g firebase-tools`) only when Firebase App Distribution is enabled
 - An executable Gradle wrapper in the Android project directory
 - macOS, Xcode Command Line Tools, a valid scheme, and automatic signing for iOS
-- A service account JSON with Firebase App Distribution access
+- A Firebase service account JSON when Firebase distribution is enabled
+- A JDK and Android SDK build-tools when LaunchDeck-managed Android signing is enabled
+- A Google Play service account granted Android Publisher access when Google Play distribution is enabled
+- An App Store Connect API `.p8` key, key ID, issuer ID, and Xcode signing team when App Store distribution is enabled
 - Secret Service or KWallet to encrypt the service account path on Linux
 
-Doctor does not allow access to the main application when Firebase CLI is missing. Missing Xcode tools do not block Android use; they mark iOS support as limited.
+Missing optional tools do not block unrelated workflows. Missing Xcode tools do not block Android use; they mark iOS support as limited.
 
 ## Setup
 

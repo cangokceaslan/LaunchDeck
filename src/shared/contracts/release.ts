@@ -1,16 +1,19 @@
 import type {
   AndroidArtifactType,
+  DistributionDestination,
   ReleaseMode,
   ReleasePlatform,
 } from '@shared/contracts/domain';
 
 export type ReleasePhase =
   | 'validating'
+  | 'versioning'
   | 'preBuild'
   | 'build'
   | 'postBuild'
   | 'preUpload'
   | 'upload'
+  | 'storeUpload'
   | 'postUpload'
   | 'saving'
   | 'verifying';
@@ -36,16 +39,33 @@ export type ValidationIssue = {
   severity: 'error' | 'warning';
 };
 
+export type ReleaseVersionInput = {
+  androidVersionCode?: number;
+  incrementAndroidVersionCode: boolean;
+  incrementIosBuildNumber: boolean;
+  incrementPatch: boolean;
+  iosBuildNumber?: number;
+  versionName: string;
+};
+
+export type ResolvedReleaseVersion = {
+  androidVersionCode?: number;
+  iosBuildNumber?: number;
+  versionName: string;
+};
+
 export type PreflightReleaseRequest = {
   androidArtifactType?: AndroidArtifactType;
   androidArtifactPath?: string;
   applicationId: string;
   artifactOutputDirectoryPath?: string;
   distributionGroups: string[];
+  destinations: DistributionDestination[];
   iosArtifactPath?: string;
   mode: ReleaseMode;
   platforms: ReleasePlatform[];
   releaseNotes: string;
+  version?: ReleaseVersionInput;
 };
 
 export type ResolvedReleasePlan = {
@@ -54,12 +74,14 @@ export type ResolvedReleasePlan = {
   applicationName: string;
   artifactOutputDirectoryPath?: string;
   distributionGroups: string[];
+  destinations: DistributionDestination[];
   expiresAt: string;
   mode: ReleaseMode;
   phaseCount: number;
   planId: string;
   platforms: ReleasePlatform[];
   releaseNotes: string;
+  version?: ResolvedReleaseVersion;
 };
 
 export type PreflightResult =
@@ -84,9 +106,11 @@ export type ReleaseLogEntry = {
 export type PlatformReleaseResult = {
   artifactPath?: string;
   buildStatus: 'notRequested' | 'succeeded' | 'failed';
+  firebaseStatus: 'notRequested' | 'succeeded' | 'failed';
   errorMessage?: string;
   failedPhase?: ReleasePhase;
   platform: ReleasePlatform;
+  storeStatus: 'notRequested' | 'succeeded' | 'failed';
   uploadStatus: 'notRequested' | 'succeeded' | 'failed';
 };
 
