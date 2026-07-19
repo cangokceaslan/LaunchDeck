@@ -16,7 +16,11 @@ const isApprovedExternalUrl = (targetUrl: string): boolean => {
 
 export const createMainWindow = async (options: MainWindowOptions): Promise<BrowserWindow> => {
   const developmentIconFilename =
-    process.platform === 'darwin' ? 'dev-icon-macos.png' : 'dev-icon.png';
+    process.platform === 'darwin'
+      ? 'dev-icon-macos.png'
+      : process.platform === 'win32'
+        ? 'dev-icon-windows.png'
+        : 'dev-icon.png';
   const developmentIconPath = path.join(process.cwd(), 'resources', developmentIconFilename);
   if (!app.isPackaged && process.platform === 'darwin') {
     app.dock?.setIcon(developmentIconPath);

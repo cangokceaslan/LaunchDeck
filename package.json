@@ -71,7 +71,7 @@
       ]
     },
     "win": {
-      "icon": "resources/launch-icon.png",
+      "icon": "resources/launch-icon-windows.png",
       "target": [
         "nsis"
       ]
