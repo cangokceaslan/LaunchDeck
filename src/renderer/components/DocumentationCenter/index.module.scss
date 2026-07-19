@@ -1,35 +1,48 @@
 .floatingButton {
+  appearance: none;
   align-items: center;
-  background: linear-gradient(145deg, var(--color-primary), var(--color-primary-strong));
-  border: 3px solid var(--color-surface);
-  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+  border: 2px solid var(--color-surface);
+  border-radius: 20px;
   bottom: var(--space-5);
   box-shadow: var(--shadow-soft);
   color: var(--color-on-primary);
   cursor: pointer;
-  display: flex;
-  height: 52px;
-  justify-content: center;
+  display: grid;
+  font-family: var(--font-sans);
+  gap: 10px;
+  grid-template-columns: 42px minmax(0, 1fr) 26px;
+  height: 62px;
+  isolation: isolate;
+  min-width: 194px;
+  overflow: hidden;
+  padding: 8px 10px 8px 8px;
   position: fixed;
   right: var(--space-5);
+  text-align: left;
   transition:
-    background var(--motion-fast),
     box-shadow var(--motion-fast),
     transform var(--motion-fast);
-  width: 52px;
   z-index: 1020;
 
-  &::after {
-    border: 1px solid var(--color-primary);
-    border-radius: inherit;
+  &::before {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-primary-soft),
+      transparent
+    );
     content: '';
-    inset: -7px;
-    opacity: 0.28;
+    height: 140%;
+    left: -42%;
+    opacity: 0.48;
     pointer-events: none;
     position: absolute;
-    transition:
-      inset var(--motion-fast),
-      opacity var(--motion-fast);
+    top: -20%;
+    transform: skewX(-18deg);
+    transition: transform var(--motion-fast);
+    width: 38%;
+    z-index: 0;
   }
 
   &:hover,
@@ -37,65 +50,92 @@
     box-shadow: var(--shadow-focus), var(--shadow-soft);
     transform: translateY(-3px);
 
-    &::after {
-      inset: -5px;
-      opacity: 0.55;
+    &::before {
+      transform: translateX(370%) skewX(-18deg);
     }
 
-    .floatingLabel {
-      opacity: 1;
-      transform: translateX(0);
-      visibility: visible;
+    .floatingIcon {
+      transform: rotate(-4deg) scale(1.04);
+    }
+
+    .floatingArrow {
+      transform: translateX(2px);
     }
   }
 
   &:active {
-    transform: translateY(-1px) scale(0.97);
+    transform: translateY(-1px) scale(0.985);
+  }
+
+  > span {
+    position: relative;
+    z-index: 1;
   }
 }
 
 .floatingIcon {
   align-items: center;
   background: var(--color-surface);
-  border-radius: 50%;
+  border: 1px solid var(--color-primary-soft);
+  border-radius: 14px;
   color: var(--color-primary-strong);
   display: flex;
-  height: 34px;
+  height: 42px;
   justify-content: center;
-  width: 34px;
+  transition: transform var(--motion-fast);
+  width: 42px;
 
   svg {
     fill: none;
-    height: 21px;
+    height: 23px;
     stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
-    stroke-width: 2;
-    width: 21px;
+    stroke-width: 1.8;
+    width: 23px;
   }
 }
 
-.floatingLabel {
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  box-shadow: var(--shadow-soft);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  font-size: 0.7rem;
-  font-weight: 700;
-  opacity: 0;
-  padding: 7px 10px;
-  pointer-events: none;
-  position: absolute;
-  right: calc(100% + var(--space-3));
-  transform: translateX(6px);
-  transition:
-    opacity var(--motion-fast),
-    transform var(--motion-fast),
-    visibility var(--motion-fast);
-  visibility: hidden;
-  white-space: nowrap;
+.floatingCopy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  strong {
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  small {
+    font-size: 0.62rem;
+    font-weight: 600;
+    line-height: 1.25;
+    margin-top: 2px;
+    opacity: 0.78;
+  }
+}
+
+.floatingArrow {
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  display: flex;
+  height: 26px;
+  justify-content: center;
+  opacity: 0.72;
+  transition: transform var(--motion-fast);
+  width: 26px;
+
+  svg {
+    fill: none;
+    height: 14px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+    width: 14px;
+  }
 }
 
 .modal {

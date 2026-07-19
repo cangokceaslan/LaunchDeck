@@ -72,7 +72,7 @@ All screenshots use the fictional **Northstar Mobile** fixture. They contain fix
 
 ## In-app documentation
 
-LaunchDeck includes this complete guide inside the desktop application. Select the circular **?** button in the lower-right corner of any workspace view to open the full-screen Help Center. The current screen and any active release pipeline remain mounted behind the Help Center, so closing it returns you to the same state.
+LaunchDeck includes this complete guide inside the desktop application. Select the gradient **Need help?** button in the lower-right corner of any workspace view to open the full-screen Help Center. The current screen and any active release pipeline remain mounted behind the Help Center, so closing it returns you to the same state.
 
 ![LaunchDeck in-app documentation center](images/screenshots/documentation-center.png)
 
