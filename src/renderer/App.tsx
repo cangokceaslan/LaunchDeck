@@ -286,10 +286,12 @@ export const App = (): React.JSX.Element => {
   };
 
   const supportedPlatforms: ReleasePlatform[] = doctorReport?.supportedPlatforms ?? ['android'];
+  const setupApplication =
+    view === 'detail' || view === 'edit' || view === 'release' ? selectedApplication : null;
 
   return (
     <WindowFrame
-      application={selectedApplication}
+      application={setupApplication}
       doctorError={doctorError}
       doctorReport={doctorReport}
       fileSystemPermissionError={fileSystemPermissionError}

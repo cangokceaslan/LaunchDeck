@@ -80,6 +80,7 @@
     gap: var(--space-4);
   }
 
+  .generalSection,
   .permissionSection {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -122,6 +123,46 @@
     display: grid;
     gap: var(--space-2);
     padding: var(--space-4);
+  }
+
+  .generalChecks {
+    background: var(--color-surface-subtle);
+    border-top: 1px solid var(--color-border);
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+
+  .generalCheck {
+    align-items: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    gap: var(--space-3);
+    justify-content: space-between;
+    padding: var(--space-3);
+
+    > div {
+      min-width: 0;
+    }
+
+    strong {
+      font-size: 0.78rem;
+    }
+
+    span {
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      margin-left: var(--space-2);
+    }
+
+    p {
+      color: var(--color-text-muted);
+      font-size: 0.72rem;
+      margin: 2px 0 0;
+    }
   }
 
   .permissionTarget {
@@ -296,6 +337,8 @@
   }
 
   @media (max-width: 680px) {
+    .generalSection > header,
+    .generalCheck,
     .permissionSection > header,
     .permissionTarget {
       align-items: flex-start;

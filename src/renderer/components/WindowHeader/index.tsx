@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { SetupGuideModal } from '@components/SetupGuideModal';
-import { resolveSetupWorkflows } from '@components/SetupGuideModal/index.utils';
+import {
+  isGeneralSetupReady,
+  resolveSetupWorkflows,
+} from '@components/SetupGuideModal/index.utils';
 import type { WindowHeaderProps } from '@components/WindowHeader/index.types';
 import launchIcon from '@renderer/assets/launch-icon.png';
 import devIcon from '@renderer/assets/dev-icon.png';
@@ -22,13 +25,14 @@ export const WindowHeader = ({
   const [isSetupGuideOpen, setIsSetupGuideOpen] = useState(false);
   const workflows = resolveSetupWorkflows(doctorReport, application);
   const hasReadyWorkflow = workflows.some((workflow) => workflow.isReady);
+  const isGeneralReady = isGeneralSetupReady(doctorReport, fileSystemPermissionState);
   const needsPermissionReview =
     fileSystemPermissionState !== null &&
     fileSystemPermissionState.platform !== 'unsupported' &&
     !fileSystemPermissionState.hasReviewed;
   const setupTone = isCheckingDoctor || fileSystemPermissionState === null
     ? styles.setupChecking
-    : hasReadyWorkflow && !needsPermissionReview
+    : (application === null ? isGeneralReady : hasReadyWorkflow && !needsPermissionReview)
       ? styles.setupReady
       : styles.setupNeeded;
 

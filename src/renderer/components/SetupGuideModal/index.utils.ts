@@ -1,5 +1,6 @@
 import type { ApplicationDetail } from '@shared/contracts/domain';
-import type { DoctorCheckCode, DoctorReport } from '@shared/contracts/doctor';
+import type { DoctorCheck, DoctorCheckCode, DoctorReport } from '@shared/contracts/doctor';
+import type { FileSystemPermissionState } from '@shared/contracts/permissions';
 import type {
   SetupRequirement,
   SetupWorkflowSummary,
@@ -7,6 +8,24 @@ import type {
 
 const hasPassedCheck = (report: DoctorReport | null, code: DoctorCheckCode): boolean =>
   report?.checks.some((check) => check.code === code && check.status === 'passed') === true;
+
+export const resolveGeneralSetupChecks = (report: DoctorReport | null): DoctorCheck[] =>
+  report?.checks.filter((check) => check.code !== 'xcode' || report.os === 'darwin') ?? [];
+
+export const isGeneralSetupReady = (
+  report: DoctorReport | null,
+  permissionState: FileSystemPermissionState | null,
+): boolean => {
+  if (report === null || permissionState === null) return false;
+  const hasReviewedPermissions =
+    permissionState.platform === 'unsupported' || permissionState.hasReviewed;
+  const checks = resolveGeneralSetupChecks(report);
+  return (
+    hasReviewedPermissions &&
+    checks.length > 0 &&
+    checks.every((check) => check.status === 'passed')
+  );
+};
 
 const applicationRequirement = (application: ApplicationDetail | null): SetupRequirement[] =>
   application === null

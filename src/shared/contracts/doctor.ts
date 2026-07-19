@@ -1,4 +1,9 @@
-export type DoctorCheckCode = 'firebaseCli' | 'xcode' | 'platform';
+export type DoctorCheckCode =
+  | 'androidSdk'
+  | 'firebaseCli'
+  | 'java'
+  | 'platform'
+  | 'xcode';
 
 export type DoctorCheck = {
   code: DoctorCheckCode;
