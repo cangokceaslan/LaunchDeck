@@ -1,8 +1,8 @@
 .switch {
   -webkit-app-region: no-drag;
   align-self: center;
-  background: var(--color-sidebar-hover);
-  border: 1px solid var(--color-sidebar-divider);
+  background: var(--color-header-hover);
+  border: 1px solid var(--color-header-divider);
   border-radius: 999px;
   display: grid;
   flex: 0 0 auto;
@@ -39,12 +39,12 @@
     }
 
     &:checked + .option {
-      color: var(--color-sidebar-accent);
+      color: var(--color-header-accent);
     }
   }
 
   label:hover .option {
-    color: var(--color-on-sidebar);
+    color: var(--color-on-header);
   }
 }
 
@@ -59,8 +59,8 @@
 }
 
 .indicator {
-  background: var(--color-sidebar-accent-soft);
-  border: 1px solid var(--color-sidebar-accent-border);
+  background: var(--color-header-accent-soft);
+  border: 1px solid var(--color-header-accent-border);
   border-radius: 999px;
   height: 28px;
   left: 2px;
@@ -73,7 +73,7 @@
 .option {
   align-items: center;
   border-radius: 999px;
-  color: var(--color-sidebar-muted);
+  color: var(--color-header-muted);
   display: flex;
   height: 28px;
   justify-content: center;

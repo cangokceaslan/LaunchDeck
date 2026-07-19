@@ -2,13 +2,14 @@
   background: var(--color-background);
   color: var(--color-text);
   display: grid;
-  grid-template-columns: 256px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
 
   .sidebar {
     background: var(--color-sidebar);
+    border-right: 1px solid var(--color-sidebar-divider);
     box-shadow: var(--shadow-sidebar);
     color: var(--color-on-sidebar);
     display: flex;
@@ -16,7 +17,7 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    padding: var(--space-3);
+    padding: var(--space-4) var(--space-3) var(--space-3);
     position: relative;
     z-index: 1;
 
@@ -24,7 +25,7 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding-right: 2px;
+      padding-right: var(--space-1);
       scrollbar-color: var(--color-sidebar-divider) transparent;
       scrollbar-width: thin;
 
@@ -34,7 +35,7 @@
         color: var(--color-sidebar-muted);
         display: flex;
         justify-content: space-between;
-        padding: var(--space-1) var(--space-2) var(--space-3);
+        padding: 0 var(--space-2) var(--space-4);
         position: sticky;
         top: 0;
         z-index: 2;
@@ -44,30 +45,36 @@
           background: transparent;
           border: 0;
           color: var(--color-on-sidebar);
+          cursor: pointer;
           display: flex;
-          font-size: 0.73rem;
+          font-size: 0.78rem;
           font-weight: 700;
           gap: var(--space-2);
-          letter-spacing: 0.04em;
+          letter-spacing: 0.01em;
           padding: 0;
-          text-transform: uppercase;
 
           .applicationsIcon {
             align-items: center;
             background: var(--color-sidebar-hover);
             border: 1px solid var(--color-sidebar-divider);
-            border-radius: 7px;
+            border-radius: var(--radius-sm);
             color: var(--color-sidebar-accent);
             display: flex;
-            height: 25px;
+            height: 28px;
             justify-content: center;
-            width: 25px;
+            transition: background var(--motion-fast), border-color var(--motion-fast);
+            width: 28px;
 
             svg {
               fill: currentColor;
-              height: 11px;
-              width: 11px;
+              height: 12px;
+              width: 12px;
             }
+          }
+
+          &:hover .applicationsIcon {
+            background: var(--color-sidebar-accent-soft);
+            border-color: var(--color-sidebar-accent-border);
           }
         }
 
@@ -77,10 +84,10 @@
           border-radius: 999px;
           color: var(--color-sidebar-muted);
           font-family: var(--font-mono);
-          font-size: 0.62rem;
+          font-size: 0.64rem;
           line-height: 1;
-          min-width: 23px;
-          padding: 5px 6px;
+          min-width: 25px;
+          padding: 5px 7px;
           text-align: center;
         }
       }
@@ -89,12 +96,14 @@
         align-items: center;
         background: transparent;
         border: 1px solid transparent;
-        border-radius: var(--radius-md);
+        border-radius: 10px;
         color: var(--color-on-sidebar);
+        cursor: pointer;
         display: flex;
         gap: var(--space-3);
-        margin-bottom: 4px;
-        padding: 9px;
+        margin-bottom: 3px;
+        min-height: 50px;
+        padding: 7px 9px;
         position: relative;
         text-align: left;
         transition: background var(--motion-fast), border-color var(--motion-fast);
@@ -113,8 +122,8 @@
             background: var(--color-sidebar-accent);
             border-radius: 999px;
             content: '';
-            height: 20px;
-            left: -4px;
+            height: 22px;
+            left: -5px;
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
@@ -126,15 +135,15 @@
           align-items: center;
           background: var(--color-sidebar-accent-soft);
           border: 1px solid var(--color-sidebar-accent-border);
-          border-radius: 9px;
+          border-radius: 10px;
           color: var(--color-sidebar-accent);
           display: flex;
           flex: 0 0 auto;
           font-weight: 700;
-          height: 38px;
+          height: 36px;
           justify-content: center;
           overflow: hidden;
-          width: 38px;
+          width: 36px;
 
           img {
             height: 100%;
@@ -149,7 +158,7 @@
           min-width: 0;
 
           strong {
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-weight: 650;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -158,7 +167,7 @@
 
           small {
             color: var(--color-sidebar-muted);
-            font-size: 0.72rem;
+            font-size: 0.69rem;
             margin-top: 2px;
           }
         }
@@ -192,11 +201,22 @@
 
       .addButton {
         align-items: center;
+        background: var(--color-sidebar-accent-soft);
+        border-color: var(--color-sidebar-accent-border);
+        color: var(--color-sidebar-accent);
         display: flex;
+        font-weight: 650;
         gap: var(--space-2);
         justify-content: center;
-        min-height: 36px;
+        min-height: 38px;
         width: 100%;
+
+        &:hover,
+        &:focus-visible {
+          background: var(--color-sidebar-accent);
+          border-color: var(--color-sidebar-accent);
+          color: var(--color-on-primary);
+        }
 
         svg {
           fill: none;
@@ -219,6 +239,6 @@
   }
 
   @media (max-width: 1100px) {
-    grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-columns: 220px minmax(0, 1fr);
   }
 }
