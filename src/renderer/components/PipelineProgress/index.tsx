@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Button, ProgressBar } from 'react-bootstrap';
+import { Button, ProgressBar, Spinner } from 'react-bootstrap';
 import { StatusPill } from '@components/StatusPill';
 import { formatOutcome, formatPlatform } from '@renderer/utils/formatting';
 import type { PipelineProgressProps } from '@components/PipelineProgress/index.types';
@@ -189,20 +189,26 @@ export const PipelineProgress = ({
       <div className={styles.progressOverview}>
         <div className={styles.percentBlock}>
           <div className={styles.percentValue}>
-            <span
-              aria-hidden="true"
-              className={
-                result === null
-                  ? styles.signalRunning
-                  : result.outcome === 'succeeded'
-                    ? styles.signalSuccess
-                    : result.outcome === 'cancelled'
-                      ? styles.signalCancelled
-                      : styles.signalFailed
-              }
-            >
-              {result === null ? <i className={styles.activitySpinner} /> : result.outcome === 'succeeded' ? '✓' : result.outcome === 'cancelled' ? '–' : '×'}
-            </span>
+            {result === null
+              ? (
+                  <Spinner animation="border" className={styles.progressSpinner} role="status" size="sm">
+                    <span className="visually-hidden">Pipeline running</span>
+                  </Spinner>
+                )
+              : (
+                  <span
+                    aria-hidden="true"
+                    className={
+                      result.outcome === 'succeeded'
+                        ? styles.signalSuccess
+                        : result.outcome === 'cancelled'
+                          ? styles.signalCancelled
+                          : styles.signalFailed
+                    }
+                  >
+                    {result.outcome === 'succeeded' ? '✓' : result.outcome === 'cancelled' ? '–' : '×'}
+                  </span>
+                )}
             <strong>{percent}%</strong>
           </div>
           <small>

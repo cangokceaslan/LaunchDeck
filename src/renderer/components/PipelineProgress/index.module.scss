@@ -84,7 +84,6 @@
         margin-top: var(--space-2);
       }
 
-      .signalRunning,
       .signalSuccess,
       .signalFailed,
       .signalCancelled {
@@ -100,8 +99,9 @@
         width: 28px;
       }
 
-      .signalRunning {
+      .progressSpinner {
         color: var(--color-primary-strong);
+        flex: 0 0 auto;
       }
 
       .signalSuccess {
