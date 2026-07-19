@@ -65,10 +65,13 @@
     },
     "files": [
       "out/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/better-sqlite3/build/Release/.forge-meta",
+      "!node_modules/better-sqlite3/build/Release/sqlite3.a",
+      "!node_modules/better-sqlite3/build/Release/test_extension.node"
     ],
     "asarUnpack": [
-      "node_modules/better-sqlite3/**/*"
+      "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
     ],
     "mac": {
       "artifactName": "${productName}-${version}-macos-${arch}.${ext}",
