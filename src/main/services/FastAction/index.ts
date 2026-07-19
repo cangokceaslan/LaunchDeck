@@ -107,7 +107,19 @@ export class FastActionService {
       mode: configuration.mode,
       platforms: [...configuration.platforms],
       releaseNotes: configuration.releaseNotes,
-      version: configuration.version === undefined ? undefined : { ...configuration.version },
+      version:
+        configuration.version === undefined
+          ? undefined
+          : {
+              android:
+                configuration.version.android === undefined
+                  ? undefined
+                  : { ...configuration.version.android },
+              ios:
+                configuration.version.ios === undefined
+                  ? undefined
+                  : { ...configuration.version.ios },
+            },
     };
   }
 

@@ -39,19 +39,38 @@ export type ValidationIssue = {
   severity: 'error' | 'warning';
 };
 
-export type ReleaseVersionInput = {
-  androidVersionCode?: number;
-  incrementAndroidVersionCode: boolean;
-  incrementIosBuildNumber: boolean;
+export type AndroidReleaseVersionInput = {
+  incrementVersionCode: boolean;
   incrementPatch: boolean;
-  iosBuildNumber?: number;
+  versionCode: number;
+  versionName: string;
+};
+
+export type IosReleaseVersionInput = {
+  buildNumber: number;
+  incrementBuildNumber: boolean;
+  incrementPatch: boolean;
+  versionName: string;
+};
+
+export type ReleaseVersionInput = {
+  android?: AndroidReleaseVersionInput;
+  ios?: IosReleaseVersionInput;
+};
+
+export type ResolvedAndroidReleaseVersion = {
+  versionCode: number;
+  versionName: string;
+};
+
+export type ResolvedIosReleaseVersion = {
+  buildNumber: number;
   versionName: string;
 };
 
 export type ResolvedReleaseVersion = {
-  androidVersionCode?: number;
-  iosBuildNumber?: number;
-  versionName: string;
+  android?: ResolvedAndroidReleaseVersion;
+  ios?: ResolvedIosReleaseVersion;
 };
 
 export type PreflightReleaseRequest = {

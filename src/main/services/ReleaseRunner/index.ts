@@ -205,24 +205,42 @@ const resolveReleaseVersion = (
   request: PreflightReleaseRequest,
 ): ResolvedReleaseVersion | undefined => {
   if (!includesBuild(request.mode) || request.version === undefined) return undefined;
-  const versionComponents = request.version.versionName.trim().split('.').map(Number);
-  const major = versionComponents[0];
-  const minor = versionComponents[1];
-  const patch = versionComponents[2];
-  if (major === undefined || minor === undefined || patch === undefined) {
-    throw new Error('The release version is incomplete.');
-  }
+  const resolveVersionName = (versionName: string, incrementPatch: boolean): string => {
+    const versionComponents = versionName.trim().split('.').map(Number);
+    const major = versionComponents[0];
+    const minor = versionComponents[1];
+    const patch = versionComponents[2];
+    if (major === undefined || minor === undefined || patch === undefined) {
+      throw new Error('The release version is incomplete.');
+    }
+    return `${major}.${minor}.${patch + (incrementPatch ? 1 : 0)}`;
+  };
+
   return {
-    androidVersionCode:
-      request.version.androidVersionCode === undefined
+    android:
+      request.version.android === undefined
         ? undefined
-        : request.version.androidVersionCode +
-          (request.version.incrementAndroidVersionCode ? 1 : 0),
-    iosBuildNumber:
-      request.version.iosBuildNumber === undefined
+        : {
+            versionCode:
+              request.version.android.versionCode +
+              (request.version.android.incrementVersionCode ? 1 : 0),
+            versionName: resolveVersionName(
+              request.version.android.versionName,
+              request.version.android.incrementPatch,
+            ),
+          },
+    ios:
+      request.version.ios === undefined
         ? undefined
-        : request.version.iosBuildNumber + (request.version.incrementIosBuildNumber ? 1 : 0),
-    versionName: `${major}.${minor}.${patch + (request.version.incrementPatch ? 1 : 0)}`,
+        : {
+            buildNumber:
+              request.version.ios.buildNumber +
+              (request.version.ios.incrementBuildNumber ? 1 : 0),
+            versionName: resolveVersionName(
+              request.version.ios.versionName,
+              request.version.ios.incrementPatch,
+            ),
+          },
   };
 };
 
@@ -516,6 +534,19 @@ export class ReleaseRunner {
         artifactSigningPlatforms: [...request.artifactSigningPlatforms],
         distributionGroups: [...request.distributionGroups],
         platforms: [...request.platforms],
+        version:
+          request.version === undefined
+            ? undefined
+            : {
+                android:
+                  request.version.android === undefined
+                    ? undefined
+                    : { ...request.version.android },
+                ios:
+                  request.version.ios === undefined
+                    ? undefined
+                    : { ...request.version.ios },
+              },
       },
     });
     const warnings: ValidationIssue[] = includesBuild(request.mode)
@@ -743,13 +774,17 @@ export class ReleaseRunner {
         try {
           if (includesBuild(plan.request.mode)) {
             await runStep('versioning', platform, 'Applying the confirmed release version.', async () => {
-              const version = plan.publicPlan.version;
-              if (version === undefined) {
-                throw new Error('The release version is missing from the confirmed plan.');
-              }
               if (platform === 'android' && plan.application.android !== null) {
+                const version = plan.publicPlan.version?.android;
+                if (version === undefined) {
+                  throw new Error('The Android version is missing from the confirmed plan.');
+                }
                 await this.androidBuilder.applyVersion(plan.application.android, version);
               } else if (platform === 'ios' && plan.application.ios !== null) {
+                const version = plan.publicPlan.version?.ios;
+                if (version === undefined) {
+                  throw new Error('The iOS version is missing from the confirmed plan.');
+                }
                 await this.iosBuilder.applyVersion(plan.application.ios, version);
               } else {
                 throw new Error('Platform version configuration was not found.');
@@ -888,7 +923,7 @@ export class ReleaseRunner {
               await this.googlePlay.upload({
                 artifactPath,
                 configuration: plan.application.googlePlay,
-                releaseName: `${plan.application.name} ${plan.publicPlan.version?.versionName ?? ''}`.trim(),
+                releaseName: `${plan.application.name} ${plan.publicPlan.version?.android?.versionName ?? ''}`.trim(),
                 releaseNotes: plan.request.releaseNotes,
                 signal: abortController.signal,
               });

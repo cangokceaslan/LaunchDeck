@@ -69,17 +69,27 @@ const getFastAction = (intent: ReleasePipelineIntent) =>
 const createVersionForm = (
   configuration: FastActionConfiguration | null,
 ): ReleaseVersionForm => {
-  const versionName = configuration?.version?.versionName.split('.') ?? [];
+  const androidVersionName = configuration?.version?.android?.versionName.split('.') ?? [];
+  const iosVersionName = configuration?.version?.ios?.versionName.split('.') ?? [];
   return {
-    androidVersionCode: String(configuration?.version?.androidVersionCode ?? 1),
-    incrementAndroidVersionCode:
-      configuration?.version?.incrementAndroidVersionCode ?? false,
-    incrementIosBuildNumber: configuration?.version?.incrementIosBuildNumber ?? false,
-    incrementPatch: configuration?.version?.incrementPatch ?? false,
-    iosBuildNumber: String(configuration?.version?.iosBuildNumber ?? 1),
-    major: versionName[0] ?? '1',
-    minor: versionName[1] ?? '0',
-    patch: versionName[2] ?? '0',
+    android: {
+      incrementPatch: configuration?.version?.android?.incrementPatch ?? false,
+      incrementVersionCode:
+        configuration?.version?.android?.incrementVersionCode ?? false,
+      major: androidVersionName[0] ?? '1',
+      minor: androidVersionName[1] ?? '0',
+      patch: androidVersionName[2] ?? '0',
+      versionCode: String(configuration?.version?.android?.versionCode ?? 1),
+    },
+    ios: {
+      buildNumber: String(configuration?.version?.ios?.buildNumber ?? 1),
+      incrementBuildNumber:
+        configuration?.version?.ios?.incrementBuildNumber ?? false,
+      incrementPatch: configuration?.version?.ios?.incrementPatch ?? false,
+      major: iosVersionName[0] ?? '1',
+      minor: iosVersionName[1] ?? '0',
+      patch: iosVersionName[2] ?? '0',
+    },
   };
 };
 

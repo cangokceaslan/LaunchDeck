@@ -20,7 +20,7 @@ import {
   resolveExistingFile,
 } from '@main/utils/FileSystem';
 import { runExecutable } from '@main/utils/ChildProcess';
-import type { ResolvedReleaseVersion } from '@shared/contracts/release';
+import type { ResolvedIosReleaseVersion } from '@shared/contracts/release';
 
 const MAX_SCHEME_OUTPUT_LENGTH = 1024 * 1024;
 const MAX_BUILD_SETTINGS_OUTPUT_LENGTH = 4 * 1024 * 1024;
@@ -319,11 +319,8 @@ export class IosBuilder {
 
   public async applyVersion(
     configuration: IosConfiguration,
-    version: ResolvedReleaseVersion,
+    version: ResolvedIosReleaseVersion,
   ): Promise<void> {
-    if (version.iosBuildNumber === undefined) {
-      throw new Error('The iOS build number is missing from the release plan.');
-    }
     const versionFile = await resolveVersionFile(configuration);
     const withMarketingVersion = versionFile.contents.replace(
       MARKETING_VERSION_PATTERN,
@@ -331,7 +328,7 @@ export class IosBuilder {
     );
     const updatedContents = withMarketingVersion.replace(
       BUILD_NUMBER_PATTERN,
-      (_match, prefix: string, suffix: string) => `${prefix}${version.iosBuildNumber}${suffix}`,
+      (_match, prefix: string, suffix: string) => `${prefix}${version.buildNumber}${suffix}`,
     );
     await replaceTextFileAtomically(versionFile.path, updatedContents);
   }

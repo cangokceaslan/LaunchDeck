@@ -1,7 +1,9 @@
 import { Form } from 'react-bootstrap';
 import { Switch } from '@components/Inputs/Switch';
 import type {
-  ReleaseVersionForm,
+  AndroidReleaseVersionForm,
+  IosReleaseVersionForm,
+  SemanticVersionForm,
   VersionConfigurationProps,
 } from '@components/VersionConfiguration/index.types';
 import { isReleaseBuildNumber, isReleaseVersionName } from '@shared/validation';
@@ -21,27 +23,91 @@ const resolveCounterPreview = (counter: string, shouldIncrement: boolean): strin
   return String(Number(counter) + (shouldIncrement ? 1 : 0));
 };
 
+type VersionNameFieldsProps = {
+  form: SemanticVersionForm;
+  idPrefix: 'android' | 'ios';
+  onComponentChange: (key: 'major' | 'minor' | 'patch', value: string) => void;
+  onIncrementChange: (isChecked: boolean) => void;
+};
+
+const resolveVersionNamePreview = (
+  form: SemanticVersionForm,
+): { isValid: boolean; target: string } => {
+  const base = `${form.major}.${form.minor}.${form.patch}`;
+  const target = isReleaseVersionName(base)
+    ? `${form.major}.${form.minor}.${Number(form.patch) + (form.incrementPatch ? 1 : 0)}`
+    : base;
+  return { isValid: isReleaseVersionName(target), target };
+};
+
+const VersionNameFields = ({
+  form,
+  idPrefix,
+  onComponentChange,
+  onIncrementChange,
+}: VersionNameFieldsProps): React.JSX.Element => {
+  const preview = resolveVersionNamePreview(form);
+
+  return (
+    <fieldset>
+      <legend>Version name</legend>
+      <div className={styles.semanticVersion}>
+        {VERSION_COMPONENTS.map(({ key, label }) => (
+          <Form.Group key={key}>
+            <Form.Label>{label}</Form.Label>
+            <Form.Control
+              aria-invalid={!preview.isValid}
+              inputMode="numeric"
+              isInvalid={!preview.isValid}
+              max={2_147_483_647}
+              min={0}
+              onChange={(event) => onComponentChange(key, event.target.value)}
+              required
+              step={1}
+              type="number"
+              value={form[key]}
+            />
+          </Form.Group>
+        ))}
+      </div>
+      <Switch
+        checked={form.incrementPatch}
+        id={`increment-${idPrefix}-release-patch`}
+        label="Increment patch automatically"
+        onChange={onIncrementChange}
+      />
+      <output className={styles.targetValue}>Target: {preview.target}</output>
+      {preview.isValid ? (
+        <small>Only patch can increment automatically. Major and minor remain manual.</small>
+      ) : (
+        <small className={styles.invalidMessage}>Enter three valid whole numbers.</small>
+      )}
+    </fieldset>
+  );
+};
+
 export const VersionConfiguration = ({
   form,
   onChange,
   platforms,
 }: VersionConfigurationProps): React.JSX.Element => {
-  const update = <Key extends keyof ReleaseVersionForm,>(
+  const updateAndroid = <Key extends keyof AndroidReleaseVersionForm,>(
     key: Key,
-    value: ReleaseVersionForm[Key],
-  ): void => onChange({ ...form, [key]: value });
-  const baseVersionName = `${form.major}.${form.minor}.${form.patch}`;
-  const targetVersionName = isReleaseVersionName(baseVersionName)
-    ? `${form.major}.${form.minor}.${Number(form.patch) + (form.incrementPatch ? 1 : 0)}`
-    : baseVersionName;
-  const isVersionNameValid = isReleaseVersionName(targetVersionName);
+    value: AndroidReleaseVersionForm[Key],
+  ): void => onChange({ ...form, android: { ...form.android, [key]: value } });
+  const updateIos = <Key extends keyof IosReleaseVersionForm,>(
+    key: Key,
+    value: IosReleaseVersionForm[Key],
+  ): void => onChange({ ...form, ios: { ...form.ios, [key]: value } });
+  const androidVersionName = resolveVersionNamePreview(form.android);
+  const iosVersionName = resolveVersionNamePreview(form.ios);
   const targetAndroidVersionCode = resolveCounterPreview(
-    form.androidVersionCode,
-    form.incrementAndroidVersionCode,
+    form.android.versionCode,
+    form.android.incrementVersionCode,
   );
   const targetIosBuildNumber = resolveCounterPreview(
-    form.iosBuildNumber,
-    form.incrementIosBuildNumber,
+    form.ios.buildNumber,
+    form.ios.incrementBuildNumber,
   );
   const isAndroidVersionCodeValid = isReleaseBuildNumber(targetAndroidVersionCode);
   const isIosBuildNumberValid = isReleaseBuildNumber(targetIosBuildNumber);
@@ -50,109 +116,114 @@ export const VersionConfiguration = ({
     <section aria-labelledby="release-version-heading" className={styles.versionCard}>
       <header>
         <div>
-          <h3 id="release-version-heading">Release version</h3>
-          <p>These values are written to the selected projects before pre-build commands run.</p>
+          <h3 id="release-version-heading">Platform versions</h3>
+          <p>Each selected platform keeps an independent version and build counter.</p>
         </div>
-        <code>
-          {baseVersionName}
-          {form.incrementPatch && isVersionNameValid ? ` → ${targetVersionName}` : ''}
-        </code>
       </header>
 
-      <div className={styles.versionFields}>
-        <fieldset>
-          <legend>Version name</legend>
-          <div className={styles.semanticVersion}>
-            {VERSION_COMPONENTS.map(({ key, label }) => (
-              <Form.Group key={key}>
-                <Form.Label>{label}</Form.Label>
-                <Form.Control
-                  aria-invalid={!isVersionNameValid}
-                  inputMode="numeric"
-                  isInvalid={!isVersionNameValid}
-                  max={2_147_483_647}
-                  min={0}
-                  onChange={(event) => update(key, event.target.value)}
-                  required
-                  step={1}
-                  type="number"
-                  value={form[key]}
-                />
-              </Form.Group>
-            ))}
-          </div>
-          <Switch
-            checked={form.incrementPatch}
-            id="increment-release-patch"
-            label="Increment patch automatically"
-            onChange={(isChecked) => update('incrementPatch', isChecked)}
-          />
-          <output className={styles.targetValue}>Target: {targetVersionName}</output>
-          {isVersionNameValid
-            ? <small>Only patch can increment automatically. Major and minor remain manual.</small>
-            : <small className={styles.invalidMessage}>Enter three valid whole numbers.</small>}
-        </fieldset>
-
+      <div className={styles.platformVersions}>
         {platforms.includes('android') && (
-          <fieldset>
-            <legend>Android</legend>
-            <Form.Group>
-              <Form.Label>Version code</Form.Label>
-              <Form.Control
-                aria-invalid={!isAndroidVersionCodeValid}
-                inputMode="numeric"
-                isInvalid={!isAndroidVersionCodeValid}
-                max={2_147_483_647}
-                min={1}
-                onChange={(event) => update('androidVersionCode', event.target.value)}
-                required
-                step={1}
-                type="number"
-                value={form.androidVersionCode}
+          <article className={styles.platformVersion}>
+            <header>
+              <div>
+                <span>Android</span>
+                <h4>Android version</h4>
+              </div>
+              <code>{androidVersionName.target}</code>
+            </header>
+            <div className={styles.versionFields}>
+              <VersionNameFields
+                form={form.android}
+                idPrefix="android"
+                onComponentChange={(key, value) => updateAndroid(key, value)}
+                onIncrementChange={(isChecked) => updateAndroid('incrementPatch', isChecked)}
               />
-            </Form.Group>
-            <Switch
-              checked={form.incrementAndroidVersionCode}
-              id="increment-android-version-code"
-              label="Increment version code automatically"
-              onChange={(isChecked) => update('incrementAndroidVersionCode', isChecked)}
-            />
-            <output className={styles.targetValue}>Target: {targetAndroidVersionCode}</output>
-            {isAndroidVersionCodeValid
-              ? <small>Updates the literal versionCode in the Android module build file.</small>
-              : <small className={styles.invalidMessage}>Enter a whole number greater than zero.</small>}
-          </fieldset>
+              <fieldset>
+                <legend>Version code</legend>
+                <Form.Group>
+                  <Form.Label>Current value</Form.Label>
+                  <Form.Control
+                    aria-invalid={!isAndroidVersionCodeValid}
+                    inputMode="numeric"
+                    isInvalid={!isAndroidVersionCodeValid}
+                    max={2_147_483_647}
+                    min={1}
+                    onChange={(event) => updateAndroid('versionCode', event.target.value)}
+                    required
+                    step={1}
+                    type="number"
+                    value={form.android.versionCode}
+                  />
+                </Form.Group>
+                <Switch
+                  checked={form.android.incrementVersionCode}
+                  id="increment-android-version-code"
+                  label="Increment version code automatically"
+                  onChange={(isChecked) => updateAndroid('incrementVersionCode', isChecked)}
+                />
+                <output className={styles.targetValue}>Target: {targetAndroidVersionCode}</output>
+                {isAndroidVersionCodeValid ? (
+                  <small>Updates the literal versionCode in the Android module build file.</small>
+                ) : (
+                  <small className={styles.invalidMessage}>
+                    Enter a whole number greater than zero.
+                  </small>
+                )}
+              </fieldset>
+            </div>
+          </article>
         )}
 
         {platforms.includes('ios') && (
-          <fieldset>
-            <legend>iOS</legend>
-            <Form.Group>
-              <Form.Label>Build number</Form.Label>
-              <Form.Control
-                aria-invalid={!isIosBuildNumberValid}
-                inputMode="numeric"
-                isInvalid={!isIosBuildNumberValid}
-                max={2_147_483_647}
-                min={1}
-                onChange={(event) => update('iosBuildNumber', event.target.value)}
-                required
-                step={1}
-                type="number"
-                value={form.iosBuildNumber}
+          <article className={styles.platformVersion}>
+            <header>
+              <div>
+                <span>iOS</span>
+                <h4>iOS version</h4>
+              </div>
+              <code>{iosVersionName.target}</code>
+            </header>
+            <div className={styles.versionFields}>
+              <VersionNameFields
+                form={form.ios}
+                idPrefix="ios"
+                onComponentChange={(key, value) => updateIos(key, value)}
+                onIncrementChange={(isChecked) => updateIos('incrementPatch', isChecked)}
               />
-            </Form.Group>
-            <Switch
-              checked={form.incrementIosBuildNumber}
-              id="increment-ios-build-number"
-              label="Increment build number automatically"
-              onChange={(isChecked) => update('incrementIosBuildNumber', isChecked)}
-            />
-            <output className={styles.targetValue}>Target: {targetIosBuildNumber}</output>
-            {isIosBuildNumberValid
-              ? <small>Updates MARKETING_VERSION and CURRENT_PROJECT_VERSION in Xcode.</small>
-              : <small className={styles.invalidMessage}>Enter a whole number greater than zero.</small>}
-          </fieldset>
+              <fieldset>
+                <legend>Build number</legend>
+                <Form.Group>
+                  <Form.Label>Current value</Form.Label>
+                  <Form.Control
+                    aria-invalid={!isIosBuildNumberValid}
+                    inputMode="numeric"
+                    isInvalid={!isIosBuildNumberValid}
+                    max={2_147_483_647}
+                    min={1}
+                    onChange={(event) => updateIos('buildNumber', event.target.value)}
+                    required
+                    step={1}
+                    type="number"
+                    value={form.ios.buildNumber}
+                  />
+                </Form.Group>
+                <Switch
+                  checked={form.ios.incrementBuildNumber}
+                  id="increment-ios-build-number"
+                  label="Increment build number automatically"
+                  onChange={(isChecked) => updateIos('incrementBuildNumber', isChecked)}
+                />
+                <output className={styles.targetValue}>Target: {targetIosBuildNumber}</output>
+                {isIosBuildNumberValid ? (
+                  <small>Updates MARKETING_VERSION and CURRENT_PROJECT_VERSION in Xcode.</small>
+                ) : (
+                  <small className={styles.invalidMessage}>
+                    Enter a whole number greater than zero.
+                  </small>
+                )}
+              </fieldset>
+            </div>
+          </article>
         )}
       </div>
     </section>

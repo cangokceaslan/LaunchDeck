@@ -14,7 +14,7 @@ import {
 } from '@main/utils/FileSystem';
 import { runExecutable } from '@main/utils/ChildProcess';
 import { findExecutable } from '@main/utils/Executable';
-import type { ResolvedReleaseVersion } from '@shared/contracts/release';
+import type { ResolvedAndroidReleaseVersion } from '@shared/contracts/release';
 
 const MAX_VERSION_FILE_BYTES = 2 * 1024 * 1024;
 const VERSION_CODE_PATTERN = /^([ \t]*versionCode[ \t]*(?:=[ \t]*)?)(\d+)([ \t]*(?:\/\/[^\r\n]*)?\r?)$/gmu;
@@ -328,16 +328,13 @@ export class AndroidBuilder {
 
   public async applyVersion(
     configuration: AndroidConfiguration,
-    version: ResolvedReleaseVersion,
+    version: ResolvedAndroidReleaseVersion,
   ): Promise<void> {
-    if (version.androidVersionCode === undefined) {
-      throw new Error('The Android version code is missing from the release plan.');
-    }
     const versionFile = await resolveVersionFile(configuration);
     const withVersionCode = versionFile.contents.replace(
       VERSION_CODE_PATTERN,
       (_match, prefix: string, _currentVersionCode: string, suffix: string) =>
-        `${prefix}${version.androidVersionCode}${suffix}`,
+        `${prefix}${version.versionCode}${suffix}`,
     );
     const updatedContents = withVersionCode.replace(
       VERSION_NAME_PATTERN,

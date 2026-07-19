@@ -18,24 +18,66 @@ const readRequiredString = (record: Record<string, unknown>, key: string): strin
   return value;
 };
 
+const migrateLegacyVersionConfiguration = (configuration: unknown): unknown => {
+  if (!isRecord(configuration) || !isRecord(configuration.version)) return configuration;
+  const legacyVersion = configuration.version;
+  if ('android' in legacyVersion || 'ios' in legacyVersion) return configuration;
+  if (
+    typeof legacyVersion.versionName !== 'string' ||
+    typeof legacyVersion.incrementPatch !== 'boolean' ||
+    !Array.isArray(configuration.platforms)
+  ) {
+    return configuration;
+  }
+
+  const migratedVersion: Record<string, unknown> = {};
+  if (
+    configuration.platforms.includes('android') &&
+    typeof legacyVersion.androidVersionCode === 'number' &&
+    typeof legacyVersion.incrementAndroidVersionCode === 'boolean'
+  ) {
+    migratedVersion.android = {
+      incrementPatch: legacyVersion.incrementPatch,
+      incrementVersionCode: legacyVersion.incrementAndroidVersionCode,
+      versionCode: legacyVersion.androidVersionCode,
+      versionName: legacyVersion.versionName,
+    };
+  }
+  if (
+    configuration.platforms.includes('ios') &&
+    typeof legacyVersion.iosBuildNumber === 'number' &&
+    typeof legacyVersion.incrementIosBuildNumber === 'boolean'
+  ) {
+    migratedVersion.ios = {
+      buildNumber: legacyVersion.iosBuildNumber,
+      incrementBuildNumber: legacyVersion.incrementIosBuildNumber,
+      incrementPatch: legacyVersion.incrementPatch,
+      versionName: legacyVersion.versionName,
+    };
+  }
+  return { ...configuration, version: migratedVersion };
+};
+
 const parseFastAction = (row: unknown): FastAction => {
   if (!isRecord(row)) {
     throw new Error('Invalid SQLite fast action record.');
   }
   const serializedConfiguration = readRequiredString(row, 'configuration_json');
   const parsedConfiguration: unknown = JSON.parse(serializedConfiguration);
+  const configurationWithMigratedVersion =
+    migrateLegacyVersionConfiguration(parsedConfiguration);
   const configurationWithSigningSelection =
-    isRecord(parsedConfiguration) &&
-    !('artifactSigningPlatforms' in parsedConfiguration) &&
-    parsedConfiguration.mode !== 'uploadOnly' &&
-    Array.isArray(parsedConfiguration.destinations) &&
-    parsedConfiguration.destinations.includes('artifact') &&
-    Array.isArray(parsedConfiguration.platforms)
+    isRecord(configurationWithMigratedVersion) &&
+    !('artifactSigningPlatforms' in configurationWithMigratedVersion) &&
+    configurationWithMigratedVersion.mode !== 'uploadOnly' &&
+    Array.isArray(configurationWithMigratedVersion.destinations) &&
+    configurationWithMigratedVersion.destinations.includes('artifact') &&
+    Array.isArray(configurationWithMigratedVersion.platforms)
       ? {
-          ...parsedConfiguration,
-          artifactSigningPlatforms: parsedConfiguration.platforms,
+          ...configurationWithMigratedVersion,
+          artifactSigningPlatforms: configurationWithMigratedVersion.platforms,
         }
-      : parsedConfiguration;
+      : configurationWithMigratedVersion;
   return {
     applicationId: readRequiredString(row, 'application_id'),
     configuration: fastActionConfigurationSchema.parse(configurationWithSigningSelection),

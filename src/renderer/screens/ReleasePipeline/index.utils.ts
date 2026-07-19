@@ -1,6 +1,9 @@
 import type { ApplicationDetail, ReleasePlatform } from '@shared/contracts/domain';
 import type { ReleaseVersionInput, ResolvedReleaseVersion } from '@shared/contracts/release';
-import type { ReleaseVersionForm } from '@components/VersionConfiguration/index.types';
+import type {
+  ReleaseVersionForm,
+  SemanticVersionForm,
+} from '@components/VersionConfiguration/index.types';
 import { isReleaseBuildNumber, isReleaseVersionName } from '@shared/validation';
 
 export const isArtifactSigningConfigured = (
@@ -27,45 +30,62 @@ const resolveIncrementedNumber = (numberText: string, shouldIncrement: boolean):
   return isReleaseBuildNumber(String(resolvedNumber)) ? baseNumber : null;
 };
 
+const resolveVersionName = (form: SemanticVersionForm): string | null => {
+  const baseVersionName = `${form.major}.${form.minor}.${form.patch}`;
+  if (!isReleaseVersionName(baseVersionName)) return null;
+  const resolvedPatch = Number(form.patch) + (form.incrementPatch ? 1 : 0);
+  return isReleaseVersionName(`${form.major}.${form.minor}.${resolvedPatch}`)
+    ? baseVersionName
+    : null;
+};
+
 export const resolveReleaseVersionInput = (
   form: ReleaseVersionForm,
   platforms: ReleasePlatform[],
 ): ReleaseVersionInput | null => {
-  const baseVersionName = `${form.major}.${form.minor}.${form.patch}`;
-  if (!isReleaseVersionName(baseVersionName)) return null;
-  const resolvedPatch = Number(form.patch) + (form.incrementPatch ? 1 : 0);
-  if (!isReleaseVersionName(`${form.major}.${form.minor}.${resolvedPatch}`)) return null;
-
-  const androidVersionCode = platforms.includes('android')
-    ? resolveIncrementedNumber(form.androidVersionCode, form.incrementAndroidVersionCode)
-    : undefined;
-  const iosBuildNumber = platforms.includes('ios')
-    ? resolveIncrementedNumber(form.iosBuildNumber, form.incrementIosBuildNumber)
-    : undefined;
-  if (
-    (platforms.includes('android') && androidVersionCode === null) ||
-    (platforms.includes('ios') && iosBuildNumber === null)
-  ) {
-    return null;
+  let android: ReleaseVersionInput['android'];
+  if (platforms.includes('android')) {
+    const versionName = resolveVersionName(form.android);
+    const versionCode = resolveIncrementedNumber(
+      form.android.versionCode,
+      form.android.incrementVersionCode,
+    );
+    if (versionName === null || versionCode === null) return null;
+    android = {
+      incrementPatch: form.android.incrementPatch,
+      incrementVersionCode: form.android.incrementVersionCode,
+      versionCode,
+      versionName,
+    };
   }
 
-  return {
-    androidVersionCode: androidVersionCode ?? undefined,
-    incrementAndroidVersionCode:
-      platforms.includes('android') && form.incrementAndroidVersionCode,
-    incrementIosBuildNumber: platforms.includes('ios') && form.incrementIosBuildNumber,
-    incrementPatch: form.incrementPatch,
-    iosBuildNumber: iosBuildNumber ?? undefined,
-    versionName: baseVersionName,
-  };
+  let ios: ReleaseVersionInput['ios'];
+  if (platforms.includes('ios')) {
+    const versionName = resolveVersionName(form.ios);
+    const buildNumber = resolveIncrementedNumber(
+      form.ios.buildNumber,
+      form.ios.incrementBuildNumber,
+    );
+    if (versionName === null || buildNumber === null) return null;
+    ios = {
+      buildNumber,
+      incrementBuildNumber: form.ios.incrementBuildNumber,
+      incrementPatch: form.ios.incrementPatch,
+      versionName,
+    };
+  }
+
+  return { android, ios };
 };
 
 export const formatResolvedVersion = (version: ResolvedReleaseVersion): string => {
   const platformVersions = [
-    version.androidVersionCode === undefined
+    version.android === undefined
       ? null
-      : `Android versionCode ${version.androidVersionCode}`,
-    version.iosBuildNumber === undefined ? null : `iOS build ${version.iosBuildNumber}`,
+      : `Android ${version.android.versionName} · versionCode ${version.android.versionCode}`,
+    version.ios === undefined
+      ? null
+      : `iOS ${version.ios.versionName} · build ${version.ios.buildNumber}`,
   ].filter((label): label is string => label !== null);
-  return `${version.versionName} · ${platformVersions.join(' · ')}`;
+  return platformVersions.join(' · ');
 };

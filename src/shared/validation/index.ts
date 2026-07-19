@@ -30,16 +30,16 @@ export const isReleaseVersionName = (versionName: string): boolean =>
 export const isReleaseBuildNumber = (buildNumber: string): boolean =>
   /^[1-9]\d*$/u.test(buildNumber) && Number(buildNumber) <= MAX_BUILD_NUMBER;
 
-const releaseVersionInputSchema = z
+const versionNameSchema = z.string().trim().refine(isReleaseVersionName, {
+  message: 'Version must contain three numeric components, such as 1.0.0.',
+});
+
+const androidReleaseVersionInputSchema = z
   .object({
-    androidVersionCode: z.number().int().positive().max(MAX_BUILD_NUMBER).optional(),
-    incrementAndroidVersionCode: z.boolean(),
-    incrementIosBuildNumber: z.boolean(),
     incrementPatch: z.boolean(),
-    iosBuildNumber: z.number().int().positive().max(MAX_BUILD_NUMBER).optional(),
-    versionName: z.string().trim().refine(isReleaseVersionName, {
-      message: 'Version must contain three numeric components, such as 1.0.0.',
-    }),
+    incrementVersionCode: z.boolean(),
+    versionCode: z.number().int().positive().max(MAX_BUILD_NUMBER),
+    versionName: versionNameSchema,
   })
   .superRefine((version, context) => {
     const patch = Number(version.versionName.split('.')[2]);
@@ -50,29 +50,44 @@ const releaseVersionInputSchema = z
         path: ['versionName'],
       });
     }
-    if (
-      version.incrementAndroidVersionCode &&
-      version.androidVersionCode !== undefined &&
-      version.androidVersionCode >= MAX_BUILD_NUMBER
-    ) {
+    if (version.incrementVersionCode && version.versionCode >= MAX_BUILD_NUMBER) {
       context.addIssue({
         code: 'custom',
         message: 'The Android version code cannot be incremented any further.',
-        path: ['androidVersionCode'],
-      });
-    }
-    if (
-      version.incrementIosBuildNumber &&
-      version.iosBuildNumber !== undefined &&
-      version.iosBuildNumber >= MAX_BUILD_NUMBER
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: 'The iOS build number cannot be incremented any further.',
-        path: ['iosBuildNumber'],
+        path: ['versionCode'],
       });
     }
   });
+
+const iosReleaseVersionInputSchema = z
+  .object({
+    buildNumber: z.number().int().positive().max(MAX_BUILD_NUMBER),
+    incrementBuildNumber: z.boolean(),
+    incrementPatch: z.boolean(),
+    versionName: versionNameSchema,
+  })
+  .superRefine((version, context) => {
+    const patch = Number(version.versionName.split('.')[2]);
+    if (version.incrementPatch && patch >= MAX_BUILD_NUMBER) {
+      context.addIssue({
+        code: 'custom',
+        message: 'The patch version cannot be incremented any further.',
+        path: ['versionName'],
+      });
+    }
+    if (version.incrementBuildNumber && version.buildNumber >= MAX_BUILD_NUMBER) {
+      context.addIssue({
+        code: 'custom',
+        message: 'The iOS build number cannot be incremented any further.',
+        path: ['buildNumber'],
+      });
+    }
+  });
+
+const releaseVersionInputSchema = z.object({
+  android: androidReleaseVersionInputSchema.optional(),
+  ios: iosReleaseVersionInputSchema.optional(),
+});
 
 export const androidConfigurationSchema = z.object({
   aabArtifactPath: nonEmptyPathSchema.default('app/build/outputs/bundle/release/app-release.aab'),
@@ -452,23 +467,45 @@ const validateReleaseConfiguration = (
     if (
       includesBuild &&
       request.platforms.includes('android') &&
-      request.version?.androidVersionCode === undefined
+      request.version?.android === undefined
     ) {
       context.addIssue({
         code: 'custom',
         message: 'An Android version code is required for an Android build.',
-        path: ['version', 'androidVersionCode'],
+        path: ['version', 'android'],
       });
     }
     if (
       includesBuild &&
       request.platforms.includes('ios') &&
-      request.version?.iosBuildNumber === undefined
+      request.version?.ios === undefined
     ) {
       context.addIssue({
         code: 'custom',
         message: 'An iOS build number is required for an iOS build.',
-        path: ['version', 'iosBuildNumber'],
+        path: ['version', 'ios'],
+      });
+    }
+    if (
+      includesBuild &&
+      !request.platforms.includes('android') &&
+      request.version?.android !== undefined
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Android version configuration requires Android to be selected.',
+        path: ['version', 'android'],
+      });
+    }
+    if (
+      includesBuild &&
+      !request.platforms.includes('ios') &&
+      request.version?.ios !== undefined
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'iOS version configuration requires iOS to be selected.',
+        path: ['version', 'ios'],
       });
     }
     if (request.destinations.includes('firebase')) {

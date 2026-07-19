@@ -1,14 +1,25 @@
 import type { ReleasePlatform } from '@shared/contracts/domain';
 
-export type ReleaseVersionForm = {
-  androidVersionCode: string;
-  incrementAndroidVersionCode: boolean;
-  incrementIosBuildNumber: boolean;
+export type SemanticVersionForm = {
   incrementPatch: boolean;
-  iosBuildNumber: string;
   major: string;
   minor: string;
   patch: string;
+};
+
+export type AndroidReleaseVersionForm = SemanticVersionForm & {
+  incrementVersionCode: boolean;
+  versionCode: string;
+};
+
+export type IosReleaseVersionForm = SemanticVersionForm & {
+  buildNumber: string;
+  incrementBuildNumber: boolean;
+};
+
+export type ReleaseVersionForm = {
+  android: AndroidReleaseVersionForm;
+  ios: IosReleaseVersionForm;
 };
 
 export type VersionConfigurationProps = {
