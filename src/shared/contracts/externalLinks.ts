@@ -9,11 +9,13 @@ export const APPROVED_EXTERNAL_HOSTS = [
   'developer.apple.com',
   'developers.google.com',
   'firebase.google.com',
+  'formulae.brew.sh',
   'github.com',
   'nodejs.org',
   'play.google.com',
   'support.apple.com',
   'support.google.com',
+  'www.electron.build',
   'www.github.com',
   'www.oracle.com',
 ] as const;
