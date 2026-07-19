@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SetupGuideModal } from '@components/SetupGuideModal';
 import { isGeneralSetupReady } from '@components/SetupGuideModal/index.utils';
+import { ThemeSwitch } from '@components/ThemeSwitch';
 import type { WindowHeaderProps } from '@components/WindowHeader/index.types';
 import launchIcon from '@renderer/assets/launch-icon.png';
 import devIcon from '@renderer/assets/dev-icon.png';
@@ -16,7 +17,9 @@ export const WindowHeader = ({
   isCheckingDoctor,
   onReviewFileSystemPermissions,
   onRetryDoctor,
+  onThemeChange,
   reviewingFileSystemPermissionTarget,
+  theme,
 }: WindowHeaderProps): React.JSX.Element => {
   const [isSetupGuideOpen, setIsSetupGuideOpen] = useState(false);
   const isGeneralReady = isGeneralSetupReady(doctorReport, fileSystemPermissionState);
@@ -43,6 +46,7 @@ export const WindowHeader = ({
             Release distribution
           </div>
         </div>
+        <ThemeSwitch onChange={onThemeChange} theme={theme} />
         <button
           aria-haspopup="dialog"
           className={`${styles.setupButton} ${setupTone}`}

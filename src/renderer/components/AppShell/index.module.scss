@@ -211,14 +211,20 @@
 
       .addButton {
         align-items: center;
-        background: var(--color-sidebar-accent);
-        border-color: var(--color-sidebar-accent);
+        background: var(--color-sidebar-action);
+        border-color: var(--color-sidebar-action);
+        border-radius: var(--radius-md);
         color: var(--color-on-sidebar-action);
         display: flex;
-        font-weight: 650;
-        gap: var(--space-2);
-        justify-content: center;
-        min-height: 40px;
+        font-weight: 700;
+        gap: var(--space-3);
+        justify-content: flex-start;
+        min-height: 46px;
+        padding: 6px 9px;
+        transition:
+          background var(--motion-fast),
+          border-color var(--motion-fast),
+          transform var(--motion-fast);
         width: 100%;
 
         &:hover,
@@ -228,13 +234,30 @@
           color: var(--color-on-sidebar-action);
         }
 
-        svg {
+        &:hover {
+          transform: translateY(-1px);
+        }
+
+        .addIcon {
+          align-items: center;
+          background: var(--color-on-sidebar-action);
+          border-radius: 9px;
+          color: var(--color-sidebar-action);
+          display: flex;
+          flex: 0 0 auto;
+          height: 30px;
+          justify-content: center;
+          width: 30px;
+        }
+
+        .addIcon svg {
           fill: none;
-          height: 13px;
+          height: 16px;
           stroke: currentColor;
           stroke-linecap: round;
+          stroke-linejoin: round;
           stroke-width: 1.8;
-          width: 13px;
+          width: 16px;
         }
       }
     }

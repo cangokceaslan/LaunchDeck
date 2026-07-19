@@ -1,0 +1,82 @@
+.switch {
+  -webkit-app-region: no-drag;
+  align-self: center;
+  background: var(--color-header-hover);
+  border: 1px solid var(--color-header-divider);
+  border-radius: 999px;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-right: var(--space-2);
+  padding: 3px;
+
+  legend {
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+    clip: rect(0 0 0 0);
+  }
+
+  label {
+    cursor: pointer;
+    margin: 0;
+  }
+
+  input {
+    height: 1px;
+    opacity: 0;
+    position: absolute;
+    width: 1px;
+
+    &:focus-visible + span {
+      box-shadow: var(--shadow-focus);
+    }
+
+    &:checked + span {
+      background: var(--color-header-accent-soft);
+      border-color: var(--color-header-accent-border);
+      color: var(--color-header-accent);
+    }
+  }
+
+  label > span {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: var(--color-header-muted);
+    display: flex;
+    font-size: 0.6rem;
+    font-weight: 700;
+    gap: 4px;
+    height: 28px;
+    justify-content: center;
+    padding: 0 8px;
+    transition:
+      background var(--motion-fast),
+      border-color var(--motion-fast),
+      color var(--motion-fast);
+
+    svg {
+      fill: none;
+      height: 13px;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.45;
+      width: 13px;
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  .switch label > span {
+    padding: 0 7px;
+
+    > span {
+      display: none;
+    }
+  }
+}

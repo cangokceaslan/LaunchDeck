@@ -17,6 +17,7 @@ import type {
   ApplicationListCursor,
   ApplicationSummary,
   ReleasePlatform,
+  ThemePreference,
 } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
 import type {
@@ -47,6 +48,7 @@ export const App = (): React.JSX.Element => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isChangingApplicationIcon, setIsChangingApplicationIcon] = useState(false);
   const [view, setView] = useState<View>('home');
+  const [theme, setTheme] = useState<ThemePreference>('system');
   const [isApplicationSetupGuideOpen, setIsApplicationSetupGuideOpen] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [fileSystemPermissionState, setFileSystemPermissionState] =
@@ -152,14 +154,40 @@ export const App = (): React.JSX.Element => {
     const applicationsRequest = refreshApplications()
       .catch((error: unknown) => setGlobalError(normalizeErrorMessage(error)))
       .finally(() => setIsLoadingApplications(false));
+    const settingsRequest = window.desktopApi
+      .getSettings()
+      .then((settings) => setTheme(settings.theme))
+      .catch((error: unknown) => setGlobalError(normalizeErrorMessage(error)));
     const permissionRequest = window.desktopApi
       .getFileSystemPermissionState()
       .then(setFileSystemPermissionState)
       .catch((error: unknown) => setFileSystemPermissionError(normalizeErrorMessage(error)));
-    void Promise.allSettled([applicationsRequest, permissionRequest]).then(() =>
+    void Promise.allSettled([applicationsRequest, settingsRequest, permissionRequest]).then(() =>
       setIsPreparingWorkspace(false),
     );
   }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = (): void => {
+      const resolvedTheme = theme === 'system' && mediaQuery.matches ? 'dark' : theme;
+      const activeTheme = resolvedTheme === 'system' ? 'light' : resolvedTheme;
+      document.documentElement.dataset.theme = activeTheme;
+      document.documentElement.dataset.bsTheme = activeTheme;
+    };
+    applyTheme();
+    mediaQuery.addEventListener('change', applyTheme);
+    return () => mediaQuery.removeEventListener('change', applyTheme);
+  }, [theme]);
+
+  const handleThemeChange = async (nextTheme: ThemePreference): Promise<void> => {
+    setTheme(nextTheme);
+    try {
+      await window.desktopApi.updateTheme(nextTheme);
+    } catch (error) {
+      setGlobalError(normalizeErrorMessage(error));
+    }
+  };
 
   const handleReviewFileSystemPermissions = async (
     target: FileSystemPermissionTarget,
@@ -345,6 +373,8 @@ export const App = (): React.JSX.Element => {
         void handleReviewFileSystemPermissions(target)
       }
       onRetryDoctor={() => void runDoctor()}
+      onThemeChange={(nextTheme) => void handleThemeChange(nextTheme)}
+      theme={theme}
     >
       {fileSystemPermissionState !== null &&
         fileSystemPermissionState.isPermissionRequired &&

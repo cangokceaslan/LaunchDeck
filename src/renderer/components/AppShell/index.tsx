@@ -80,10 +80,13 @@ export const AppShell = ({
         </nav>
         <div className={styles.sidebarFooter}>
           <Button className={styles.addButton} onClick={onAddApplication} size="sm">
-            <svg aria-hidden="true" viewBox="0 0 16 16">
-              <path d="M8 3v10M3 8h10" />
-            </svg>
-            Add application
+            <span aria-hidden="true" className={styles.addIcon}>
+              <svg viewBox="0 0 18 18">
+                <rect height="13" rx="3.5" width="13" x="2.5" y="2.5" />
+                <path d="M9 5.75v6.5M5.75 9h6.5" />
+              </svg>
+            </span>
+            <span>Add application</span>
           </Button>
         </div>
       </aside>

@@ -1,4 +1,5 @@
 import type { DoctorReport } from '@shared/contracts/doctor';
+import type { ThemePreference } from '@shared/contracts/domain';
 import type {
   FileSystemPermissionState,
   FileSystemPermissionTarget,
@@ -13,5 +14,7 @@ export type WindowFrameProps = {
   isCheckingDoctor: boolean;
   onReviewFileSystemPermissions: (target: FileSystemPermissionTarget) => void;
   onRetryDoctor: () => void;
+  onThemeChange: (theme: ThemePreference) => void;
   reviewingFileSystemPermissionTarget: FileSystemPermissionTarget | null;
+  theme: ThemePreference;
 };
