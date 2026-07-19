@@ -14,6 +14,7 @@ export const APPROVED_EXTERNAL_HOSTS = [
   'play.google.com',
   'support.apple.com',
   'support.google.com',
+  'www.github.com',
   'www.oracle.com',
 ] as const;
 

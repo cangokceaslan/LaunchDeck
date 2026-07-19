@@ -3,9 +3,17 @@
   "version": "1.0.0",
   "description": "Secure desktop release manager for Firebase App Distribution",
   "main": "./out/main/index.js",
-  "author": "LaunchDeck Team",
-  "license": "UNLICENSED",
+  "author": "Can Gökçeaslan",
+  "license": "MIT",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://www.github.com/cangokceaslan/LaunchDeck"
+  },
+  "homepage": "https://www.github.com/cangokceaslan/LaunchDeck",
+  "bugs": {
+    "url": "https://www.github.com/cangokceaslan/LaunchDeck/issues"
+  },
   "scripts": {
     "predev": "electron-builder install-app-deps",
     "dev": "node scripts/run-electron-vite.cjs dev",
