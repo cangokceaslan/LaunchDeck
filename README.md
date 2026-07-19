@@ -10,7 +10,7 @@ LaunchDeck is a secure Electron desktop application for preparing signed Android
 4. The release wizard collects the operation mode, platforms, and manual release version values. Patch, Android version code, and iOS build number can be incremented independently.
 5. The main process preflight validates tools, paths, credential access, writable project version files, artifact expectations, and platform support again.
 6. Before pre-build commands run, the confirmed version permanently updates the Android module `build.gradle(.kts)` and Xcode `project.pbxproj` files.
-7. Android signing uses an encrypted keystore path, alias, and encrypted passwords; APK signatures are created and verified with `apksigner`, while AAB signatures use `jarsigner`.
+7. Android signing uses an encrypted keystore path, alias, and encrypted passwords; Gradle and the Android Gradle Plugin sign APK and AAB artifacts during the build, matching Android Studio, then `apksigner` or `jarsigner` verifies the generated artifact.
 8. iOS uses Xcode automatic signing with a configured development team, verifies the archived app with `codesign`, and can upload through an App Store Connect `.p8` API key.
 9. Google Play uploads are committed to internal testing first and may be promoted through a separately configured second edit.
 10. The pipeline displays phase-based progress, up to 500 redacted log lines, and per-platform outcomes.

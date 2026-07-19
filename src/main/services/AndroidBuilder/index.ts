@@ -20,12 +20,112 @@ const MAX_VERSION_FILE_BYTES = 2 * 1024 * 1024;
 const VERSION_CODE_PATTERN = /^([ \t]*versionCode[ \t]*(?:=[ \t]*)?)(\d+)([ \t]*(?:\/\/[^\r\n]*)?\r?)$/gmu;
 const VERSION_NAME_PATTERN = /^([ \t]*versionName[ \t]*(?:=[ \t]*)?)(["'])([^"'\r\n]+)\2([ \t]*(?:\/\/[^\r\n]*)?\r?)$/gmu;
 const STORE_PASSWORD_ENV = 'LAUNCHDECK_ANDROID_STORE_PASSWORD';
-const KEY_PASSWORD_ENV = 'LAUNCHDECK_ANDROID_KEY_PASSWORD';
+const GRADLE_SIGNING_STORE_FILE_ENV =
+  'ORG_GRADLE_PROJECT_android.injected.signing.store.file';
+const GRADLE_SIGNING_STORE_PASSWORD_ENV =
+  'ORG_GRADLE_PROJECT_android.injected.signing.store.password';
+const GRADLE_SIGNING_KEY_ALIAS_ENV =
+  'ORG_GRADLE_PROJECT_android.injected.signing.key.alias';
+const GRADLE_SIGNING_KEY_PASSWORD_ENV =
+  'ORG_GRADLE_PROJECT_android.injected.signing.key.password';
+const MAX_AAB_VERIFICATION_OUTPUT_LINES = 100;
+const JAR_SIGNER_ENGLISH_LOCALE_ARGS = [
+  '-J-Duser.language=en',
+  '-J-Duser.country=US',
+] as const;
 
 type AndroidVersionFile = {
   contents: string;
   path: string;
 };
+
+type AabVerificationDiagnostics = {
+  hasCertificateTrustWarning: boolean;
+  hasRejectedCertificateWarning: boolean;
+  isOutputComplete: boolean;
+  output: ProcessOutput[];
+};
+
+const inspectAabVerificationOutput = (
+  diagnostics: AabVerificationDiagnostics,
+  output: ProcessOutput,
+): void => {
+  const normalizedLine = output.line.toLocaleLowerCase('en-US');
+  if (
+    (normalizedLine.includes('certificate chain') &&
+      (normalizedLine.includes('invalid') ||
+        normalizedLine.includes('not validated') ||
+        normalizedLine.includes("isn't validated"))) ||
+    normalizedLine.includes('signer certificate is self-signed') ||
+    normalizedLine.includes('signer certificate is self signed')
+  ) {
+    diagnostics.hasCertificateTrustWarning = true;
+  }
+  if (
+    normalizedLine.includes('expired') ||
+    normalizedLine.includes('not yet valid') ||
+    normalizedLine.includes('disabled')
+  ) {
+    diagnostics.hasRejectedCertificateWarning = true;
+  }
+  if (diagnostics.output.length < MAX_AAB_VERIFICATION_OUTPUT_LINES) {
+    diagnostics.output.push(output);
+  } else {
+    diagnostics.isOutputComplete = false;
+  }
+};
+
+const verifyAabWithJarSigner = async (
+  artifactPath: string,
+  cwdPath: string,
+  executablePath: string,
+  signal: AbortSignal,
+  onOutput: (output: ProcessOutput) => void,
+): Promise<boolean> => {
+  const diagnostics: AabVerificationDiagnostics = {
+    hasCertificateTrustWarning: false,
+    hasRejectedCertificateWarning: false,
+    isOutputComplete: true,
+    output: [],
+  };
+  const result = await runExecutable({
+    args: [...JAR_SIGNER_ENGLISH_LOCALE_ARGS, '-verify', '-strict', artifactPath],
+    cwdPath,
+    executablePath,
+    onOutput: (output) => inspectAabVerificationOutput(diagnostics, output),
+    signal,
+  });
+  const hasAcceptedCertificateTrustWarning =
+    result.exitCode === 4 &&
+    diagnostics.isOutputComplete &&
+    diagnostics.hasCertificateTrustWarning &&
+    !diagnostics.hasRejectedCertificateWarning;
+  if (result.exitCode === 0 || hasAcceptedCertificateTrustWarning) {
+    onOutput({
+      level: 'info',
+      line: hasAcceptedCertificateTrustWarning
+        ? 'AAB signature and entry integrity verified. The Android signing certificate is self-signed or outside the Java trust store.'
+        : 'AAB signature and entry integrity verified.',
+    });
+    return true;
+  }
+  for (const output of diagnostics.output) onOutput(output);
+  if (!diagnostics.isOutputComplete) {
+    onOutput({ level: 'error', line: 'Additional jarsigner verification output was omitted.' });
+  }
+  return false;
+};
+
+const createGradleSigningEnvironment = (
+  signing: AndroidSigningSetupConfiguration,
+): Readonly<Record<string, string>> => ({
+  // Android Studio uses these injected Gradle properties for signed builds. Gradle's
+  // environment mapping preserves that behavior without exposing passwords in arguments.
+  [GRADLE_SIGNING_KEY_ALIAS_ENV]: signing.keyAlias,
+  [GRADLE_SIGNING_KEY_PASSWORD_ENV]: signing.keyPassword,
+  [GRADLE_SIGNING_STORE_FILE_ENV]: signing.keystorePath,
+  [GRADLE_SIGNING_STORE_PASSWORD_ENV]: signing.storePassword,
+});
 
 const countMatches = (contents: string, pattern: RegExp): number => [...contents.matchAll(pattern)].length;
 
@@ -174,37 +274,15 @@ export class AndroidBuilder {
     }
   }
 
-  public async signAndVerify(
+  private async verifyGeneratedSignature(
     configuration: AndroidConfiguration,
     artifactPath: string,
     artifactType: AndroidArtifactType,
-    signing: AndroidSigningSetupConfiguration,
     signal: AbortSignal,
     onOutput: (output: ProcessOutput) => void,
   ): Promise<void> {
-    const environment = {
-      [KEY_PASSWORD_ENV]: signing.keyPassword,
-      [STORE_PASSWORD_ENV]: signing.storePassword,
-    };
     if (artifactType === 'apk') {
       const apkSignerPath = await resolveApkSigner(configuration.projectPath);
-      const signResult = await runExecutable({
-        args: [
-          ...apkSignerPath.argsPrefix,
-          'sign',
-          '--ks', signing.keystorePath,
-          '--ks-key-alias', signing.keyAlias,
-          '--ks-pass', `env:${STORE_PASSWORD_ENV}`,
-          '--key-pass', `env:${KEY_PASSWORD_ENV}`,
-          artifactPath,
-        ],
-        cwdPath: configuration.projectPath,
-        environment,
-        executablePath: apkSignerPath.executablePath,
-        onOutput,
-        signal,
-      });
-      if (signResult.exitCode !== 0) throw new Error('APK signing failed.');
       const verifyResult = await runExecutable({
         args: [...apkSignerPath.argsPrefix, 'verify', '--verbose', '--print-certs', artifactPath],
         cwdPath: configuration.projectPath,
@@ -216,30 +294,15 @@ export class AndroidBuilder {
       return;
     }
     const jarSignerPath = await findExecutable('jarsigner');
-    if (jarSignerPath === null) throw new Error('jarsigner was not found. Install a JDK to sign AAB files.');
-    const signResult = await runExecutable({
-      args: [
-        '-keystore', signing.keystorePath,
-        '-storepass:env', STORE_PASSWORD_ENV,
-        '-keypass:env', KEY_PASSWORD_ENV,
-        artifactPath,
-        signing.keyAlias,
-      ],
-      cwdPath: configuration.projectPath,
-      environment,
-      executablePath: jarSignerPath,
-      onOutput,
+    if (jarSignerPath === null) throw new Error('jarsigner was not found. Install a JDK to verify AAB files.');
+    const isSignatureValid = await verifyAabWithJarSigner(
+      artifactPath,
+      configuration.projectPath,
+      jarSignerPath,
       signal,
-    });
-    if (signResult.exitCode !== 0) throw new Error('AAB signing failed.');
-    const verifyResult = await runExecutable({
-      args: ['-verify', '-strict', artifactPath],
-      cwdPath: configuration.projectPath,
-      executablePath: jarSignerPath,
       onOutput,
-      signal,
-    });
-    if (verifyResult.exitCode !== 0) throw new Error('The AAB signature could not be verified.');
+    );
+    if (!isSignatureValid) throw new Error('The AAB signature could not be verified.');
   }
 
   public async verifySignature(
@@ -248,28 +311,19 @@ export class AndroidBuilder {
     artifactType: AndroidArtifactType,
   ): Promise<void> {
     const signal = new AbortController().signal;
-    if (artifactType === 'apk') {
-      const apkSignerPath = await resolveApkSigner(configuration.projectPath);
-      const result = await runExecutable({
-        args: [...apkSignerPath.argsPrefix, 'verify', '--verbose', '--print-certs', artifactPath],
-        cwdPath: configuration.projectPath,
-        executablePath: apkSignerPath.executablePath,
-        onOutput: () => undefined,
+    try {
+      await this.verifyGeneratedSignature(
+        configuration,
+        artifactPath,
+        artifactType,
         signal,
-      });
-      if (result.exitCode !== 0) throw new Error('The selected APK is not signed or its signature is invalid.');
-      return;
+        () => undefined,
+      );
+    } catch {
+      throw new Error(
+        `The selected ${artifactType.toUpperCase()} is not signed or its signature is invalid.`,
+      );
     }
-    const jarSignerPath = await findExecutable('jarsigner');
-    if (jarSignerPath === null) throw new Error('jarsigner was not found. Install a JDK to verify the AAB.');
-    const result = await runExecutable({
-      args: ['-verify', '-strict', artifactPath],
-      cwdPath: configuration.projectPath,
-      executablePath: jarSignerPath,
-      onOutput: () => undefined,
-      signal,
-    });
-    if (result.exitCode !== 0) throw new Error('The selected AAB is not signed or its signature is invalid.');
   }
 
   public async applyVersion(
@@ -341,6 +395,7 @@ export class AndroidBuilder {
     const result = await runExecutable({
       args,
       cwdPath: configuration.projectPath,
+      environment: signing === undefined ? undefined : createGradleSigningEnvironment(signing),
       executablePath,
       onOutput,
       signal,
@@ -361,7 +416,13 @@ export class AndroidBuilder {
       throw new Error(`The ${artifactType.toUpperCase()} artifact was not updated by this build.`);
     }
     if (signing !== undefined) {
-      await this.signAndVerify(configuration, artifactPath, artifactType, signing, signal, onOutput);
+      await this.verifyGeneratedSignature(
+        configuration,
+        artifactPath,
+        artifactType,
+        signal,
+        onOutput,
+      );
     }
     return artifactPath;
   }
