@@ -2,7 +2,7 @@
 
 LaunchDeck is a security-focused Electron desktop application for building, signing, verifying, saving, and distributing Android and iOS releases. It coordinates local artifact generation, Firebase App Distribution, Google Play, and App Store Connect from one observable release pipeline.
 
-> **Last verified: July 20, 2026.** Provider consoles, role names, permissions, upload requirements, and navigation paths can change. Follow the linked official documentation if a screen no longer matches this guide.
+> **Last verified: 2026-07-20.** Provider consoles, role names, permissions, upload requirements, and navigation paths can change. Follow the linked official documentation if a screen no longer matches this guide.
 
 The product language is English (US). This repository is private and `UNLICENSED` unless the repository owner states otherwise.
 
