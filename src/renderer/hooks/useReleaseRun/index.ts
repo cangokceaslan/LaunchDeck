@@ -15,6 +15,7 @@ const initialState: ReleaseRunViewState = {
   progressKind: 'verified',
   result: null,
   runId: null,
+  startedAt: null,
   status: 'idle',
   totalPhases: 0,
 };
@@ -52,6 +53,7 @@ export const useReleaseRun = (): UseReleaseRunResult => {
       percent: 100,
       progressKind: 'verified',
       result: event.result,
+      startedAt: event.result.startedAt,
       status: 'finished',
     }));
   };
@@ -81,7 +83,12 @@ export const useReleaseRun = (): UseReleaseRunResult => {
         return;
       }
       activeRunId.current = startResult.runId;
-      setState((current) => ({ ...current, runId: startResult.runId, status: 'running' }));
+      setState((current) => ({
+        ...current,
+        runId: startResult.runId,
+        startedAt: startResult.startedAt,
+        status: 'running',
+      }));
       for (const event of pendingEvents.current) {
         if (event.runId === startResult.runId) applyEvent(event);
       }

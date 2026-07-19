@@ -602,20 +602,21 @@ export class ReleaseRunner {
       };
     }
     const runId = randomUUID();
+    const startedAt = new Date().toISOString();
     const abortController = new AbortController();
     this.activeRun = { abortController, runId };
     this.plans.delete(planId);
-    void this.execute(plan, runId, abortController, onEvent);
-    return { runId, started: true };
+    void this.execute(plan, runId, startedAt, abortController, onEvent);
+    return { runId, started: true, startedAt };
   }
 
   private async execute(
     plan: InternalReleasePlan,
     runId: string,
+    startedAt: string,
     abortController: AbortController,
     onEvent: (event: ReleaseEvent) => void,
   ): Promise<void> {
-    const startedAt = new Date().toISOString();
     const runWorkspacePath = path.join(this.runsRootPath, runId);
     await mkdir(runWorkspacePath, { mode: 0o700, recursive: true });
     const redact = createRedactor([

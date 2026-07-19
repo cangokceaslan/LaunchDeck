@@ -1,6 +1,9 @@
 .progressPanel {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: var(--space-5);
+  min-height: 0;
 
   .progressHeader {
     align-items: center;
@@ -21,6 +24,30 @@
       font-weight: 600;
       letter-spacing: -0.015em;
       margin: var(--space-1) 0 0;
+    }
+
+    .headerStatus {
+      align-items: center;
+      display: flex;
+      flex: 0 0 auto;
+      gap: var(--space-3);
+    }
+
+    .elapsedTime {
+      align-items: baseline;
+      display: flex;
+      gap: var(--space-2);
+
+      small {
+        color: var(--color-text-muted);
+        font-size: 0.66rem;
+      }
+
+      strong {
+        font-family: var(--font-mono);
+        font-size: 0.76rem;
+        font-variant-numeric: tabular-nums;
+      }
     }
   }
 
@@ -75,15 +102,6 @@
 
       .signalRunning {
         color: var(--color-primary-strong);
-
-        i {
-          animation: pipelineSpin 700ms linear infinite;
-          border: 2px solid var(--color-border-strong);
-          border-radius: 50%;
-          border-top-color: var(--color-primary-strong);
-          height: 13px;
-          width: 13px;
-        }
       }
 
       .signalSuccess {
@@ -194,9 +212,9 @@
         background: var(--color-primary-soft);
 
         > span {
-          background: var(--color-primary);
+          background: var(--color-surface);
           border-color: var(--color-primary);
-          color: var(--color-on-primary);
+          color: var(--color-primary-strong);
         }
 
         small {
@@ -226,20 +244,25 @@
         font-size: 0.84rem;
       }
 
-      .phaseLoader {
-        animation: pipelineSpin 700ms linear infinite;
-        border: 2px solid var(--color-on-primary);
-        border-radius: 50%;
-        border-right-color: transparent;
-        height: 11px;
-        width: 11px;
-      }
     }
+  }
+
+  .activitySpinner {
+    animation: pipelineSpin 700ms linear infinite;
+    border: 2px solid var(--color-border-strong);
+    border-radius: 50%;
+    border-top-color: currentColor;
+    height: 13px;
+    width: 13px;
   }
 
   .logSection {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 320px;
     overflow: hidden;
 
     > header {
@@ -265,9 +288,10 @@
     .logViewer {
       background: var(--color-log);
       color: var(--color-log-text);
+      flex: 1;
       font-family: var(--font-mono);
       font-size: 0.68rem;
-      height: 320px;
+      min-height: 320px;
       overflow: auto;
       overflow-anchor: none;
       padding: var(--space-3) var(--space-4);
@@ -473,8 +497,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .progressPanel {
-    .progressOverview .percentBlock .signalRunning i,
-    .phaseTrack > li .phaseLoader {
+    .activitySpinner {
       animation: none;
       border-color: currentColor;
     }

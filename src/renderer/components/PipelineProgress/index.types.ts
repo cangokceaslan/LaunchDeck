@@ -17,5 +17,6 @@ export type PipelineProgressProps = {
   platforms: ReleasePlatform[];
   progressKind: ReleaseProgressKind;
   result: ReleaseResult | null;
+  startedAt: string | null;
   totalPhases: number;
 };

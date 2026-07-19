@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, ProgressBar } from 'react-bootstrap';
 import { StatusPill } from '@components/StatusPill';
 import { formatOutcome, formatPlatform } from '@renderer/utils/formatting';
@@ -26,6 +26,16 @@ const toStageKey = (phase: string | null | undefined): string | null =>
       ? 'upload'
       : phase ?? null;
 
+const formatElapsedTime = (durationMilliseconds: number): string => {
+  const totalSeconds = Math.max(0, Math.floor(durationMilliseconds / 1_000));
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${minutes}:${String(seconds).padStart(2, '0')}`;
+};
+
 export const PipelineProgress = ({
   activePhase,
   completedPhases,
@@ -38,8 +48,10 @@ export const PipelineProgress = ({
   platforms,
   progressKind,
   result,
+  startedAt,
   totalPhases,
 }: PipelineProgressProps): React.JSX.Element => {
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const isAutoScrolling = useRef(false);
   const lastScrollHeight = useRef(0);
   const logContentRef = useRef<HTMLDivElement>(null);
@@ -78,6 +90,14 @@ export const PipelineProgress = ({
         : result?.outcome === 'cancelled'
           ? 'neutral'
           : 'danger';
+  const startedAtTime = startedAt === null ? null : Date.parse(startedAt);
+  const elapsedEndTime = result === null ? currentTime : Date.parse(result.finishedAt);
+  const elapsedTime =
+    startedAtTime === null ||
+    !Number.isFinite(startedAtTime) ||
+    !Number.isFinite(elapsedEndTime)
+    ? null
+    : formatElapsedTime(elapsedEndTime - startedAtTime);
 
   const scrollToBottom = (): void => {
     const logViewer = logViewerRef.current;
@@ -117,6 +137,15 @@ export const PipelineProgress = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (result !== null || startedAtTime === null || !Number.isFinite(startedAtTime)) {
+      return undefined;
+    }
+    setCurrentTime(Date.now());
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [result, startedAtTime]);
+
   const handleLogScroll = (): void => {
     const logViewer = logViewerRef.current;
     if (logViewer === null) return;
@@ -142,11 +171,19 @@ export const PipelineProgress = ({
               : `${platform === null ? '' : `${formatPlatform(platform)} · `}${activePhase === null ? 'Starting' : phaseLabels[activePhase]}`}
           </h2>
         </div>
-        {result === null ? (
-          <StatusPill label={isCancelling ? 'Cancelling' : 'Running'} tone={isCancelling ? 'warning' : 'running'} />
-        ) : (
-          <StatusPill label={formatOutcome(result.outcome)} tone={outcomeTone} />
-        )}
+        <div className={styles.headerStatus}>
+          {elapsedTime !== null && (
+            <span className={styles.elapsedTime}>
+              <small>{result === null ? 'Elapsed' : 'Duration'}</small>
+              <strong>{elapsedTime}</strong>
+            </span>
+          )}
+          {result === null ? (
+            <StatusPill label={isCancelling ? 'Cancelling' : 'Running'} tone={isCancelling ? 'warning' : 'running'} />
+          ) : (
+            <StatusPill label={formatOutcome(result.outcome)} tone={outcomeTone} />
+          )}
+        </div>
       </div>
 
       <div className={styles.progressOverview}>
@@ -164,7 +201,7 @@ export const PipelineProgress = ({
                       : styles.signalFailed
               }
             >
-              {result === null ? <i /> : result.outcome === 'succeeded' ? '✓' : result.outcome === 'cancelled' ? '–' : '×'}
+              {result === null ? <i className={styles.activitySpinner} /> : result.outcome === 'succeeded' ? '✓' : result.outcome === 'cancelled' ? '–' : '×'}
             </span>
             <strong>{percent}%</strong>
           </div>
@@ -217,7 +254,7 @@ export const PipelineProgress = ({
                 {isComplete
                   ? '✓'
                   : isActive
-                    ? <i aria-hidden="true" className={styles.phaseLoader} />
+                    ? <i aria-hidden="true" className={styles.activitySpinner} />
                     : isFailed
                       ? '×'
                       : isCancelled

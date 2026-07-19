@@ -136,7 +136,7 @@ export type PreflightResult =
   | { isValid: true; plan: ResolvedReleasePlan; warnings: ValidationIssue[] };
 
 export type StartReleaseResult =
-  | { runId: string; started: true }
+  | { runId: string; started: true; startedAt: string }
   | { error: SerializedAppError; started: false };
 
 export type CancelReleaseResult = { cancelled: boolean; runId: string };

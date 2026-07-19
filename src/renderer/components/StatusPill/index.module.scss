@@ -37,5 +37,28 @@
   &.running {
     background: var(--color-primary-soft);
     color: var(--color-primary-strong);
+
+    .dot {
+      animation: statusSpin 700ms linear infinite;
+      background: transparent;
+      border: 1.5px solid var(--color-border-strong);
+      border-radius: 50%;
+      border-top-color: currentColor;
+      height: 9px;
+      width: 9px;
+    }
+  }
+}
+
+@keyframes statusSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill.running .dot {
+    animation: none;
+    border-color: currentColor;
   }
 }

@@ -13,6 +13,7 @@ export type ReleaseRunViewState = {
   progressKind: ReleaseProgressKind;
   result: ReleaseResult | null;
   runId: string | null;
+  startedAt: string | null;
   status: 'idle' | 'starting' | 'running' | 'cancelling' | 'finished' | 'failedToStart';
   totalPhases: number;
 };
