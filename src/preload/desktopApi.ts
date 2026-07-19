@@ -40,7 +40,7 @@ export const desktopApi: DesktopApi = {
     ipcRenderer.invoke(IPC_CHANNELS.fastActionList, applicationId),
   listIosSchemes: (workspaceOrProjectPath) =>
     ipcRenderer.invoke(IPC_CHANNELS.iosSchemeList, workspaceOrProjectPath),
-  listRunHistory: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.historyList, applicationId),
+  listRunHistory: (request) => ipcRenderer.invoke(IPC_CHANNELS.historyList, request),
   onReleaseEvent: (listener) => {
     const wrappedListener = (_event: Electron.IpcRendererEvent, releaseEvent: ReleaseEvent): void => {
       listener(releaseEvent);

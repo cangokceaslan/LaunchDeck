@@ -117,7 +117,8 @@ export const App = (): React.JSX.Element => {
   const loadHistory = async (applicationId: string): Promise<void> => {
     setIsHistoryLoading(true);
     try {
-      setHistory(await window.desktopApi.listRunHistory(applicationId));
+      const page = await window.desktopApi.listRunHistory({ applicationId, pageSize: 10 });
+      setHistory(page.runs);
     } finally {
       setIsHistoryLoading(false);
     }

@@ -4,6 +4,8 @@ import type { ReleaseMode, ReleasePlatform } from '@shared/contracts/domain';
 import type {
   FastActionConfiguration,
   ReleaseResult,
+  RunHistoryListRequest,
+  RunHistoryPage,
   RunHistorySummary,
 } from '@shared/contracts/release';
 import { fastActionConfigurationSchema } from '@shared/validation';
@@ -41,6 +43,37 @@ const parseConfiguration = (serializedConfiguration: unknown): FastActionConfigu
   return result.data;
 };
 
+const parseRunHistoryRow = (row: unknown): RunHistorySummary => {
+  if (!isRecord(row)) {
+    throw new Error('Invalid build history record.');
+  }
+  const read = (key: string): string => {
+    const value = row[key];
+    if (typeof value !== 'string') {
+      throw new Error(`Invalid build history field: ${key}`);
+    }
+    return value;
+  };
+  const mode = read('mode');
+  const outcome = read('outcome');
+  if (!isReleaseMode(mode)) {
+    throw new Error('Invalid build history mode.');
+  }
+  if (!isReleaseOutcome(outcome)) {
+    throw new Error('Invalid build history outcome.');
+  }
+  return {
+    applicationId: read('application_id'),
+    configuration: parseConfiguration(row.configuration_json),
+    finishedAt: read('finished_at'),
+    id: read('id'),
+    mode,
+    outcome,
+    platforms: parsePlatforms(read('platforms_json')),
+    startedAt: read('started_at'),
+  };
+};
+
 export class RunHistoryRepository {
   public constructor(private readonly database: ApplicationDatabase) {}
 
@@ -65,44 +98,39 @@ export class RunHistoryRepository {
       );
   }
 
-  public list(applicationId: string): RunHistorySummary[] {
+  public list(request: RunHistoryListRequest): RunHistoryPage {
+    const cursor = request.cursor;
     const rows: unknown[] = this.database
       .prepare(
         `SELECT id, application_id, mode, platforms_json, outcome, started_at, finished_at,
           configuration_json
-         FROM release_runs WHERE application_id = ? ORDER BY finished_at DESC LIMIT 10`,
+         FROM release_runs
+         WHERE application_id = ?
+           AND (
+             ? IS NULL
+             OR finished_at < ?
+             OR (finished_at = ? AND id < ?)
+           )
+         ORDER BY finished_at DESC, id DESC
+         LIMIT ?`,
       )
-      .all(applicationId);
-    return rows.map((row) => {
-      if (!isRecord(row)) {
-        throw new Error('Invalid build history record.');
-      }
-      const read = (key: string): string => {
-        const value = row[key];
-        if (typeof value !== 'string') {
-          throw new Error(`Invalid build history field: ${key}`);
-        }
-        return value;
-      };
-      const mode = read('mode');
-      const outcome = read('outcome');
-      if (!isReleaseMode(mode)) {
-        throw new Error('Invalid build history mode.');
-      }
-      if (!isReleaseOutcome(outcome)) {
-        throw new Error('Invalid build history outcome.');
-      }
-      return {
-        applicationId: read('application_id'),
-        configuration: parseConfiguration(row.configuration_json),
-        finishedAt: read('finished_at'),
-        id: read('id'),
-        mode,
-        outcome,
-        platforms: parsePlatforms(read('platforms_json')),
-        startedAt: read('started_at'),
-      };
-    });
+      .all(
+        request.applicationId,
+        cursor?.finishedAt ?? null,
+        cursor?.finishedAt ?? null,
+        cursor?.finishedAt ?? null,
+        cursor?.id ?? null,
+        request.pageSize + 1,
+      );
+    const runs = rows.slice(0, request.pageSize).map(parseRunHistoryRow);
+    const lastRun = runs.at(-1);
+    return {
+      nextCursor:
+        rows.length > request.pageSize && lastRun !== undefined
+          ? { finishedAt: lastRun.finishedAt, id: lastRun.id }
+          : null,
+      runs,
+    };
   }
 
   public clear(applicationId: string): void {

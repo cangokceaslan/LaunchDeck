@@ -25,6 +25,7 @@ import {
   iosSchemeListRequestSchema,
   planIdSchema,
   preflightReleaseRequestSchema,
+  runHistoryListRequestSchema,
   themePreferenceSchema,
   updateArtifactOutputDirectoryRequestSchema,
   updateApplicationRequestSchema,
@@ -251,7 +252,7 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
 
   ipcMain.handle(IPC_CHANNELS.historyList, (event, payload: unknown) => {
     assertTrustedSender(event);
-    return dependencies.historyRepository.list(applicationIdSchema.parse(payload));
+    return dependencies.historyRepository.list(runHistoryListRequestSchema.parse(payload));
   });
   ipcMain.handle(IPC_CHANNELS.historyClear, (event, payload: unknown) => {
     assertTrustedSender(event);

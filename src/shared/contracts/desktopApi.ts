@@ -32,6 +32,8 @@ import type {
   PreflightReleaseRequest,
   PreflightResult,
   ReleaseEvent,
+  RunHistoryListRequest,
+  RunHistoryPage,
   RunHistorySummary,
   StartReleaseResult,
   UpdateFastActionRequest,
@@ -65,7 +67,7 @@ export type DesktopApi = {
   listApplications: (request: ApplicationListRequest) => Promise<ApplicationPage>;
   listFastActions: (applicationId: string) => Promise<FastAction[]>;
   listIosSchemes: (workspaceOrProjectPath: string) => Promise<IosSchemeListResult>;
-  listRunHistory: (applicationId: string) => Promise<RunHistorySummary[]>;
+  listRunHistory: (request: RunHistoryListRequest) => Promise<RunHistoryPage>;
   onReleaseEvent: (listener: (event: ReleaseEvent) => void) => () => void;
   preflightRelease: (request: PreflightReleaseRequest) => Promise<PreflightResult>;
   resolveAndroidProjectMetadata: (

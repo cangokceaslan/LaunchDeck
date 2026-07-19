@@ -621,6 +621,14 @@ export const applicationListRequestSchema = z.object({
   }).optional(),
   pageSize: z.number().int().min(1).max(50),
 });
+export const runHistoryListRequestSchema = z.object({
+  applicationId: z.string().uuid(),
+  cursor: z.object({
+    finishedAt: z.iso.datetime(),
+    id: z.string().uuid(),
+  }).optional(),
+  pageSize: z.number().int().min(1).max(50),
+});
 export const iosSchemeListRequestSchema = nonEmptyPathSchema;
 export const iosProjectDiscoveryRequestSchema = nonEmptyPathSchema;
 export const planIdSchema = z.string().uuid();

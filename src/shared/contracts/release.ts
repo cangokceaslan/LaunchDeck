@@ -214,3 +214,19 @@ export type RunHistorySummary = {
   platforms: ReleasePlatform[];
   startedAt: string;
 };
+
+export type RunHistoryCursor = {
+  finishedAt: string;
+  id: string;
+};
+
+export type RunHistoryListRequest = {
+  applicationId: string;
+  cursor?: RunHistoryCursor;
+  pageSize: number;
+};
+
+export type RunHistoryPage = {
+  nextCursor: RunHistoryCursor | null;
+  runs: RunHistorySummary[];
+};

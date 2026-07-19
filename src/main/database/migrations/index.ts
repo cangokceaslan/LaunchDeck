@@ -6,6 +6,7 @@ import { distributionAndSigningMigration } from '@main/database/migrations/004_d
 import { fastActionsMigration } from '@main/database/migrations/005_fast_actions';
 import { applicationIconMigration } from '@main/database/migrations/006_application_icon';
 import { releaseHistoryConfigurationMigration } from '@main/database/migrations/007_release_history_configuration';
+import { preserveReleaseHistoryMigration } from '@main/database/migrations/008_preserve_release_history';
 
 export const schemaMigrations: readonly SchemaMigration[] = [
   initialSchemaMigration,
@@ -15,4 +16,5 @@ export const schemaMigrations: readonly SchemaMigration[] = [
   fastActionsMigration,
   applicationIconMigration,
   releaseHistoryConfigurationMigration,
+  preserveReleaseHistoryMigration,
 ];
