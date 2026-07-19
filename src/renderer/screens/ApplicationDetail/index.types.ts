@@ -7,6 +7,8 @@ export type ApplicationDetailProps = {
   history: RunHistorySummary[];
   isChangingIcon: boolean;
   isHistoryLoading: boolean;
+  isSetupChecking: boolean;
+  isSetupReady: boolean;
   onClearHistory: () => void;
   onChangeIcon: () => void;
   onCreateFastAction: () => void;
@@ -16,6 +18,7 @@ export type ApplicationDetailProps = {
   onEditFastAction: (fastAction: FastAction) => void;
   onRemoveIcon: () => void;
   onRunFastAction: (fastAction: FastAction) => void;
+  onShowSetup: () => void;
   onStartRelease: () => void;
   startingFastActionId: string | null;
 };

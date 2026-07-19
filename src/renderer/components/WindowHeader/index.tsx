@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { SetupGuideModal } from '@components/SetupGuideModal';
-import {
-  isGeneralSetupReady,
-  resolveSetupWorkflows,
-} from '@components/SetupGuideModal/index.utils';
+import { isGeneralSetupReady } from '@components/SetupGuideModal/index.utils';
 import type { WindowHeaderProps } from '@components/WindowHeader/index.types';
 import launchIcon from '@renderer/assets/launch-icon.png';
 import devIcon from '@renderer/assets/dev-icon.png';
@@ -12,7 +9,6 @@ import styles from '@components/WindowHeader/index.module.scss';
 const productIcon = import.meta.env.DEV ? devIcon : launchIcon;
 
 export const WindowHeader = ({
-  application,
   doctorError,
   doctorReport,
   fileSystemPermissionError,
@@ -23,16 +19,10 @@ export const WindowHeader = ({
   reviewingFileSystemPermissionTarget,
 }: WindowHeaderProps): React.JSX.Element => {
   const [isSetupGuideOpen, setIsSetupGuideOpen] = useState(false);
-  const workflows = resolveSetupWorkflows(doctorReport, application);
-  const hasReadyWorkflow = workflows.some((workflow) => workflow.isReady);
   const isGeneralReady = isGeneralSetupReady(doctorReport, fileSystemPermissionState);
-  const needsPermissionConfirmation =
-    fileSystemPermissionState !== null &&
-    fileSystemPermissionState.platform !== 'unsupported' &&
-    !fileSystemPermissionState.hasConfirmedAccess;
   const setupTone = isCheckingDoctor || fileSystemPermissionState === null
     ? styles.setupChecking
-    : (application === null ? isGeneralReady : hasReadyWorkflow && !needsPermissionConfirmation)
+    : isGeneralReady
       ? styles.setupReady
       : styles.setupNeeded;
 
@@ -57,15 +47,11 @@ export const WindowHeader = ({
           aria-haspopup="dialog"
           className={`${styles.setupButton} ${setupTone}`}
           onClick={() => setIsSetupGuideOpen(true)}
-          title={
-            application === null
-              ? 'View workspace configuration'
-              : 'View release setup requirements'
-          }
+          title="View workspace configuration"
           type="button"
         >
           <span aria-hidden="true" className={styles.setupStatusDot} />
-          {application === null ? 'Configuration' : 'Setup'}
+          Configuration
         </button>
         <div className={styles.windowControls}>
           <button
@@ -104,7 +90,7 @@ export const WindowHeader = ({
         </div>
       </header>
       <SetupGuideModal
-        application={application}
+        application={null}
         errorMessage={doctorError}
         fileSystemPermissionError={fileSystemPermissionError}
         fileSystemPermissionState={fileSystemPermissionState}

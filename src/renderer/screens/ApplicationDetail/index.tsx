@@ -25,6 +25,8 @@ export const ApplicationDetail = ({
   history,
   isChangingIcon,
   isHistoryLoading,
+  isSetupChecking,
+  isSetupReady,
   onClearHistory,
   onChangeIcon,
   onCreateFastAction,
@@ -34,6 +36,7 @@ export const ApplicationDetail = ({
   onEditFastAction,
   onRemoveIcon,
   onRunFastAction,
+  onShowSetup,
   onStartRelease,
   startingFastActionId,
 }: ApplicationDetailProps): React.JSX.Element => {
@@ -95,6 +98,22 @@ export const ApplicationDetail = ({
         </div>
         <div className={styles.actions}>
           <Button onClick={onEdit} variant="outline-secondary">Edit setup</Button>
+          <button
+            aria-haspopup="dialog"
+            className={`${styles.setupButton} ${
+              isSetupChecking
+                ? styles.setupChecking
+                : isSetupReady
+                  ? styles.setupReady
+                  : styles.setupNeeded
+            }`}
+            onClick={onShowSetup}
+            title="View application setup requirements"
+            type="button"
+          >
+            <span aria-hidden="true" />
+            Setup
+          </button>
           <Button onClick={onStartRelease}>New release</Button>
         </div>
       </header>

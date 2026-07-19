@@ -1,4 +1,3 @@
-import type { ApplicationDetail } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
 import type {
   FileSystemPermissionState,
@@ -6,7 +5,6 @@ import type {
 } from '@shared/contracts/permissions';
 
 export type WindowHeaderProps = {
-  application: ApplicationDetail | null;
   doctorError: string | null;
   doctorReport: DoctorReport | null;
   fileSystemPermissionError: string | null;

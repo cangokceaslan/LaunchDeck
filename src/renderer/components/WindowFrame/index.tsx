@@ -3,7 +3,6 @@ import type { WindowFrameProps } from '@components/WindowFrame/index.types';
 import styles from '@components/WindowFrame/index.module.scss';
 
 export const WindowFrame = ({
-  application,
   children,
   doctorError,
   doctorReport,
@@ -16,7 +15,6 @@ export const WindowFrame = ({
 }: WindowFrameProps): React.JSX.Element => (
   <div className={styles.frame}>
     <WindowHeader
-      application={application}
       doctorError={doctorError}
       doctorReport={doctorReport}
       fileSystemPermissionError={fileSystemPermissionError}

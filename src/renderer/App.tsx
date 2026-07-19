@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Spinner } from 'react-bootstrap';
 import { AppShell } from '@components/AppShell';
 import { FileSystemPermissionPrompt } from '@components/FileSystemPermissionPrompt';
+import { SetupGuideModal } from '@components/SetupGuideModal';
+import { resolveSetupWorkflows } from '@components/SetupGuideModal/index.utils';
 import { SplashLoader } from '@components/SplashLoader';
 import { WindowFrame } from '@components/WindowFrame';
 import { ApplicationDetail } from '@screens/ApplicationDetail';
@@ -45,6 +47,7 @@ export const App = (): React.JSX.Element => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isChangingApplicationIcon, setIsChangingApplicationIcon] = useState(false);
   const [view, setView] = useState<View>('home');
+  const [isApplicationSetupGuideOpen, setIsApplicationSetupGuideOpen] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [fileSystemPermissionState, setFileSystemPermissionState] =
     useState<FileSystemPermissionState | null>(null);
@@ -133,6 +136,7 @@ export const App = (): React.JSX.Element => {
       }
       setFastActions([]);
       setHistory([]);
+      setIsApplicationSetupGuideOpen(false);
       setSelectedApplication(application);
       setView('detail');
       await Promise.all([loadHistory(applicationId), loadFastActions(applicationId)]);
@@ -196,6 +200,7 @@ export const App = (): React.JSX.Element => {
       setHistory([]);
       setFastActions([]);
       setReleaseIntent(null);
+      setIsApplicationSetupGuideOpen(false);
       await refreshApplications();
       setView('home');
     } catch (error) {
@@ -315,14 +320,20 @@ export const App = (): React.JSX.Element => {
   };
 
   const supportedPlatforms: ReleasePlatform[] = doctorReport?.supportedPlatforms ?? ['android'];
-  const setupApplication =
-    view === 'detail' || view === 'edit' || view === 'release' ? selectedApplication : null;
+  const applicationSetupWorkflows = resolveSetupWorkflows(doctorReport, selectedApplication);
+  const needsPermissionConfirmation =
+    fileSystemPermissionState !== null &&
+    fileSystemPermissionState.platform !== 'unsupported' &&
+    !fileSystemPermissionState.hasConfirmedAccess;
+  const isApplicationSetupChecking = isCheckingDoctor || fileSystemPermissionState === null;
+  const isApplicationSetupReady =
+    applicationSetupWorkflows.some((workflow) => workflow.isReady) &&
+    !needsPermissionConfirmation;
 
   if (isPreparingWorkspace) return <SplashLoader />;
 
   return (
     <WindowFrame
-      application={setupApplication}
       doctorError={doctorError}
       doctorReport={doctorReport}
       fileSystemPermissionError={fileSystemPermissionError}
@@ -398,15 +409,18 @@ export const App = (): React.JSX.Element => {
           history={history}
           isChangingIcon={isChangingApplicationIcon}
           isHistoryLoading={isHistoryLoading}
+          isSetupChecking={isApplicationSetupChecking}
+          isSetupReady={isApplicationSetupReady}
           onChangeIcon={() => void handleChangeApplicationIcon()}
           onClearHistory={() => void handleClearHistory()}
           onCreateFastAction={() => { setReleaseIntent({ kind: 'createFastAction' }); setView('release'); }}
           onDelete={() => void handleDelete()}
           onDeleteFastAction={(fastActionId) => void handleDeleteFastAction(fastActionId)}
-          onEdit={() => setView('edit')}
+          onEdit={() => { setIsApplicationSetupGuideOpen(false); setView('edit'); }}
           onEditFastAction={(fastAction) => { setReleaseIntent({ fastAction, kind: 'editFastAction' }); setView('release'); }}
           onRemoveIcon={() => void handleRemoveApplicationIcon()}
           onRunFastAction={(fastAction) => void handleRunFastAction(fastAction)}
+          onShowSetup={() => setIsApplicationSetupGuideOpen(true)}
           onStartRelease={() => { setReleaseIntent({ kind: 'newRelease' }); setView('release'); }}
           startingFastActionId={startingFastActionId}
         />
@@ -426,6 +440,23 @@ export const App = (): React.JSX.Element => {
         <div className={styles.loading}><Spinner animation="border" size="sm" /> Loading application…</div>
       )}
       </AppShell>
+      {selectedApplication !== null && (
+        <SetupGuideModal
+          application={selectedApplication}
+          errorMessage={doctorError}
+          fileSystemPermissionError={fileSystemPermissionError}
+          fileSystemPermissionState={fileSystemPermissionState}
+          isChecking={isCheckingDoctor}
+          isOpen={view === 'detail' && isApplicationSetupGuideOpen}
+          onClose={() => setIsApplicationSetupGuideOpen(false)}
+          onReviewFileSystemPermissions={(target) =>
+            void handleReviewFileSystemPermissions(target)
+          }
+          onRetry={() => void runDoctor()}
+          report={doctorReport}
+          reviewingFileSystemPermissionTarget={reviewingFileSystemPermissionTarget}
+        />
+      )}
     </WindowFrame>
   );
 };
