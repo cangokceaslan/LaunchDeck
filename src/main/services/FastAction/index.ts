@@ -76,17 +76,6 @@ export class FastActionService {
     ) {
       throw new Error('The selected Android artifact type is not enabled for local generation.');
     }
-    if (
-      configuration.destinations.includes('store') &&
-      application.googlePlay !== null &&
-      configuration.platforms.includes('android') &&
-      androidArtifactType !== application.googlePlay.artifactType
-    ) {
-      throw new Error(
-        `Google Play is configured for ${application.googlePlay.artifactType.toUpperCase()} artifacts.`,
-      );
-    }
-
     let androidArtifactPath = configuration.androidArtifactPath;
     let iosArtifactPath = configuration.iosArtifactPath;
     if (configuration.mode === 'uploadOnly') {

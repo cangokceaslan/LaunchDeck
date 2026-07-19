@@ -171,11 +171,9 @@ export const ReleasePipeline = ({
   const isArtifactSigningUnavailable = isArtifactTarget && signingPlatforms.some(
     (platform) => !isArtifactSigningConfigured(application, platform),
   );
-  const availableAndroidArtifactTypes: AndroidArtifactType[] = destinations.includes('store') && application.googlePlay !== null
-    ? [application.googlePlay.artifactType]
-    : isArtifactTarget
-      ? application.artifactGeneration.androidArtifactTypes
-      : ['apk', 'aab'];
+  const availableAndroidArtifactTypes: AndroidArtifactType[] = isArtifactTarget
+    ? application.artifactGeneration.androidArtifactTypes
+    : ['apk', 'aab'];
   const canUseStore = platforms.every((platform) =>
     platform === 'android' ? application.googlePlay !== null : application.appStoreConnect !== null,
   ) && !(source === 'existing' && platforms.includes('ios'));

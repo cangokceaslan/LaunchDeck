@@ -24,9 +24,21 @@ const parseFastAction = (row: unknown): FastAction => {
   }
   const serializedConfiguration = readRequiredString(row, 'configuration_json');
   const parsedConfiguration: unknown = JSON.parse(serializedConfiguration);
+  const configurationWithSigningSelection =
+    isRecord(parsedConfiguration) &&
+    !('artifactSigningPlatforms' in parsedConfiguration) &&
+    parsedConfiguration.mode !== 'uploadOnly' &&
+    Array.isArray(parsedConfiguration.destinations) &&
+    parsedConfiguration.destinations.includes('artifact') &&
+    Array.isArray(parsedConfiguration.platforms)
+      ? {
+          ...parsedConfiguration,
+          artifactSigningPlatforms: parsedConfiguration.platforms,
+        }
+      : parsedConfiguration;
   return {
     applicationId: readRequiredString(row, 'application_id'),
-    configuration: fastActionConfigurationSchema.parse(parsedConfiguration),
+    configuration: fastActionConfigurationSchema.parse(configurationWithSigningSelection),
     createdAt: readRequiredString(row, 'created_at'),
     id: readRequiredString(row, 'id'),
     name: readRequiredString(row, 'name'),

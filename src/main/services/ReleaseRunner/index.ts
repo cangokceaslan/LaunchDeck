@@ -318,9 +318,6 @@ export class ReleaseRunner {
           const artifactType = planRequest.mode === 'uploadOnly'
             ? artifactPaths.android?.toLocaleLowerCase('en-US').endsWith('.aab') === true ? 'aab' : 'apk'
             : planRequest.androidArtifactType ?? application.android.defaultArtifactType;
-          if (artifactType !== application.googlePlay.artifactType) {
-            throw new Error(`Google Play is configured for ${application.googlePlay.artifactType.toUpperCase()} artifacts.`);
-          }
           if (planRequest.mode === 'uploadOnly' && artifactPaths.android !== undefined) {
             await this.androidBuilder.verifySignature(application.android, artifactPaths.android, artifactType);
           }
