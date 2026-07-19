@@ -94,9 +94,18 @@ export const ApplicationDetail = ({
               </button>
             )}
           </div>
-          <div>
+          <div className={styles.titleContent}>
             <span className={styles.eyebrow}>{application.firebaseProjectId || 'Local and store release configuration'}</span>
-            <h1>{application.name}</h1>
+            <div className={styles.applicationHeading}>
+              <h1>{application.name}</h1>
+              <button
+                className={styles.editSetupBadge}
+                onClick={onEdit}
+                type="button"
+              >
+                Edit setup
+              </button>
+            </div>
             <div className={styles.platforms}>
               {application.platforms.map((platform) => (
                 <StatusPill key={platform} label={formatPlatform(platform)} tone="neutral" />
@@ -105,7 +114,6 @@ export const ApplicationDetail = ({
           </div>
         </div>
         <div className={styles.actions}>
-          <Button onClick={onEdit} variant="outline-secondary">Edit setup</Button>
           <button
             aria-haspopup="dialog"
             className={`${styles.setupButton} ${
