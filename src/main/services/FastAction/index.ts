@@ -111,6 +111,7 @@ export class FastActionService {
       androidArtifactPath,
       androidArtifactType,
       artifactOutputDirectoryPath,
+      artifactSigningPlatforms: [...configuration.artifactSigningPlatforms],
       distributionGroups: [...configuration.distributionGroups],
       destinations: [...configuration.destinations],
       iosArtifactPath,

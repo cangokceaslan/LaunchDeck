@@ -36,4 +36,5 @@ export type PersistApplicationInput = {
   name: string;
   serviceAccountFileName: string;
   serviceAccountPath: string | null;
+  shouldNotifyWhenFinished: boolean;
 };

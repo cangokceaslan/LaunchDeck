@@ -7,6 +7,7 @@ import type {
   DeleteApplicationResult,
   IosProjectMetadataRequest,
   IosProjectMetadataResult,
+  IosProjectDiscoveryResult,
   IosSchemeListResult,
   PathSelectionResult,
   ThemePreference,
@@ -60,6 +61,7 @@ export type DesktopApi = {
   resolveAndroidProjectMetadata: (
     request: AndroidProjectMetadataRequest,
   ) => Promise<AndroidProjectMetadataResult>;
+  discoverIosProjectConfiguration: (projectPath: string) => Promise<IosProjectDiscoveryResult>;
   resolveIosProjectMetadata: (
     request: IosProjectMetadataRequest,
   ) => Promise<IosProjectMetadataResult>;

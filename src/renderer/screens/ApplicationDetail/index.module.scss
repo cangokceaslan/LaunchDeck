@@ -79,6 +79,28 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+
+      .signingDetails {
+        display: grid;
+        gap: var(--space-1);
+
+        small {
+          display: grid;
+          gap: var(--space-2);
+          grid-template-columns: 54px minmax(0, 1fr);
+
+          b {
+            color: var(--color-text);
+            font-weight: 600;
+          }
+
+          span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      }
     }
   }
 

@@ -16,6 +16,7 @@ import { DoctorService } from '@main/services/Doctor';
 import { FastActionService } from '@main/services/FastAction';
 import { IosBuilder } from '@main/services/IosBuilder';
 import { ReleaseRunner } from '@main/services/ReleaseRunner';
+import { ReleaseNotificationService } from '@main/services/ReleaseNotification';
 import { createMainWindow } from '@main/windows/MainWindow';
 
 const bootstrap = async (): Promise<void> => {
@@ -27,6 +28,7 @@ const bootstrap = async (): Promise<void> => {
   const settingsRepository = new SettingsRepository(database);
   const firebaseCli = new FirebaseCliIntegration();
   const iosBuilder = new IosBuilder();
+  const releaseNotification = new ReleaseNotificationService();
   const releaseRunner = new ReleaseRunner(
     applicationRepository,
     historyRepository,
@@ -36,6 +38,7 @@ const bootstrap = async (): Promise<void> => {
     new AndroidBuilder(),
     iosBuilder,
     path.join(app.getPath('userData'), 'runs'),
+    (notification) => releaseNotification.notify(notification),
   );
   registerIpcHandlers({
     applicationRepository,

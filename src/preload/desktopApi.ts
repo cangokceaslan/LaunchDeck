@@ -29,6 +29,8 @@ export const desktopApi: DesktopApi = {
   deleteApplication: (applicationId) =>
     ipcRenderer.invoke(IPC_CHANNELS.applicationDelete, applicationId),
   deleteFastAction: (request) => ipcRenderer.invoke(IPC_CHANNELS.fastActionDelete, request),
+  discoverIosProjectConfiguration: (projectPath) =>
+    ipcRenderer.invoke(IPC_CHANNELS.iosProjectConfigurationDiscover, projectPath),
   getApplication: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.applicationGet, applicationId),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.settingsGet),
   listApplications: () => ipcRenderer.invoke(IPC_CHANNELS.applicationList),

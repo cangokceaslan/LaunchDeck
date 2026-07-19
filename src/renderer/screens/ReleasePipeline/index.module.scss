@@ -275,6 +275,42 @@
         }
       }
 
+      .signingGrid {
+        display: grid;
+        gap: var(--space-3);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .signingOption {
+        background: var(--color-surface-subtle);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        display: grid;
+        gap: var(--space-4);
+        min-width: 0;
+        padding: var(--space-4);
+
+        .signingOptionHeader {
+          align-items: center;
+          display: flex;
+          gap: var(--space-3);
+          justify-content: space-between;
+
+          > strong {
+            font-size: 0.76rem;
+          }
+        }
+
+        .signingConfiguration {
+          border-top: 1px solid var(--color-border);
+          color: var(--color-text-muted);
+          font-family: var(--font-mono);
+          font-size: 0.66rem;
+          overflow-wrap: anywhere;
+          padding-top: var(--space-3);
+        }
+      }
+
       .selectionSummary {
         border: 1px solid var(--color-border);
         border-radius: var(--radius-sm);
@@ -306,7 +342,7 @@
       }
 
       .detailSummary {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
       .formGrid,
@@ -358,7 +394,7 @@
 
       .planSummary {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
 
         > div {
           display: flex;
@@ -402,8 +438,13 @@
         grid-template-columns: 1fr;
       }
 
+      .signingGrid {
+        grid-template-columns: 1fr;
+      }
+
       .platformGrid,
-      .selectionSummary {
+      .selectionSummary,
+      .planSummary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 

@@ -220,6 +220,7 @@ export const applicationReleaseConfigurationSchema = z.object({
   firebaseDistribution: firebaseDistributionConfigurationSchema,
   googlePlay: googlePlayConfigurationSchema.nullable(),
   iosSigning: iosSigningConfigurationSchema,
+  shouldNotifyWhenFinished: z.boolean().default(false),
 });
 
 export const pipelineHookSchema = z.object({
@@ -248,6 +249,7 @@ export const createApplicationRequestSchema = z
     iosSigning: iosSigningConfigurationSchema,
     name: z.string().trim().min(2).max(80),
     serviceAccountPath: optionalPathSchema,
+    shouldNotifyWhenFinished: z.boolean(),
   })
   .superRefine((request, context) => {
     if (request.android === null && request.ios === null) {
@@ -322,6 +324,7 @@ export const updateApplicationRequestSchema = z
     iosSigning: createApplicationRequestSchema.shape.iosSigning,
     name: createApplicationRequestSchema.shape.name,
     serviceAccountPath: nonEmptyPathSchema.nullable(),
+    shouldNotifyWhenFinished: createApplicationRequestSchema.shape.shouldNotifyWhenFinished,
   })
   .superRefine((request, context) => {
     if (request.android === null && request.ios === null) {
@@ -373,6 +376,7 @@ const releaseConfigurationSchema = z.object({
   androidArtifactPath: nonEmptyPathSchema.optional(),
   androidArtifactType: z.enum(['apk', 'aab']).optional(),
   artifactOutputDirectoryPath: nonEmptyPathSchema.optional(),
+  artifactSigningPlatforms: z.array(z.enum(['android', 'ios'])).max(2).default([]),
   distributionGroups: z.array(identifierSchema).max(50),
   destinations: z.array(z.enum(['artifact', 'firebase', 'store'])).min(1).max(3),
   iosArtifactPath: nonEmptyPathSchema.optional(),
@@ -401,6 +405,34 @@ const validateReleaseConfiguration = (
         code: 'custom',
         message: 'The same destination cannot be selected more than once.',
         path: ['destinations'],
+      });
+    }
+    if (new Set(request.artifactSigningPlatforms).size !== request.artifactSigningPlatforms.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'The same artifact signing platform cannot be selected more than once.',
+        path: ['artifactSigningPlatforms'],
+      });
+    }
+    if (
+      request.artifactSigningPlatforms.some(
+        (signingPlatform) => !request.platforms.includes(signingPlatform),
+      )
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Artifact signing can be enabled only for a selected platform.',
+        path: ['artifactSigningPlatforms'],
+      });
+    }
+    if (
+      request.artifactSigningPlatforms.length > 0 &&
+      (!includesBuild || !request.destinations.includes('artifact'))
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Artifact signing can be selected only when generating a local artifact.',
+        path: ['artifactSigningPlatforms'],
       });
     }
     if (includesBuild && request.version === undefined) {
@@ -528,5 +560,6 @@ export const updateArtifactOutputDirectoryRequestSchema = z.object({
 
 export const applicationIdSchema = z.string().uuid();
 export const iosSchemeListRequestSchema = nonEmptyPathSchema;
+export const iosProjectDiscoveryRequestSchema = nonEmptyPathSchema;
 export const planIdSchema = z.string().uuid();
 export const themePreferenceSchema = z.enum(['light', 'dark', 'system']);

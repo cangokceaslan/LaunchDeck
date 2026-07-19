@@ -68,8 +68,22 @@ export const ApplicationDetail = ({
         </section>
         <section className={styles.summaryCard}>
           <span>Signing</span>
-          <strong>{application.androidSigning !== null || application.iosSigning.isEnabled ? 'Configured' : 'Not required'}</strong>
-          <small>{application.androidSigning?.keystoreFileName ?? (application.iosSigning.isEnabled ? `Apple team ${application.iosSigning.developmentTeamId}` : 'No managed signing')}</small>
+          <strong>{[
+            application.android !== null && application.androidSigning !== null
+              ? 'Android keystore'
+              : null,
+            application.ios !== null && application.iosSigning.isEnabled
+              ? 'Xcode signing'
+              : null,
+          ].filter(Boolean).join(' + ') || 'Not configured'}</strong>
+          <div className={styles.signingDetails}>
+            {application.android !== null && (
+              <small><b>Android</b><span>{application.androidSigning === null ? 'Not configured' : `Keystore · ${application.androidSigning.keystoreFileName}`}</span></small>
+            )}
+            {application.ios !== null && (
+              <small><b>iOS</b><span>{application.iosSigning.isEnabled && application.iosSigning.developmentTeamId !== '' ? `Xcode automatic · Team ${application.iosSigning.developmentTeamId}` : 'Not configured'}</span></small>
+            )}
+          </div>
         </section>
         <section className={styles.summaryCard}>
           <span>Custom pipeline steps</span>

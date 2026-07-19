@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Button, Form, InputGroup, Spinner } from 'react-bootstrap';
 import { HookEditor } from '@components/HookEditor';
 import { Select } from '@components/Inputs/Select';
@@ -140,6 +140,7 @@ const createInitialForm = (application: ApplicationDetail | null): CreateApplica
       },
   iosSigning: application?.iosSigning ?? { developmentTeamId: '', isEnabled: true },
   serviceAccountPath: '',
+  shouldNotifyWhenFinished: application?.shouldNotifyWhenFinished ?? false,
 });
 
 export const ApplicationSetup = ({
@@ -182,6 +183,11 @@ export const ApplicationSetup = ({
     (form.artifactGeneration.isEnabled && form.artifactGeneration.requiresIosSigning) ||
     (form.firebaseDistribution.isEnabled && form.firebaseDistribution.requiresIosSigning)
   );
+  const availableIosSchemes = iosSchemes.length > 0
+    ? iosSchemes
+    : form.ios?.scheme === undefined || form.ios.scheme === ''
+      ? []
+      : [form.ios.scheme];
 
   const choosePath = async (
     picker: () => Promise<{ status: 'cancelled' } | { path: string; status: 'selected' }>,
@@ -221,20 +227,33 @@ export const ApplicationSetup = ({
       gradleTask,
       projectPath,
     });
-    if (metadata?.packageName === null || metadata?.packageName === undefined) return;
+    if (metadata === null) return;
     setForm((current) => {
       if (
         current.android === null ||
-        current.googlePlay === null ||
         current.android.projectPath !== projectPath ||
         current.android.gradleTask !== gradleTask ||
-        current.android.googleServicesJsonPath !== googleServicesJsonPath
+        (current.android.googleServicesJsonPath ?? '') !== (googleServicesJsonPath ?? '')
       ) {
         return current;
       }
       return {
         ...current,
-        googlePlay: { ...current.googlePlay, packageName: metadata.packageName },
+        android: {
+          ...current.android,
+          googleServicesJsonPath:
+            current.firebaseDistribution.isEnabled && metadata.googleServicesJsonPath !== null
+              ? metadata.googleServicesJsonPath
+              : current.android.googleServicesJsonPath,
+        },
+        googlePlay:
+          current.googlePlay === null || metadata.packageName === null
+            ? current.googlePlay
+            : { ...current.googlePlay, packageName: metadata.packageName },
+        firebaseProjectId:
+          current.firebaseDistribution.isEnabled && metadata.firebaseProjectId !== null
+            ? metadata.firebaseProjectId
+            : current.firebaseProjectId,
       };
     });
   };
@@ -245,18 +264,16 @@ export const ApplicationSetup = ({
     const currentAndroid = form.android ?? defaultAndroid();
     setForm((current) => ({
       ...current,
-      android: { ...(current.android ?? defaultAndroid()), projectPath: result.path },
+      android: {
+        ...(current.android ?? defaultAndroid()),
+        googleServicesJsonPath: current.firebaseDistribution.isEnabled ? '' : null,
+        projectPath: result.path,
+      },
       googlePlay: current.googlePlay === null
         ? null
         : { ...current.googlePlay, packageName: '' },
     }));
-    if (form.googlePlay !== null) {
-      await loadAndroidProjectMetadata(
-        result.path,
-        currentAndroid.googleServicesJsonPath,
-        currentAndroid.gradleTask,
-      );
-    }
+    await loadAndroidProjectMetadata(result.path, null, currentAndroid.gradleTask);
   };
 
   const chooseGoogleServicesJson = async (): Promise<void> => {
@@ -272,7 +289,7 @@ export const ApplicationSetup = ({
         ? null
         : { ...current.googlePlay, packageName: '' },
     }));
-    if (form.googlePlay !== null && projectPath !== '') {
+    if (projectPath !== '') {
       await loadAndroidProjectMetadata(projectPath, result.path, gradleTask);
     }
   };
@@ -300,6 +317,47 @@ export const ApplicationSetup = ({
         ? current.appStoreConnect ?? defaultAppStoreConnect()
         : null,
     }));
+  };
+
+  const handleFirebaseEnabledChange = (isEnabled: boolean): void => {
+    setForm((current) => ({
+      ...current,
+      firebaseDistribution: { ...current.firebaseDistribution, isEnabled },
+    }));
+    if (!isEnabled) return;
+    const androidConfiguration = form.android;
+    if (androidConfiguration !== null && androidConfiguration.projectPath !== '') {
+      void loadAndroidProjectMetadata(
+        androidConfiguration.projectPath,
+        androidConfiguration.googleServicesJsonPath,
+        androidConfiguration.gradleTask,
+      );
+    }
+    const iosConfiguration = form.ios;
+    if (
+      iosConfiguration !== null &&
+      iosConfiguration.projectPath !== '' &&
+      (iosConfiguration.googleServiceInfoPlistPath ?? '') === ''
+    ) {
+      void window.desktopApi
+        .discoverIosProjectConfiguration(iosConfiguration.projectPath)
+        .then((discovery) => {
+          if (discovery.googleServiceInfoPlistPath === null) return;
+          setForm((current) => current.ios === null ||
+            current.ios.projectPath !== iosConfiguration.projectPath
+            ? current
+            : {
+                ...current,
+                ios: {
+                  ...current.ios,
+                  googleServiceInfoPlistPath: discovery.googleServiceInfoPlistPath,
+                },
+                firebaseProjectId:
+                  discovery.firebaseProjectId ?? current.firebaseProjectId,
+              });
+        })
+        .catch((error: unknown) => setErrorMessage(normalizeErrorMessage(error)));
+    }
   };
 
   const chooseAppStoreConnectApiKey = async (): Promise<void> => {
@@ -380,30 +438,6 @@ export const ApplicationSetup = ({
     }
   };
 
-  useEffect(() => {
-    const androidConfiguration = application?.android;
-    if (
-      androidConfiguration !== null &&
-      androidConfiguration !== undefined &&
-      application?.googlePlay !== null &&
-      application?.googlePlay !== undefined
-    ) {
-      void loadAndroidProjectMetadata(
-        androidConfiguration.projectPath,
-        androidConfiguration.googleServicesJsonPath,
-        androidConfiguration.gradleTask,
-      );
-    }
-    const iosConfiguration = application?.ios;
-    if (iosConfiguration !== null && iosConfiguration !== undefined) {
-      void loadIosSchemes(
-        iosConfiguration.workspaceOrProjectPath,
-        iosConfiguration.scheme,
-        iosConfiguration.configuration,
-      );
-    }
-  }, []);
-
   const chooseIosWorkspaceOrProject = async (): Promise<void> => {
     const result = await window.desktopApi.chooseIosWorkspaceOrProject();
     if (result.status !== 'selected') return;
@@ -419,6 +453,52 @@ export const ApplicationSetup = ({
       iosSigning: { ...current.iosSigning, developmentTeamId: '' },
     }));
     await loadIosSchemes(result.path, '', configuration);
+  };
+
+  const chooseIosProject = async (): Promise<void> => {
+    const result = await window.desktopApi.chooseIosProjectDirectory();
+    if (result.status !== 'selected') return;
+    resetIosProjectConfiguration();
+    const configuration = form.ios?.configuration ?? defaultIos().configuration;
+    setForm((current) => ({
+      ...current,
+      ios: {
+        ...(current.ios ?? defaultIos()),
+        bundleIdentifier: '',
+        googleServiceInfoPlistPath: current.firebaseDistribution.isEnabled ? '' : null,
+        projectPath: result.path,
+        scheme: '',
+        workspaceOrProjectPath: '',
+      },
+      iosSigning: { ...current.iosSigning, developmentTeamId: '' },
+    }));
+    try {
+      const discovery = await window.desktopApi.discoverIosProjectConfiguration(result.path);
+      setForm((current) => current.ios === null || current.ios.projectPath !== result.path
+        ? current
+        : {
+            ...current,
+            ios: {
+              ...current.ios,
+              googleServiceInfoPlistPath:
+                current.firebaseDistribution.isEnabled &&
+                discovery.googleServiceInfoPlistPath !== null
+                  ? discovery.googleServiceInfoPlistPath
+                  : current.ios.googleServiceInfoPlistPath,
+              workspaceOrProjectPath:
+                discovery.workspaceOrProjectPath ?? current.ios.workspaceOrProjectPath,
+            },
+            firebaseProjectId:
+              current.firebaseDistribution.isEnabled && discovery.firebaseProjectId !== null
+                ? discovery.firebaseProjectId
+                : current.firebaseProjectId,
+          });
+      if (discovery.workspaceOrProjectPath !== null) {
+        await loadIosSchemes(discovery.workspaceOrProjectPath, '', configuration);
+      }
+    } catch (error) {
+      setErrorMessage(normalizeErrorMessage(error));
+    }
   };
 
   const handleIosSchemeChange = (scheme: string): void => {
@@ -511,10 +591,11 @@ export const ApplicationSetup = ({
                   required
                   value={form.name}
                 />
+                <Form.Text>Used to identify this saved configuration and its release history.</Form.Text>
             </Form.Group>
             <div className={styles.outcomeGrid}>
               <Switch checked={form.artifactGeneration.isEnabled} description="Generate APK, AAB, or IPA output." label="Artifact generation" onChange={(isEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, isEnabled } }))} />
-              <Switch checked={form.firebaseDistribution.isEnabled} description="Send builds to configured tester groups." label="Firebase App Distribution" onChange={(isEnabled) => setForm((current) => ({ ...current, firebaseDistribution: { ...current.firebaseDistribution, isEnabled } }))} />
+              <Switch checked={form.firebaseDistribution.isEnabled} description="Send builds to configured tester groups." label="Firebase App Distribution" onChange={handleFirebaseEnabledChange} />
               <Switch checked={form.googlePlay !== null} description="Upload Android releases and manage Play tracks." disabled={form.android === null} label="Google Play" onChange={handleGooglePlayEnabledChange} />
               <Switch checked={form.appStoreConnect !== null} description="Upload signed iOS archives for TestFlight processing." disabled={form.ios === null} label="App Store Connect" onChange={handleAppStoreConnectEnabledChange} />
             </div>
@@ -527,6 +608,7 @@ export const ApplicationSetup = ({
             <div className={styles.platformToggle}>
               <Switch
                 checked={form.android !== null}
+                description="Enables Gradle builds plus Android artifact and distribution settings."
                 label="Use Android"
                 onChange={(isEnabled) => setForm((current) => ({
                   ...current,
@@ -536,6 +618,7 @@ export const ApplicationSetup = ({
               />
               <Switch
                 checked={form.ios !== null}
+                description="Enables Xcode archive, IPA, and iOS distribution settings."
                 disabled={!supportedPlatforms.includes('ios')}
                 label="Use iOS (macOS only)"
                 onChange={handleIosEnabledChange}
@@ -545,32 +628,30 @@ export const ApplicationSetup = ({
             {form.android !== null && (
               <div className={styles.platformPanel}>
                 <h3>Android</h3>
-                <PathField label="Android application directory" onBrowse={() => void chooseAndroidProject()} required value={form.android.projectPath} />
-                {form.firebaseDistribution.isEnabled && <PathField label="google-services.json" onBrowse={() => void chooseGoogleServicesJson()} required value={form.android.googleServicesJsonPath ?? ''} />}
+                <PathField helpText="Select the Android project root that contains the Gradle wrapper and application module." label="Android application directory" onBrowse={() => void chooseAndroidProject()} required value={form.android.projectPath} />
               </div>
             )}
 
             {form.ios !== null && (
               <div className={styles.platformPanel}>
                 <h3>iOS</h3>
-                <PathField label="iOS application directory" onBrowse={() => void choosePath(window.desktopApi.chooseIosProjectDirectory, (projectPath) => updateIos({ projectPath }))} required value={form.ios.projectPath} />
-                {form.firebaseDistribution.isEnabled && <PathField label="GoogleService-Info.plist" onBrowse={() => void choosePath(window.desktopApi.chooseGoogleServiceInfoPlist, (googleServiceInfoPlistPath) => updateIos({ googleServiceInfoPlistPath }))} required value={form.ios.googleServiceInfoPlistPath ?? ''} />}
-                <PathField label="Xcode workspace / project" onBrowse={() => void chooseIosWorkspaceOrProject()} required value={form.ios.workspaceOrProjectPath} />
+                <PathField helpText="Select the repository directory used as the working directory for Xcode commands. Workspace/project, Firebase plist, schemes, Bundle ID, and Team ID are discovered after this directory changes." label="iOS application directory" onBrowse={() => void chooseIosProject()} required value={form.ios.projectPath} />
+                <PathField helpText="Select the .xcworkspace when CocoaPods or workspace dependencies are used; otherwise select the .xcodeproj." label="Xcode workspace / project" onBrowse={() => void chooseIosWorkspaceOrProject()} required value={form.ios.workspaceOrProjectPath} />
                 <div className={styles.threeColumns}>
                   <Form.Group>
                     <Form.Label>Scheme</Form.Label>
-                    <InputGroup>
+                    <InputGroup className={styles.schemeInputGroup}>
                       <Select
                         aria-describedby="ios-scheme-feedback"
-                        disabled={isLoadingIosSchemes || iosSchemes.length === 0}
+                        disabled={isLoadingIosSchemes || availableIosSchemes.length === 0}
                         onChange={(event) => handleIosSchemeChange(event.target.value)}
                         required
                         value={form.ios.scheme}
                       >
-                        {iosSchemes.length === 0 && (
+                        {availableIosSchemes.length === 0 && (
                           <option value="">{isLoadingIosSchemes ? 'Loading schemes…' : 'Select a workspace or project'}</option>
                         )}
-                        {iosSchemes.map((scheme) => <option key={scheme} value={scheme}>{scheme}</option>)}
+                        {availableIosSchemes.map((scheme) => <option key={scheme} value={scheme}>{scheme}</option>)}
                       </Select>
                       <Button
                         aria-label="Refresh Xcode scheme list"
@@ -595,8 +676,8 @@ export const ApplicationSetup = ({
                       {iosSchemeError ?? 'Schemes are loaded automatically from the selected Xcode project.'}
                     </Form.Text>
                   </Form.Group>
-                  <Form.Group><Form.Label>Configuration</Form.Label><Form.Control onBlur={(event) => { const iosConfiguration = form.ios; if (iosConfiguration !== null && event.currentTarget.value !== '') void loadIosDevelopmentTeam(iosConfiguration.workspaceOrProjectPath, iosConfiguration.scheme, event.currentTarget.value); }} onChange={(event) => handleIosConfigurationChange(event.target.value)} required value={form.ios.configuration} /></Form.Group>
-                  <Form.Group><Form.Label>Export method</Form.Label><Select onChange={(event) => { if (isIosExportMethod(event.target.value)) updateIos({ exportMethod: event.target.value }); }} value={form.ios.exportMethod}><option value="release-testing">Release testing</option><option value="enterprise">Enterprise</option><option value="development">Development</option></Select></Form.Group>
+                  <Form.Group><Form.Label>Configuration</Form.Label><Form.Control onBlur={(event) => { const iosConfiguration = form.ios; if (iosConfiguration !== null && event.currentTarget.value !== '') void loadIosDevelopmentTeam(iosConfiguration.workspaceOrProjectPath, iosConfiguration.scheme, event.currentTarget.value); }} onChange={(event) => handleIosConfigurationChange(event.target.value)} required value={form.ios.configuration} /><Form.Text>The Xcode build configuration used for archive and export, usually Release.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>Export method</Form.Label><Select onChange={(event) => { if (isIosExportMethod(event.target.value)) updateIos({ exportMethod: event.target.value }); }} value={form.ios.exportMethod}><option value="release-testing">Release testing</option><option value="enterprise">Enterprise</option><option value="development">Development</option></Select><Form.Text>Controls the provisioning profile and distribution type used for the IPA export.</Form.Text></Form.Group>
                 </div>
               </div>
             )}
@@ -611,6 +692,7 @@ export const ApplicationSetup = ({
                 <Form.Group>
                   <Form.Label>Firebase Project ID</Form.Label>
                   <Form.Control onChange={(event) => setForm((current) => ({ ...current, firebaseProjectId: event.target.value }))} placeholder="Can be detected from the service account" value={form.firebaseProjectId} />
+                  <Form.Text>Must match the selected service account and both platform configuration files.</Form.Text>
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>Tester group aliases</Form.Label>
@@ -626,9 +708,49 @@ export const ApplicationSetup = ({
                 required={application === null || !application.hasServiceAccount}
                 value={form.serviceAccountPath}
               />
-              <div className={styles.platformToggle}>
-                {form.android !== null && <Switch checked={form.firebaseDistribution.requiresAndroidSigning} label="Require signed Android artifacts" onChange={(requiresAndroidSigning) => setForm((current) => ({ ...current, firebaseDistribution: { ...current.firebaseDistribution, requiresAndroidSigning } }))} />}
-                {form.ios !== null && <Switch checked={form.firebaseDistribution.requiresIosSigning} label="Require signed iOS artifacts" onChange={(requiresIosSigning) => setForm((current) => ({ ...current, firebaseDistribution: { ...current.firebaseDistribution, requiresIosSigning } }))} />}
+              <div className={styles.firebasePlatformGrid}>
+                {form.android !== null && (
+                  <article className={styles.firebasePlatformPanel}>
+                    <header>
+                      <h3>Android</h3>
+                      <p>Firebase Android application identity and artifact policy</p>
+                    </header>
+                    <PathField
+                      helpText="Select the Firebase Android configuration file for this exact application. Its App ID and project metadata are validated before distribution."
+                      label="google-services.json"
+                      onBrowse={() => void chooseGoogleServicesJson()}
+                      required
+                      value={form.android.googleServicesJsonPath ?? ''}
+                    />
+                    <Switch
+                      checked={form.firebaseDistribution.requiresAndroidSigning}
+                      description="Reject an unsigned or invalid APK/AAB before it is uploaded to Firebase tester groups."
+                      label="Require signed Android artifacts"
+                      onChange={(requiresAndroidSigning) => setForm((current) => ({ ...current, firebaseDistribution: { ...current.firebaseDistribution, requiresAndroidSigning } }))}
+                    />
+                  </article>
+                )}
+                {form.ios !== null && (
+                  <article className={styles.firebasePlatformPanel}>
+                    <header>
+                      <h3>iOS</h3>
+                      <p>Firebase iOS application identity and artifact policy</p>
+                    </header>
+                    <PathField
+                      helpText="Select the Firebase iOS configuration file for this exact application. Its App ID and project metadata are validated before distribution."
+                      label="GoogleService-Info.plist"
+                      onBrowse={() => void choosePath(window.desktopApi.chooseGoogleServiceInfoPlist, (googleServiceInfoPlistPath) => updateIos({ googleServiceInfoPlistPath }))}
+                      required
+                      value={form.ios.googleServiceInfoPlistPath ?? ''}
+                    />
+                    <Switch
+                      checked={form.firebaseDistribution.requiresIosSigning}
+                      description="Reject an unsigned or invalid IPA before it is uploaded to Firebase tester groups."
+                      label="Require signed iOS artifacts"
+                      onChange={(requiresIosSigning) => setForm((current) => ({ ...current, firebaseDistribution: { ...current.firebaseDistribution, requiresIosSigning } }))}
+                    />
+                  </article>
+                )}
               </div>
             </div>
           </section>
@@ -650,9 +772,9 @@ export const ApplicationSetup = ({
               <div className={styles.platformPanel}>
                 <h3>Android artifacts</h3>
                 <div className={styles.platformToggle}>
-                  <Switch checked={form.artifactGeneration.androidArtifactTypes.includes('apk')} label="Offer APK" onChange={(isEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, androidArtifactTypes: isEnabled ? [...new Set([...current.artifactGeneration.androidArtifactTypes, 'apk' as const])] : current.artifactGeneration.androidArtifactTypes.filter((type) => type !== 'apk') } }))} />
-                  <Switch checked={form.artifactGeneration.androidArtifactTypes.includes('aab')} label="Offer AAB" onChange={(isEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, androidArtifactTypes: isEnabled ? [...new Set([...current.artifactGeneration.androidArtifactTypes, 'aab' as const])] : current.artifactGeneration.androidArtifactTypes.filter((type) => type !== 'aab') } }))} />
-                  <Switch checked={form.artifactGeneration.requiresAndroidSigning} label="Require signing" onChange={(requiresAndroidSigning) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, requiresAndroidSigning } }))} />
+                  <Switch checked={form.artifactGeneration.androidArtifactTypes.includes('apk')} description="Makes an installable APK available in new local artifact pipelines." label="Offer APK" onChange={(isEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, androidArtifactTypes: isEnabled ? [...new Set([...current.artifactGeneration.androidArtifactTypes, 'apk' as const])] : current.artifactGeneration.androidArtifactTypes.filter((type) => type !== 'apk') } }))} />
+                  <Switch checked={form.artifactGeneration.androidArtifactTypes.includes('aab')} description="Makes an Android App Bundle available for local or store-oriented pipelines." label="Offer AAB" onChange={(isEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, androidArtifactTypes: isEnabled ? [...new Set([...current.artifactGeneration.androidArtifactTypes, 'aab' as const])] : current.artifactGeneration.androidArtifactTypes.filter((type) => type !== 'aab') } }))} />
+                  <Switch checked={form.artifactGeneration.requiresAndroidSigning} description="Locks signing on for every local Android artifact pipeline." label="Always sign generated Android artifacts" onChange={(requiresAndroidSigning) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, requiresAndroidSigning } }))} />
                 </div>
                 <Form.Group className={styles.compactField}>
                   <Form.Label>Default Android artifact</Form.Label>
@@ -663,12 +785,12 @@ export const ApplicationSetup = ({
                   <Form.Text>The artifact type can be changed for each pipeline run.</Form.Text>
                 </Form.Group>
                 <div className={styles.twoColumns}>
-                  <Form.Group><Form.Label>APK Gradle task</Form.Label><Form.Control onBlur={() => { const androidConfiguration = form.android; if (androidConfiguration !== null && form.googlePlay !== null && androidConfiguration.projectPath !== '') void loadAndroidProjectMetadata(androidConfiguration.projectPath, androidConfiguration.googleServicesJsonPath, androidConfiguration.gradleTask); }} onChange={(event) => { resetAndroidProjectMetadata(); updateAndroid({ gradleTask: event.target.value }); }} required value={form.android.gradleTask} /></Form.Group>
-                  <Form.Group><Form.Label>APK source path</Form.Label><Form.Control onChange={(event) => updateAndroid({ artifactPath: event.target.value })} required value={form.android.artifactPath} /><Form.Text>Required. May be relative to the Android project directory.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>APK Gradle task</Form.Label><Form.Control onBlur={() => { const androidConfiguration = form.android; if (androidConfiguration !== null && form.googlePlay !== null && androidConfiguration.projectPath !== '') void loadAndroidProjectMetadata(androidConfiguration.projectPath, androidConfiguration.googleServicesJsonPath, androidConfiguration.gradleTask); }} onChange={(event) => { resetAndroidProjectMetadata(); updateAndroid({ gradleTask: event.target.value }); }} required value={form.android.gradleTask} /><Form.Text>Exact Gradle task invoked to build the APK, including its module prefix.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>APK source path</Form.Label><Form.Control onChange={(event) => updateAndroid({ artifactPath: event.target.value })} required value={form.android.artifactPath} /><Form.Text>Expected APK produced by that task. May be relative to the Android project directory.</Form.Text></Form.Group>
                 </div>
                 <div className={styles.twoColumns}>
-                  <Form.Group><Form.Label>AAB Gradle task</Form.Label><Form.Control onChange={(event) => updateAndroid({ aabGradleTask: event.target.value })} required value={form.android.aabGradleTask} /></Form.Group>
-                  <Form.Group><Form.Label>AAB source path</Form.Label><Form.Control onChange={(event) => updateAndroid({ aabArtifactPath: event.target.value })} required value={form.android.aabArtifactPath} /><Form.Text>Required. May be relative to the Android project directory.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>AAB Gradle task</Form.Label><Form.Control onChange={(event) => updateAndroid({ aabGradleTask: event.target.value })} required value={form.android.aabGradleTask} /><Form.Text>Exact Gradle task invoked to build the AAB, including its module prefix.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>AAB source path</Form.Label><Form.Control onChange={(event) => updateAndroid({ aabArtifactPath: event.target.value })} required value={form.android.aabArtifactPath} /><Form.Text>Expected AAB produced by that task. May be relative to the Android project directory.</Form.Text></Form.Group>
                 </div>
               </div>
             )}
@@ -677,10 +799,10 @@ export const ApplicationSetup = ({
               <div className={styles.platformPanel}>
                 <h3>iOS artifact</h3>
                 <div className={styles.platformToggle}>
-                  <Switch checked={form.artifactGeneration.isIosIpaEnabled} label="Offer IPA" onChange={(isIosIpaEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, isIosIpaEnabled } }))} />
-                  <Switch checked={form.artifactGeneration.requiresIosSigning} label="Require signing" onChange={(requiresIosSigning) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, requiresIosSigning } }))} />
+                  <Switch checked={form.artifactGeneration.isIosIpaEnabled} description="Makes an exported IPA available in new local artifact pipelines." label="Offer IPA" onChange={(isIosIpaEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, isIosIpaEnabled } }))} />
+                  <Switch checked={form.artifactGeneration.requiresIosSigning} description="Locks signing on for every local IPA pipeline." label="Always sign generated IPA artifacts" onChange={(requiresIosSigning) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, requiresIosSigning } }))} />
                 </div>
-                <Form.Group><Form.Label>IPA source path</Form.Label><Form.Control onChange={(event) => updateIos({ artifactPath: event.target.value })} required value={form.ios.artifactPath} /><Form.Text>Required. May be relative to the iOS project directory.</Form.Text></Form.Group>
+                <Form.Group><Form.Label>IPA source path</Form.Label><Form.Control onChange={(event) => updateIos({ artifactPath: event.target.value })} required value={form.ios.artifactPath} /><Form.Text>Final IPA destination after Xcode archive export. May be relative to the iOS project directory.</Form.Text></Form.Group>
               </div>
             )}
           </div>
@@ -737,16 +859,16 @@ export const ApplicationSetup = ({
                   {androidProjectMetadataError ?? 'Detected from google-services.json or a literal Gradle applicationId when available. You can enter it manually.'}
                 </Form.Text>
               </Form.Group>
-              <Form.Group><Form.Label>Store artifact</Form.Label><Select onChange={(event) => updateGooglePlay({ artifactType: event.target.value === 'apk' ? 'apk' : 'aab' })} value={form.googlePlay.artifactType}><option value="aab">AAB (recommended)</option><option value="apk">APK</option></Select></Form.Group>
-              <Form.Group><Form.Label>Internal track ID</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ initialTrack: event.target.value })} required value={form.googlePlay.initialTrack} /></Form.Group>
+              <Form.Group><Form.Label>Store artifact</Form.Label><Select onChange={(event) => updateGooglePlay({ artifactType: event.target.value === 'apk' ? 'apk' : 'aab' })} value={form.googlePlay.artifactType}><option value="aab">AAB (recommended)</option><option value="apk">APK</option></Select><Form.Text>Artifact format accepted by this application’s Google Play pipeline.</Form.Text></Form.Group>
+              <Form.Group><Form.Label>Internal track ID</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ initialTrack: event.target.value })} required value={form.googlePlay.initialTrack} /><Form.Text>Google Play track that receives the first committed release, usually internal.</Form.Text></Form.Group>
             </div>
             <Form.Group className={styles.compactField}><Form.Label>Release notes language</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ releaseNotesLanguage: event.target.value })} placeholder="en-US" required value={form.googlePlay.releaseNotesLanguage} /><Form.Text>BCP 47 language tag used by Google Play.</Form.Text></Form.Group>
             <PathField helpText={application?.googlePlay === null || application?.googlePlay === undefined ? 'Use a dedicated service account granted access in Play Console.' : `Current: ${application.googlePlay.serviceAccountFileName}. Leave empty to keep it.`} label="Google Play Service Account JSON" onBrowse={() => void choosePath(window.desktopApi.chooseGooglePlayServiceAccount, (serviceAccountPath) => updateGooglePlay({ serviceAccountPath }))} placeholder={application?.googlePlay === null || application?.googlePlay === undefined ? 'Not selected yet' : 'The existing file will be kept'} required={application?.googlePlay === null || application?.googlePlay === undefined} value={form.googlePlay.serviceAccountPath} />
-            <Switch checked={form.googlePlay.promoteAfterUpload} label="Promote after internal testing upload" onChange={(promoteAfterUpload) => updateGooglePlay({ promoteAfterUpload })} />
+            <Switch checked={form.googlePlay.promoteAfterUpload} description="Creates a second Play edit to move the uploaded release from the internal track." label="Promote after internal testing upload" onChange={(promoteAfterUpload) => updateGooglePlay({ promoteAfterUpload })} />
             {form.googlePlay.promoteAfterUpload && <div className={styles.threeColumns}>
-              <Form.Group><Form.Label>Promotion track</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ promotionTrack: event.target.value })} required value={form.googlePlay.promotionTrack} /></Form.Group>
-              <Form.Group><Form.Label>Release status</Form.Label><Select onChange={(event) => updateGooglePlay({ promotionStatus: event.target.value === 'draft' ? 'draft' : event.target.value === 'inProgress' ? 'inProgress' : 'completed', rolloutFraction: event.target.value === 'inProgress' ? (form.googlePlay?.rolloutFraction ?? 0.1) : null })} value={form.googlePlay.promotionStatus}><option value="completed">Completed</option><option value="draft">Draft</option><option value="inProgress">Staged rollout</option></Select></Form.Group>
-              {form.googlePlay.promotionStatus === 'inProgress' && <Form.Group><Form.Label>Rollout fraction</Form.Label><Form.Control max="0.99" min="0.01" onChange={(event) => updateGooglePlay({ rolloutFraction: Number(event.target.value) })} required step="0.01" type="number" value={form.googlePlay.rolloutFraction ?? 0.1} /><Form.Text>0.01–0.99</Form.Text></Form.Group>}
+              <Form.Group><Form.Label>Promotion track</Form.Label><Form.Control onChange={(event) => updateGooglePlay({ promotionTrack: event.target.value })} required value={form.googlePlay.promotionTrack} /><Form.Text>Destination track ID, such as production, beta, or a custom track.</Form.Text></Form.Group>
+              <Form.Group><Form.Label>Release status</Form.Label><Select onChange={(event) => updateGooglePlay({ promotionStatus: event.target.value === 'draft' ? 'draft' : event.target.value === 'inProgress' ? 'inProgress' : 'completed', rolloutFraction: event.target.value === 'inProgress' ? (form.googlePlay?.rolloutFraction ?? 0.1) : null })} value={form.googlePlay.promotionStatus}><option value="completed">Completed</option><option value="draft">Draft</option><option value="inProgress">Staged rollout</option></Select><Form.Text>Controls whether promotion is final, a draft, or a staged rollout.</Form.Text></Form.Group>
+              {form.googlePlay.promotionStatus === 'inProgress' && <Form.Group><Form.Label>Rollout fraction</Form.Label><Form.Control max="0.99" min="0.01" onChange={(event) => updateGooglePlay({ rolloutFraction: Number(event.target.value) })} required step="0.01" type="number" value={form.googlePlay.rolloutFraction ?? 0.1} /><Form.Text>Audience share from 0.01 to 0.99; for example, 0.10 releases to 10%.</Form.Text></Form.Group>}
             </div>}
           </div>
         </section>
@@ -771,8 +893,8 @@ export const ApplicationSetup = ({
                   />
                   <Form.Text>Enter the Bundle ID manually or use Refresh in the iOS signing section.</Form.Text>
                 </Form.Group>
-                <Form.Group><Form.Label>API Key ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, apiKeyId: event.target.value } }))} required value={form.appStoreConnect.apiKeyId} /></Form.Group>
-                <Form.Group><Form.Label>Issuer ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, issuerId: event.target.value } }))} placeholder="UUID" required value={form.appStoreConnect.issuerId} /></Form.Group>
+                <Form.Group><Form.Label>API Key ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, apiKeyId: event.target.value } }))} required value={form.appStoreConnect.apiKeyId} /><Form.Text>Key identifier shown in App Store Connect; it can also be read from AuthKey_KEYID.p8.</Form.Text></Form.Group>
+                <Form.Group><Form.Label>Issuer ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, issuerId: event.target.value } }))} placeholder="UUID" required value={form.appStoreConnect.issuerId} /><Form.Text>Issuer UUID from App Store Connect Users and Access integration settings.</Form.Text></Form.Group>
               </div>
               <PathField helpText={application?.appStoreConnect === null || application?.appStoreConnect === undefined ? 'The .p8 key is encrypted at rest. A standard AuthKey_KEYID.p8 filename also fills the Key ID.' : `Current: ${application.appStoreConnect.apiKeyFileName}. Leave empty to keep it.`} label="App Store Connect API key (.p8)" onBrowse={() => void chooseAppStoreConnectApiKey()} placeholder={application?.appStoreConnect === null || application?.appStoreConnect === undefined ? 'Not selected yet' : 'The existing file will be kept'} required={application?.appStoreConnect === null || application?.appStoreConnect === undefined} value={form.appStoreConnect.apiKeyPath} />
             </div>
@@ -783,13 +905,13 @@ export const ApplicationSetup = ({
           <section className={styles.section}>
             <header><span>07A</span><div><h2>Android signing configuration</h2><p>Keystore credentials for signed APK and AAB artifacts</p></div></header>
             <div className={styles.sectionBody}>
-              <div className={styles.platformPanel}>
+              <div className={styles.signingPanel}>
                 <Alert variant="info">Select a binary JKS/keystore created by Android Studio or keytool. Keystore passwords are encrypted and never written to YAML, JSON, Gradle files, or renderer storage.</Alert>
                 <PathField helpText={application?.androidSigning === null || application?.androidSigning === undefined ? 'Select the upload/release keystore.' : `Current: ${application.androidSigning.keystoreFileName}. Leave empty to keep it.`} label="Keystore (.jks or .keystore)" onBrowse={() => void choosePath(window.desktopApi.chooseAndroidKeystore, (keystorePath) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keystorePath } })))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? 'Not selected yet' : 'The existing keystore will be kept'} required={application?.androidSigning === null || application?.androidSigning === undefined} value={form.androidSigning?.keystorePath ?? ''} />
                 <div className={styles.threeColumns}>
-                  <Form.Group><Form.Label>Key alias</Form.Label><Form.Control onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyAlias: event.target.value } }))} required value={form.androidSigning?.keyAlias ?? ''} /></Form.Group>
-                  <Form.Group><Form.Label>Keystore password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), storePassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.storePassword ?? ''} /></Form.Group>
-                  <Form.Group><Form.Label>Key password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyPassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.keyPassword ?? ''} /></Form.Group>
+                  <Form.Group><Form.Label>Key alias</Form.Label><Form.Control onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyAlias: event.target.value } }))} required value={form.androidSigning?.keyAlias ?? ''} /><Form.Text>Alias of the upload or release key stored inside the selected keystore.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>Keystore password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), storePassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.storePassword ?? ''} /><Form.Text>Unlocks the keystore. On edit, leave empty to retain the encrypted value.</Form.Text></Form.Group>
+                  <Form.Group><Form.Label>Key password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyPassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.keyPassword ?? ''} /><Form.Text>Unlocks the selected alias. On edit, leave empty to retain the encrypted value.</Form.Text></Form.Group>
                 </div>
               </div>
             </div>
@@ -800,8 +922,8 @@ export const ApplicationSetup = ({
           <section className={styles.section}>
             <header><span>07B</span><div><h2>iOS signing configuration</h2><p>Xcode automatic signing for IPA and App Store archives</p></div></header>
             <div className={styles.sectionBody}>
-              <div className={styles.platformPanel}>
-                <Switch checked={form.iosSigning.isEnabled} label="Use Xcode automatic signing" onChange={(isEnabled) => setForm((current) => ({ ...current, iosSigning: { ...current.iosSigning, isEnabled } }))} />
+              <div className={styles.signingPanel}>
+                <Switch checked={form.iosSigning.isEnabled} description="Passes the saved Team ID to Xcode and allows provisioning profile updates during archive." label="Use Xcode automatic signing" onChange={(isEnabled) => setForm((current) => ({ ...current, iosSigning: { ...current.iosSigning, isEnabled } }))} />
                 <Form.Group className={styles.compactField}>
                   <Form.Label>Apple Development Team ID</Form.Label>
                   <InputGroup>
@@ -872,15 +994,30 @@ export const ApplicationSetup = ({
           </div>
         </section>
 
+        <section className={styles.section}>
+          <header><span>09</span><div><h2>Completion notifications</h2><p>Native desktop feedback after release work finishes</p></div></header>
+          <div className={styles.sectionBody}>
+            <Switch
+              checked={form.shouldNotifyWhenFinished}
+              description="Send a native desktop notification when a release pipeline succeeds, partially succeeds, fails, or is cancelled. Notification text contains no credentials or file paths."
+              label="Notify me when release pipelines finish"
+              onChange={(shouldNotifyWhenFinished) => setForm((current) => ({
+                ...current,
+                shouldNotifyWhenFinished,
+              }))}
+            />
+          </div>
+        </section>
+
         {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
         <footer className={styles.formFooter}>
           <Button disabled={isSaving} onClick={onCancel} type="button" variant="outline-secondary">Cancel</Button>
           <Button
             disabled={
               isSaving ||
-              (form.googlePlay !== null && isLoadingAndroidProjectMetadata) ||
+              isLoadingAndroidProjectMetadata ||
               (form.android === null && form.ios === null) ||
-              (form.ios !== null && (isLoadingIosSchemes || iosSchemes.length === 0))
+              (form.ios !== null && (isLoadingIosSchemes || availableIosSchemes.length === 0))
             }
             type="submit"
           >

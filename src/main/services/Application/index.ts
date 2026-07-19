@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { lstat, readFile } from 'node:fs/promises';
+import { lstat, readFile, readdir } from 'node:fs/promises';
 import { parse as parsePlist } from 'plist';
 import type { ApplicationRepository } from '@main/repositories/Application';
 import type { PersistApplicationInput } from '@main/repositories/Application/index.types';
@@ -24,6 +24,7 @@ import type {
   CreateApplicationRequest,
   GooglePlaySetupConfiguration,
   IosConfiguration,
+  IosProjectDiscoveryResult,
   PipelineHook,
   UpdateArtifactOutputDirectoryRequest,
   UpdateApplicationRequest,
@@ -166,13 +167,92 @@ const inspectAndroidProjectMetadata = async (
   request: AndroidProjectMetadataRequest,
 ): Promise<AndroidProjectMetadataResult> => {
   const projectPath = await resolveExistingDirectory(request.projectPath);
-  if (request.googleServicesJsonPath !== null && request.googleServicesJsonPath.trim() !== '') {
-    const firebaseMetadata = await inspectGoogleServicesJson(request.googleServicesJsonPath);
-    if (firebaseMetadata.packageName !== null) {
-      return { packageName: firebaseMetadata.packageName };
+  let googleServicesJsonPath = request.googleServicesJsonPath;
+  if (googleServicesJsonPath === null || googleServicesJsonPath.trim() === '') {
+    for (const candidatePath of [
+      path.join(projectPath, 'app', 'google-services.json'),
+      path.join(projectPath, 'google-services.json'),
+    ]) {
+      try {
+        googleServicesJsonPath = await resolveExistingFile(candidatePath, ['.json']);
+        break;
+      } catch {
+        googleServicesJsonPath = null;
+      }
     }
   }
-  return { packageName: await readGradlePackageName(projectPath, request.gradleTask) };
+  let firebaseMetadata: FirebaseFileMetadata | null = null;
+  if (googleServicesJsonPath !== null && googleServicesJsonPath.trim() !== '') {
+    firebaseMetadata = await inspectGoogleServicesJson(googleServicesJsonPath);
+  }
+  return {
+    firebaseProjectId: firebaseMetadata?.projectId ?? null,
+    googleServicesJsonPath,
+    packageName:
+      firebaseMetadata?.packageName ?? await readGradlePackageName(projectPath, request.gradleTask),
+  };
+};
+
+const readDiscoveryEntries = async (projectPath: string): Promise<string[]> => {
+  const rootEntries = await readdir(projectPath, { withFileTypes: true });
+  const rootPaths = rootEntries.map((entry) => path.join(projectPath, entry.name));
+  const nestedDirectories = rootEntries
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        !entry.name.startsWith('.') &&
+        !['build', 'node_modules', 'Pods'].includes(entry.name),
+    )
+    .slice(0, 32);
+  const nestedPaths = await Promise.all(
+    nestedDirectories.map(async (directory) => {
+      try {
+        const entries = await readdir(path.join(projectPath, directory.name), {
+          withFileTypes: true,
+        });
+        return entries
+          .slice(0, 128)
+          .map((entry) => path.join(projectPath, directory.name, entry.name));
+      } catch {
+        return [];
+      }
+    }),
+  );
+  return [...rootPaths, ...nestedPaths.flat()];
+};
+
+const discoverIosProjectConfiguration = async (
+  requestedProjectPath: string,
+): Promise<IosProjectDiscoveryResult> => {
+  const projectPath = await resolveExistingDirectory(requestedProjectPath);
+  const candidatePaths = await readDiscoveryEntries(projectPath);
+  const workspacePaths = candidatePaths.filter((candidatePath) =>
+    candidatePath.toLocaleLowerCase('en-US').endsWith('.xcworkspace'),
+  );
+  const projectPaths = candidatePaths.filter((candidatePath) =>
+    candidatePath.toLocaleLowerCase('en-US').endsWith('.xcodeproj') &&
+    path.basename(candidatePath).toLocaleLowerCase('en-US') !== 'pods.xcodeproj',
+  );
+  const selectedBundleCandidates = workspacePaths.length > 0 ? workspacePaths : projectPaths;
+  const workspaceOrProjectPath = selectedBundleCandidates.length === 1
+    ? await resolveExistingBundlePath(selectedBundleCandidates[0] ?? '', ['.xcworkspace', '.xcodeproj'])
+    : null;
+  const plistCandidates = candidatePaths.filter(
+    (candidatePath) =>
+      path.basename(candidatePath).toLocaleLowerCase('en-US') ===
+      'googleservice-info.plist'.toLocaleLowerCase('en-US'),
+  );
+  const googleServiceInfoPlistPath = plistCandidates.length === 1
+    ? await resolveExistingFile(plistCandidates[0] ?? '', ['.plist'])
+    : null;
+  const firebaseMetadata = googleServiceInfoPlistPath === null
+    ? null
+    : await inspectGoogleServiceInfoPlist(googleServiceInfoPlistPath);
+  return {
+    firebaseProjectId: firebaseMetadata?.projectId ?? null,
+    googleServiceInfoPlistPath,
+    workspaceOrProjectPath,
+  };
 };
 
 const resolveHooks = async (hooks: PipelineHook[]): Promise<PipelineHook[]> =>
@@ -347,6 +427,12 @@ export class ApplicationService {
     return inspectAndroidProjectMetadata(request);
   }
 
+  public async discoverIosProjectConfiguration(
+    projectPath: string,
+  ): Promise<IosProjectDiscoveryResult> {
+    return discoverIosProjectConfiguration(projectPath);
+  }
+
   private async resolveInput(
     request: CreateApplicationRequest,
     retainedApplication?: ReturnType<ApplicationRepository['getStored']>,
@@ -404,6 +490,7 @@ export class ApplicationService {
       name: request.name.trim(),
       serviceAccountFileName: serviceAccount === null ? '' : path.basename(serviceAccount.path),
       serviceAccountPath: serviceAccount?.path ?? null,
+      shouldNotifyWhenFinished: request.shouldNotifyWhenFinished,
     };
   }
 
@@ -431,6 +518,7 @@ export class ApplicationService {
       iosSigning: request.iosSigning,
       name: request.name,
       serviceAccountPath: request.serviceAccountPath ?? '',
+      shouldNotifyWhenFinished: request.shouldNotifyWhenFinished,
     };
     return this.repository.update(request.id, await this.resolveInput(createRequest, currentApplication));
   }

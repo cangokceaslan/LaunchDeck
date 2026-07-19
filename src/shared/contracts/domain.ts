@@ -114,7 +114,15 @@ export type AndroidProjectMetadataRequest = {
 };
 
 export type AndroidProjectMetadataResult = {
+  firebaseProjectId: string | null;
+  googleServicesJsonPath: string | null;
   packageName: string | null;
+};
+
+export type IosProjectDiscoveryResult = {
+  firebaseProjectId: string | null;
+  googleServiceInfoPlistPath: string | null;
+  workspaceOrProjectPath: string | null;
 };
 
 export type CreateApplicationRequest = {
@@ -132,6 +140,7 @@ export type CreateApplicationRequest = {
   iosSigning: IosSigningConfiguration;
   name: string;
   serviceAccountPath: string;
+  shouldNotifyWhenFinished: boolean;
 };
 
 export type UpdateApplicationRequest = Omit<CreateApplicationRequest, 'serviceAccountPath'> & {
@@ -167,6 +176,7 @@ export type ApplicationDetail = ApplicationSummary & {
   ios: IosConfiguration | null;
   iosSigning: IosSigningConfiguration;
   serviceAccountFileName: string;
+  shouldNotifyWhenFinished: boolean;
 };
 
 export type PathSelectionResult =

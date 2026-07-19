@@ -17,6 +17,7 @@ import {
   createFastActionRequestSchema,
   deleteFastActionRequestSchema,
   iosProjectMetadataRequestSchema,
+  iosProjectDiscoveryRequestSchema,
   iosSchemeListRequestSchema,
   planIdSchema,
   preflightReleaseRequestSchema,
@@ -162,6 +163,17 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     assertTrustedSender(event);
     try {
       return await dependencies.iosBuilder.listSchemes(iosSchemeListRequestSchema.parse(payload));
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.iosProjectConfigurationDiscover, async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return await dependencies.applicationService.discoverIosProjectConfiguration(
+        iosProjectDiscoveryRequestSchema.parse(payload),
+      );
     } catch (error) {
       throw new Error(toSafeErrorMessage(error));
     }

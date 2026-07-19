@@ -58,6 +58,7 @@ export type PreflightReleaseRequest = {
   androidArtifactType?: AndroidArtifactType;
   androidArtifactPath?: string;
   applicationId: string;
+  artifactSigningPlatforms: ReleasePlatform[];
   artifactOutputDirectoryPath?: string;
   distributionGroups: string[];
   destinations: DistributionDestination[];
@@ -107,6 +108,7 @@ export type ResolvedReleasePlan = {
   planId: string;
   platforms: ReleasePlatform[];
   releaseNotes: string;
+  signingPlatforms: ReleasePlatform[];
   version?: ResolvedReleaseVersion;
 };
 

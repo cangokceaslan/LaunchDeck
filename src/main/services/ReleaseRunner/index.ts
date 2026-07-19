@@ -20,6 +20,7 @@ import { createRedactor } from '@main/utils/Redaction';
 import type {
   ActiveReleaseRun,
   InternalReleasePlan,
+  ReleaseCompletionNotifier,
 } from '@main/services/ReleaseRunner/index.types';
 import type {
   PipelineHook,
@@ -53,6 +54,25 @@ const hasDestination = (
   destinations: DistributionDestination[],
   destination: DistributionDestination,
 ): boolean => destinations.includes(destination);
+
+const shouldSignBuild = (
+  request: PreflightReleaseRequest,
+  application: InternalReleasePlan['application'],
+  platform: ReleasePlatform,
+): boolean => {
+  if (hasDestination(request.destinations, 'store')) return true;
+  if (hasDestination(request.destinations, 'firebase')) {
+    const isFirebaseSigningRequired = platform === 'android'
+      ? application.firebaseDistribution.requiresAndroidSigning
+      : application.firebaseDistribution.requiresIosSigning;
+    if (isFirebaseSigningRequired) return true;
+  }
+  if (!hasDestination(request.destinations, 'artifact')) return false;
+  const isSigningRequiredBySetup = platform === 'android'
+    ? application.artifactGeneration.requiresAndroidSigning
+    : application.artifactGeneration.requiresIosSigning;
+  return isSigningRequiredBySetup || request.artifactSigningPlatforms.includes(platform);
+};
 
 const formatArtifactTimestamp = (isoTimestamp: string): string => {
   const timestamp = new Date(isoTimestamp);
@@ -219,6 +239,7 @@ export class ReleaseRunner {
     private readonly androidBuilder: AndroidBuilder,
     private readonly iosBuilder: IosBuilder,
     private readonly runsRootPath: string,
+    private readonly notifyReleaseCompletion: ReleaseCompletionNotifier,
   ) {}
 
   public hasActiveRun(): boolean {
@@ -255,9 +276,7 @@ export class ReleaseRunner {
         if (platform === 'android' && application.android !== null) {
           await this.androidBuilder.resolveGradleWrapper(application.android);
           await this.androidBuilder.validateVersionConfiguration(application.android);
-          const requiresSigning = hasDestination(planRequest.destinations, 'store') ||
-            (hasDestination(planRequest.destinations, 'artifact') && application.artifactGeneration.requiresAndroidSigning) ||
-            (hasDestination(planRequest.destinations, 'firebase') && application.firebaseDistribution.requiresAndroidSigning);
+          const requiresSigning = shouldSignBuild(planRequest, application, platform);
           if (requiresSigning) {
             if (application.androidSigning === null) throw new Error('Android signing configuration is required.');
             await this.androidBuilder.validateSigningConfiguration(application.android, application.androidSigning);
@@ -267,9 +286,7 @@ export class ReleaseRunner {
           await this.iosBuilder.resolveXcodeBuild();
           await this.iosBuilder.validateVersionConfiguration(application.ios);
           if (
-            (hasDestination(planRequest.destinations, 'store') ||
-              (hasDestination(planRequest.destinations, 'artifact') && application.artifactGeneration.requiresIosSigning) ||
-              (hasDestination(planRequest.destinations, 'firebase') && application.firebaseDistribution.requiresIosSigning)) &&
+            shouldSignBuild(planRequest, application, platform) &&
             (!application.iosSigning.isEnabled || application.iosSigning.developmentTeamId === '')
           ) {
             throw new Error('Automatic iOS signing and a development team ID are required.');
@@ -474,6 +491,9 @@ export class ReleaseRunner {
           : 'apk'
         : request.androidArtifactType ?? application.android?.defaultArtifactType ?? 'apk'
       : undefined;
+    const signingPlatforms = includesBuild(request.mode)
+      ? request.platforms.filter((platform) => shouldSignBuild(request, application, platform))
+      : [];
     const publicPlan: ResolvedReleasePlan = {
       androidArtifactType: resolvedAndroidArtifactType,
       applicationId: application.id,
@@ -487,6 +507,7 @@ export class ReleaseRunner {
       planId,
       platforms: [...request.platforms],
       releaseNotes: request.releaseNotes,
+      signingPlatforms,
       version: resolveReleaseVersion(request),
     };
     this.plans.set(planId, {
@@ -495,6 +516,7 @@ export class ReleaseRunner {
       publicPlan,
       request: {
         ...request,
+        artifactSigningPlatforms: [...request.artifactSigningPlatforms],
         distributionGroups: [...request.distributionGroups],
         platforms: [...request.platforms],
       },
@@ -739,9 +761,11 @@ export class ReleaseRunner {
             await runHooks('preBuild', platform);
             await runStep('build', platform, `${platform === 'android' ? 'Android' : 'iOS'} build started.`, async (reportActivity) => {
               if (platform === 'android' && plan.application.android !== null) {
-                const requiresSigning = hasDestination(plan.request.destinations, 'store') ||
-                  (hasDestination(plan.request.destinations, 'artifact') && plan.application.artifactGeneration.requiresAndroidSigning) ||
-                  (hasDestination(plan.request.destinations, 'firebase') && plan.application.firebaseDistribution.requiresAndroidSigning);
+                const requiresSigning = shouldSignBuild(
+                  plan.request,
+                  plan.application,
+                  platform,
+                );
                 artifactPath = await this.androidBuilder.build(
                   plan.application.android,
                   plan.publicPlan.androidArtifactType ?? plan.application.android.defaultArtifactType,
@@ -753,9 +777,11 @@ export class ReleaseRunner {
                   requiresSigning ? plan.application.androidSigning ?? undefined : undefined,
                 );
               } else if (platform === 'ios' && plan.application.ios !== null) {
-                const requiresSigning = hasDestination(plan.request.destinations, 'store') ||
-                  (hasDestination(plan.request.destinations, 'artifact') && plan.application.artifactGeneration.requiresIosSigning) ||
-                  (hasDestination(plan.request.destinations, 'firebase') && plan.application.firebaseDistribution.requiresIosSigning);
+                const requiresSigning = shouldSignBuild(
+                  plan.request,
+                  plan.application,
+                  platform,
+                );
                 artifactPath = await this.iosBuilder.build(
                   plan.application.ios,
                   path.join(runWorkspacePath, 'ios'),
@@ -965,6 +991,17 @@ export class ReleaseRunner {
       try {
         this.history.add(result);
         onEvent({ result, runId, type: 'releaseFinished' });
+        if (plan.application.shouldNotifyWhenFinished) {
+          try {
+            this.notifyReleaseCompletion({
+              applicationName: plan.application.name,
+              outcome: result.outcome,
+              platforms: result.platforms.map((platformResult) => platformResult.platform),
+            });
+          } catch {
+            // Native notification availability must not change the completed release outcome.
+          }
+        }
       } finally {
         try {
           await rm(runWorkspacePath, { force: true, recursive: true });

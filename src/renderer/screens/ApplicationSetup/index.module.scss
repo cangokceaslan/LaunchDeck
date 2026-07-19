@@ -96,6 +96,23 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
+      .schemeInputGroup {
+        flex-wrap: nowrap;
+
+        > select {
+          border-bottom-right-radius: 0;
+          border-top-right-radius: 0;
+          flex: 1 1 auto;
+          min-width: 0;
+          width: 1%;
+        }
+
+        > button {
+          flex: 0 0 auto;
+          white-space: nowrap;
+        }
+      }
+
       .platformToggle {
         display: flex;
         flex-wrap: wrap;
@@ -110,6 +127,42 @@
 
       .fieldError {
         color: var(--color-danger);
+      }
+
+      .firebasePlatformGrid {
+        border-top: 1px solid var(--color-border);
+        display: grid;
+        gap: var(--space-4);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: var(--space-5);
+        padding-top: var(--space-5);
+      }
+
+      .firebasePlatformPanel {
+        background: var(--color-surface-subtle);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        min-width: 0;
+        padding: var(--space-4);
+
+        > header {
+          margin-bottom: var(--space-4);
+
+          h3 {
+            font-size: 0.9rem;
+            margin: 0;
+          }
+
+          p {
+            color: var(--color-text-muted);
+            font-size: 0.7rem;
+            margin: var(--space-1) 0 0;
+          }
+        }
+      }
+
+      .signingPanel {
+        min-width: 0;
       }
 
       .platformPanel {
@@ -148,6 +201,7 @@
       .sectionBody {
         .twoColumns,
         .threeColumns,
+        .firebasePlatformGrid,
         .outcomeGrid {
           grid-template-columns: minmax(0, 1fr);
         }

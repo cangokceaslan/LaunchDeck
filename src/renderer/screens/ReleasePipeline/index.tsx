@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Alert, Button, Form, Spinner } from 'react-bootstrap';
+import { Switch } from '@components/Inputs/Switch';
 import { PathField } from '@components/PathField';
 import { PipelineProgress } from '@components/PipelineProgress';
+import { StatusPill } from '@components/StatusPill';
 import { VersionConfiguration } from '@components/VersionConfiguration';
 import type { ReleaseVersionForm } from '@components/VersionConfiguration/index.types';
 import { useReleaseRun } from '@hooks/useReleaseRun';
@@ -23,6 +25,8 @@ import type {
 } from '@screens/ReleasePipeline/index.types';
 import {
   formatResolvedVersion,
+  isArtifactSigningConfigured,
+  isArtifactSigningRequired,
   resolveReleaseVersionInput,
 } from '@screens/ReleasePipeline/index.utils';
 import styles from '@screens/ReleasePipeline/index.module.scss';
@@ -53,6 +57,11 @@ const formatDestinations = (destinations: DistributionDestination[]): string =>
           : 'Store Distribution',
     )
     .join(' + ');
+
+const formatSigningSummary = (platforms: ReleasePlatform[]): string =>
+  platforms.length === 0
+    ? 'Not requested'
+    : platforms.map(formatPlatform).join(' + ');
 
 const getFastAction = (intent: ReleasePipelineIntent) =>
   'fastAction' in intent ? intent.fastAction : null;
@@ -108,6 +117,9 @@ export const ReleasePipeline = ({
   const [androidArtifactType, setAndroidArtifactType] = useState<AndroidArtifactType>(
     initialConfiguration?.androidArtifactType ?? application.android?.defaultArtifactType ?? 'apk',
   );
+  const [artifactSigningPlatforms, setArtifactSigningPlatforms] = useState<ReleasePlatform[]>(
+    initialConfiguration?.artifactSigningPlatforms ?? [],
+  );
   const [releaseNotes, setReleaseNotes] = useState(
     initialConfiguration?.releaseNotes ?? `${application.name} new test release`,
   );
@@ -140,6 +152,25 @@ export const ReleasePipeline = ({
   const mode = resolveMode(source, destinations);
   const isFirebaseTarget = destinations.includes('firebase');
   const isArtifactTarget = destinations.includes('artifact');
+  const isSigningForced = (platform: ReleasePlatform): boolean =>
+    destinations.includes('store') ||
+    (isFirebaseTarget && (
+      platform === 'android'
+        ? application.firebaseDistribution.requiresAndroidSigning
+        : application.firebaseDistribution.requiresIosSigning
+    )) ||
+    (isArtifactTarget && isArtifactSigningRequired(application, platform));
+  const signingPlatforms = source === 'build'
+    ? platforms.filter(
+        (platform) =>
+          isSigningForced(platform) ||
+          (isArtifactTarget && artifactSigningPlatforms.includes(platform)),
+      )
+    : [];
+  const artifactSigningPlatformsForRequest = isArtifactTarget ? signingPlatforms : [];
+  const isArtifactSigningUnavailable = isArtifactTarget && signingPlatforms.some(
+    (platform) => !isArtifactSigningConfigured(application, platform),
+  );
   const availableAndroidArtifactTypes: AndroidArtifactType[] = destinations.includes('store') && application.googlePlay !== null
     ? [application.googlePlay.artifactType]
     : isArtifactTarget
@@ -163,6 +194,7 @@ export const ReleasePipeline = ({
       artifactOutputDirectoryPath: isArtifactTarget
         ? artifactOutputDirectoryPath
         : undefined,
+      artifactSigningPlatforms: artifactSigningPlatformsForRequest,
       distributionGroups: isFirebaseTarget
         ? groupsText.split(',').map((group) => group.trim()).filter(Boolean)
         : [],
@@ -183,6 +215,9 @@ export const ReleasePipeline = ({
       ? platforms.filter((selectedPlatform) => selectedPlatform !== platform)
       : [...platforms, platform];
     setPlatforms(nextPlatforms);
+    setArtifactSigningPlatforms((currentPlatforms) =>
+      currentPlatforms.filter((signingPlatform) => nextPlatforms.includes(signingPlatform)),
+    );
     const canKeepStore = nextPlatforms.every((selectedPlatform) =>
       selectedPlatform === 'android' ? application.googlePlay !== null : application.appStoreConnect !== null,
     ) && !(source === 'existing' && nextPlatforms.includes('ios'));
@@ -208,6 +243,14 @@ export const ReleasePipeline = ({
       current.includes(destination)
         ? current.filter((selectedDestination) => selectedDestination !== destination)
         : [...current, destination],
+    );
+  };
+
+  const toggleArtifactSigning = (platform: ReleasePlatform, isEnabled: boolean): void => {
+    setArtifactSigningPlatforms((currentPlatforms) =>
+      isEnabled
+        ? [...new Set([...currentPlatforms, platform])]
+        : currentPlatforms.filter((signingPlatform) => signingPlatform !== platform),
     );
   };
 
@@ -333,6 +376,7 @@ export const ReleasePipeline = ({
     (destinations.length === 0) ||
     (isFastActionEditor && fastActionName.trim().length < 2) ||
     (isArtifactTarget && artifactOutputDirectoryPath.trim() === '') ||
+    isArtifactSigningUnavailable ||
     (destinations.includes('store') && releaseNotes.trim() === '');
   const pageTitle = intent.kind === 'createFastAction'
     ? 'Create fast action'
@@ -397,7 +441,56 @@ export const ReleasePipeline = ({
                 </div>
               </div>
             )}
-            <footer><Button disabled={platforms.length === 0 || destinations.length === 0} onClick={() => setStep(2)}>Continue to release details</Button></footer>
+            {source === 'build' && isArtifactTarget && platforms.length > 0 && (
+              <div className={styles.selectionSection}>
+                <div className={styles.selectionHeading}>
+                  <span>Artifact signing</span>
+                  <small>Choose which generated artifacts use the saved signing configuration.</small>
+                </div>
+                <div className={styles.signingGrid}>
+                  {platforms.map((platform) => {
+                    const isConfigured = isArtifactSigningConfigured(application, platform);
+                    const isForced = isSigningForced(platform);
+                    const isSelected = isForced || artifactSigningPlatforms.includes(platform);
+                    const artifactLabel = platform === 'android'
+                      ? androidArtifactType.toUpperCase()
+                      : 'IPA';
+                    const configurationSummary = platform === 'android'
+                      ? application.androidSigning === null
+                        ? 'No Android keystore is saved.'
+                        : `${application.androidSigning.keystoreFileName} · alias ${application.androidSigning.keyAlias}`
+                      : application.iosSigning.developmentTeamId === ''
+                        ? 'No Apple Development Team ID is saved.'
+                        : `Apple team ${application.iosSigning.developmentTeamId}`;
+                    const description = !isConfigured
+                      ? `Complete the ${formatPlatform(platform)} signing setup before enabling this option.`
+                      : isForced
+                        ? 'Required by the application setup or another selected destination.'
+                        : 'Optional for this pipeline. Preflight validates the saved credentials before building.';
+                    return (
+                      <article className={styles.signingOption} key={platform}>
+                        <div className={styles.signingOptionHeader}>
+                          <strong>{formatPlatform(platform)}</strong>
+                          <StatusPill
+                            label={isConfigured ? 'Signing configured' : 'Setup required'}
+                            tone={isConfigured ? 'success' : 'warning'}
+                          />
+                        </div>
+                        <Switch
+                          checked={isSelected}
+                          description={description}
+                          disabled={!isConfigured || isForced}
+                          label={`Sign generated ${artifactLabel}`}
+                          onChange={(isEnabled) => toggleArtifactSigning(platform, isEnabled)}
+                        />
+                        <small className={styles.signingConfiguration}>{configurationSummary}</small>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <footer><Button disabled={platforms.length === 0 || destinations.length === 0 || isArtifactSigningUnavailable} onClick={() => setStep(2)}>Continue to release details</Button></footer>
           </div>
         )}
 
@@ -408,6 +501,7 @@ export const ReleasePipeline = ({
               <div><span>Source</span><strong>{source === 'build' ? 'New build' : 'Existing artifact'}</strong></div>
               <div><span>Destinations</span><strong>{destinations.map((destination) => destination === 'artifact' ? 'Artifact' : destination === 'firebase' ? 'Firebase' : 'Store').join(' + ')}</strong></div>
               <div><span>Platforms</span><strong>{platforms.map(formatPlatform).join(' + ')}</strong></div>
+              <div><span>Signing</span><strong>{formatSigningSummary(signingPlatforms)}</strong></div>
             </div>
             <div className={styles.formGrid}>
               {isFastActionEditor && <Form.Group><Form.Label>Fast action name</Form.Label><Form.Control autoFocus maxLength={80} minLength={2} onChange={(event) => setFastActionName(event.target.value)} placeholder="e.g. Android internal testing" required value={fastActionName} /><Form.Text>This name appears on the application details page.</Form.Text></Form.Group>}
@@ -432,7 +526,7 @@ export const ReleasePipeline = ({
         {step === 3 && (
           <div className={styles.stepContent}>
             {!isRunStarted && preflight?.isValid === false && <><header><span>Step 3</span><h2>Preflight could not be completed</h2><p>Fix the blocking issues and try again.</p></header><div className={styles.issueList}>{preflight.issues.map((issue) => <Alert key={`${issue.code}-${issue.field ?? ''}`} variant="danger">{issue.message}</Alert>)}</div><footer><Button onClick={() => setStep(2)} variant="outline-secondary">Edit details</Button><Button onClick={() => void handlePreflight()}>Validate again</Button></footer></>}
-            {!isRunStarted && preflight?.isValid === true && <><header><span>Step 3</span><h2>Ready to start</h2><p>Review the execution summary. The plan remains valid for 10 minutes.</p></header><div className={styles.launchSummary}><div className={styles.launchPrimary}><span>{formatDestinations(preflight.plan.destinations)}</span><strong>{formatArtifactSummary(preflight.plan)} · {preflight.plan.platforms.map(formatPlatform).join(' + ')}</strong><small>{preflight.plan.version === undefined ? '' : `${formatResolvedVersion(preflight.plan.version)} · `}{preflight.plan.phaseCount} verified steps will run.</small></div><div className={styles.planSummary}><div><span>Operation</span><strong>{formatMode(preflight.plan.mode)}</strong></div><div><span>Destination</span><strong>{formatDestinations(preflight.plan.destinations)}</strong></div><div><span>{preflight.plan.destinations.includes('firebase') ? 'Tester groups' : 'Output'}</span><strong>{preflight.plan.destinations.includes('firebase') ? `${preflight.plan.distributionGroups.length} groups` : preflight.plan.artifactOutputDirectoryPath ?? 'Configured store'}</strong></div></div></div>{preflight.warnings.map((warning) => <Alert key={warning.message} variant="warning">{warning.message}</Alert>)}{releaseRun.errorMessage !== null && <Alert variant="danger">{releaseRun.errorMessage}</Alert>}<footer><Button onClick={() => setStep(2)} variant="outline-secondary">Back</Button><Button disabled={releaseRun.status === 'starting'} onClick={() => void releaseRun.start(preflight.plan.planId)}>{releaseRun.status === 'starting' ? 'Starting…' : 'Start pipeline'}</Button></footer></>}
+            {!isRunStarted && preflight?.isValid === true && <><header><span>Step 3</span><h2>Ready to start</h2><p>Review the execution summary. The plan remains valid for 10 minutes.</p></header><div className={styles.launchSummary}><div className={styles.launchPrimary}><span>{formatDestinations(preflight.plan.destinations)}</span><strong>{formatArtifactSummary(preflight.plan)} · {preflight.plan.platforms.map(formatPlatform).join(' + ')}</strong><small>{preflight.plan.version === undefined ? '' : `${formatResolvedVersion(preflight.plan.version)} · `}{preflight.plan.phaseCount} verified steps will run.</small></div><div className={styles.planSummary}><div><span>Operation</span><strong>{formatMode(preflight.plan.mode)}</strong></div><div><span>Destination</span><strong>{formatDestinations(preflight.plan.destinations)}</strong></div><div><span>Signing</span><strong>{formatSigningSummary(preflight.plan.signingPlatforms)}</strong></div><div><span>{preflight.plan.destinations.includes('firebase') ? 'Tester groups' : 'Output'}</span><strong>{preflight.plan.destinations.includes('firebase') ? `${preflight.plan.distributionGroups.length} groups` : preflight.plan.artifactOutputDirectoryPath ?? 'Configured store'}</strong></div></div></div>{preflight.warnings.map((warning) => <Alert key={warning.message} variant="warning">{warning.message}</Alert>)}{releaseRun.errorMessage !== null && <Alert variant="danger">{releaseRun.errorMessage}</Alert>}<footer><Button onClick={() => setStep(2)} variant="outline-secondary">Back</Button><Button disabled={releaseRun.status === 'starting'} onClick={() => void releaseRun.start(preflight.plan.planId)}>{releaseRun.status === 'starting' ? 'Starting…' : 'Start pipeline'}</Button></footer></>}
             {isRunStarted && <><PipelineProgress activePhase={releaseRun.activePhase} completedPhases={releaseRun.completedPhases} isCancelling={releaseRun.status === 'cancelling'} logs={releaseRun.logs} mode={preflight?.isValid === true ? preflight.plan.mode : mode} onCancel={() => void releaseRun.cancel()} percent={releaseRun.percent} platform={releaseRun.platform} platforms={preflight?.isValid === true ? preflight.plan.platforms : platforms} progressKind={releaseRun.progressKind} result={releaseRun.result} totalPhases={releaseRun.totalPhases} />{releaseRun.result !== null && <footer><Button onClick={onFinished}>Return to application details</Button></footer>}</>}
           </div>
         )}

@@ -1,7 +1,24 @@
-import type { ReleasePlatform } from '@shared/contracts/domain';
+import type { ApplicationDetail, ReleasePlatform } from '@shared/contracts/domain';
 import type { ReleaseVersionInput, ResolvedReleaseVersion } from '@shared/contracts/release';
 import type { ReleaseVersionForm } from '@components/VersionConfiguration/index.types';
 import { isReleaseBuildNumber, isReleaseVersionName } from '@shared/validation';
+
+export const isArtifactSigningConfigured = (
+  application: ApplicationDetail,
+  platform: ReleasePlatform,
+): boolean =>
+  platform === 'android'
+    ? application.androidSigning?.isConfigured === true
+    : application.iosSigning.isEnabled &&
+      /^[A-Z0-9]{1,64}$/u.test(application.iosSigning.developmentTeamId);
+
+export const isArtifactSigningRequired = (
+  application: ApplicationDetail,
+  platform: ReleasePlatform,
+): boolean =>
+  platform === 'android'
+    ? application.artifactGeneration.requiresAndroidSigning
+    : application.artifactGeneration.requiresIosSigning;
 
 const resolveIncrementedNumber = (numberText: string, shouldIncrement: boolean): number | null => {
   if (!isReleaseBuildNumber(numberText)) return null;

@@ -31,6 +31,7 @@ type StoredReleaseConfiguration = {
   firebaseDistribution: ApplicationDetail['firebaseDistribution'];
   googlePlay: GooglePlayConfiguration | null;
   iosSigning: ApplicationDetail['iosSigning'];
+  shouldNotifyWhenFinished: boolean;
 };
 
 const parseEncryptedJson = (
@@ -193,6 +194,7 @@ export class ApplicationRepository {
       name: readRequiredString(row, 'name'),
       platforms,
       serviceAccountFileName: readRequiredString(row, 'service_account_file_name'),
+      shouldNotifyWhenFinished: releaseConfiguration.shouldNotifyWhenFinished,
       updatedAt: readRequiredString(row, 'updated_at'),
     };
 
@@ -401,6 +403,7 @@ export class ApplicationRepository {
               serviceAccountFileName: path.basename(input.googlePlay.serviceAccountPath),
             },
       iosSigning: input.iosSigning,
+      shouldNotifyWhenFinished: input.shouldNotifyWhenFinished,
     };
   }
 

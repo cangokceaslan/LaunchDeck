@@ -13,6 +13,7 @@ export const IPC_CHANNELS = {
   fastActionUpdate: 'fast-action:update',
   historyClear: 'history:clear',
   historyList: 'history:list',
+  iosProjectConfigurationDiscover: 'ios:project-configuration-discover',
   iosProjectMetadataResolve: 'ios:project-metadata-resolve',
   iosSchemeList: 'ios:scheme-list',
   pathChooseAndroidArtifact: 'path:choose-android-artifact',
