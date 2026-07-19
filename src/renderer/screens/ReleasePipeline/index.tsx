@@ -115,9 +115,9 @@ export const ReleasePipeline = ({
   const isFastActionEditor =
     intent.kind === 'createFastAction' || intent.kind === 'editFastAction';
   const [step, setStep] = useState<1 | 2 | 3>(
-    intent.kind === 'runFastAction'
-      ? 3
-      : intent.kind === 'editFastAction' || intent.kind === 'repeatRelease'
+    intent.kind === 'editFastAction' ||
+      intent.kind === 'repeatRelease' ||
+      intent.kind === 'runFastAction'
         ? 2
         : 1,
   );
@@ -162,9 +162,7 @@ export const ReleasePipeline = ({
     createVersionForm(initialConfiguration),
   );
   const [fastActionName, setFastActionName] = useState(fastAction?.name ?? '');
-  const [preflight, setPreflight] = useState<PreflightResult | null>(
-    intent.kind === 'runFastAction' ? intent.preflight : null,
-  );
+  const [preflight, setPreflight] = useState<PreflightResult | null>(null);
   const [isSavingFastAction, setIsSavingFastAction] = useState(false);
   const [isSavingOutputDirectory, setIsSavingOutputDirectory] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -524,6 +522,11 @@ export const ReleasePipeline = ({
         {step === 2 && (
           <div className={styles.stepContent}>
             <header><span>Step 2</span><h2>{destinations.some((destination) => destination !== 'artifact') ? 'Add release details' : 'Choose the local output'}</h2><p>These values are validated before any build or upload begins.</p></header>
+            {intent.kind === 'runFastAction' && (
+              <Alert variant="warning">
+                Changes made here apply only to this run. The saved fast action will not be updated.
+              </Alert>
+            )}
             <div className={`${styles.selectionSummary} ${styles.detailSummary}`}>
               <div><span>Source</span><strong>{source === 'build' ? 'New build' : 'Existing artifact'}</strong></div>
               <div><span>Destinations</span><strong>{destinations.map((destination) => destination === 'artifact' ? 'Artifact' : destination === 'firebase' ? 'Firebase' : 'Store').join(' + ')}</strong></div>

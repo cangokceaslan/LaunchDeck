@@ -44,7 +44,6 @@ export const App = (): React.JSX.Element => {
   const [history, setHistory] = useState<RunHistorySummary[]>([]);
   const [fastActions, setFastActions] = useState<FastAction[]>([]);
   const [releaseIntent, setReleaseIntent] = useState<ReleasePipelineIntent | null>(null);
-  const [startingFastActionId, setStartingFastActionId] = useState<string | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isChangingApplicationIcon, setIsChangingApplicationIcon] = useState(false);
   const [view, setView] = useState<View>('home');
@@ -329,22 +328,11 @@ export const App = (): React.JSX.Element => {
     }
   };
 
-  const handleRunFastAction = async (fastAction: FastAction): Promise<void> => {
+  const handleRunFastAction = (fastAction: FastAction): void => {
     if (selectedApplication === null) return;
     setGlobalError(null);
-    setStartingFastActionId(fastAction.id);
-    try {
-      const preflight = await window.desktopApi.preflightRelease({
-        ...fastAction.configuration,
-        applicationId: selectedApplication.id,
-      });
-      setReleaseIntent({ fastAction, kind: 'runFastAction', preflight });
-      setView('release');
-    } catch (error) {
-      setGlobalError(normalizeErrorMessage(error));
-    } finally {
-      setStartingFastActionId(null);
-    }
+    setReleaseIntent({ fastAction, kind: 'runFastAction' });
+    setView('release');
   };
 
   const handleRepeatHistory = (run: RunHistorySummary): void => {
@@ -458,10 +446,9 @@ export const App = (): React.JSX.Element => {
           onEditFastAction={(fastAction) => { setReleaseIntent({ fastAction, kind: 'editFastAction' }); setView('release'); }}
           onRemoveIcon={() => void handleRemoveApplicationIcon()}
           onRepeatHistory={handleRepeatHistory}
-          onRunFastAction={(fastAction) => void handleRunFastAction(fastAction)}
+          onRunFastAction={handleRunFastAction}
           onShowSetup={() => setIsApplicationSetupGuideOpen(true)}
           onStartRelease={() => { setReleaseIntent({ kind: 'newRelease' }); setView('release'); }}
-          startingFastActionId={startingFastActionId}
         />
       )}
       {view === 'release' && selectedApplication !== null && releaseIntent !== null && (

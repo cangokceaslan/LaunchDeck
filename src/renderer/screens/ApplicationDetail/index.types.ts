@@ -21,5 +21,4 @@ export type ApplicationDetailProps = {
   onRunFastAction: (fastAction: FastAction) => void;
   onShowSetup: () => void;
   onStartRelease: () => void;
-  startingFastActionId: string | null;
 };

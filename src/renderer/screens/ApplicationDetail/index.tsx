@@ -47,7 +47,6 @@ export const ApplicationDetail = ({
   onRunFastAction,
   onShowSetup,
   onStartRelease,
-  startingFastActionId,
 }: ApplicationDetailProps): React.JSX.Element => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [fastActionToDelete, setFastActionToDelete] = useState<ApplicationDetailProps['fastActions'][number] | null>(null);
@@ -245,9 +244,9 @@ export const ApplicationDetail = ({
                     )}
                   </div>
                   <div className={styles.fastActionButtons}>
-                    <Button disabled={startingFastActionId !== null} onClick={() => onRunFastAction(fastAction)} size="sm">{startingFastActionId === fastAction.id && <Spinner animation="border" size="sm" />} {startingFastActionId === fastAction.id ? 'Preparing…' : 'Start'}</Button>
-                    <Button disabled={startingFastActionId !== null} onClick={() => onEditFastAction(fastAction)} size="sm" variant="secondary">Edit</Button>
-                    <Button disabled={startingFastActionId !== null} onClick={() => setFastActionToDelete(fastAction)} size="sm" variant="danger">Delete</Button>
+                    <Button onClick={() => onRunFastAction(fastAction)} size="sm">Start</Button>
+                    <Button onClick={() => onEditFastAction(fastAction)} size="sm" variant="secondary">Edit</Button>
+                    <Button onClick={() => setFastActionToDelete(fastAction)} size="sm" variant="danger">Delete</Button>
                   </div>
                 </article>
               );
