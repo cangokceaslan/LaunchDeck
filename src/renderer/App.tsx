@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Spinner } from 'react-bootstrap';
 import { AppShell } from '@components/AppShell';
+import { DocumentationCenter } from '@components/DocumentationCenter';
 import { FileSystemPermissionPrompt } from '@components/FileSystemPermissionPrompt';
 import { SetupGuideModal } from '@components/SetupGuideModal';
 import { resolveSetupWorkflows } from '@components/SetupGuideModal/index.utils';
@@ -57,6 +58,7 @@ export const App = (): React.JSX.Element => {
   const [isChangingApplicationIcon, setIsChangingApplicationIcon] = useState(false);
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<ThemePreference>('system');
+  const [isDocumentationOpen, setIsDocumentationOpen] = useState(false);
   const [isApplicationSetupGuideOpen, setIsApplicationSetupGuideOpen] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [fileSystemPermissionState, setFileSystemPermissionState] =
@@ -532,6 +534,12 @@ export const App = (): React.JSX.Element => {
         <div className={styles.loading}><Spinner animation="border" size="sm" /> Loading application…</div>
       )}
       </AppShell>
+      <DocumentationCenter
+        context={view}
+        isOpen={isDocumentationOpen}
+        onClose={() => setIsDocumentationOpen(false)}
+        onOpen={() => setIsDocumentationOpen(true)}
+      />
       {selectedApplication !== null && (
         <SetupGuideModal
           application={selectedApplication}

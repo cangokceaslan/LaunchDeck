@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@components': path.resolve('src/renderer/components'),
+      '@docs': path.resolve('docs'),
       '@hooks': path.resolve('src/renderer/hooks'),
       '@renderer': path.resolve('src/renderer'),
       '@screens': path.resolve('src/renderer/screens'),
