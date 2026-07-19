@@ -1,14 +1,8 @@
-import { Button, Dropdown } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 import { ApplicationLogo } from '@components/ApplicationLogo';
 import { useInfiniteScroll } from '@hooks/useInfiniteScroll';
 import type { AppShellProps } from '@components/AppShell/index.types';
 import styles from '@components/AppShell/index.module.scss';
-
-const themeLabels = {
-  dark: 'Dark',
-  light: 'Light',
-  system: 'System',
-} as const;
 
 export const AppShell = ({
   applications,
@@ -19,9 +13,7 @@ export const AppShell = ({
   onLoadMoreApplications,
   onOpenApplication,
   onOpenHome,
-  onThemeChange,
   selectedApplicationId,
-  theme,
 }: AppShellProps): React.JSX.Element => {
   const loadMoreRef = useInfiniteScroll({
     hasMore: hasMoreApplications,
@@ -78,16 +70,6 @@ export const AppShell = ({
           )}
         </nav>
         <div className={styles.sidebarFooter}>
-          <Dropdown drop="up">
-            <Dropdown.Toggle className={styles.themeButton} variant="link">
-              Theme · {themeLabels[theme]}
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item onClick={() => onThemeChange('system')}>System</Dropdown.Item>
-              <Dropdown.Item onClick={() => onThemeChange('light')}>Light</Dropdown.Item>
-              <Dropdown.Item onClick={() => onThemeChange('dark')}>Dark</Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
           <Button className={styles.addButton} onClick={onAddApplication} size="sm" variant="outline-light">
             Add application
           </Button>

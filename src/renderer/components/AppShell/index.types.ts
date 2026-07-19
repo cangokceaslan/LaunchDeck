@@ -1,4 +1,4 @@
-import type { ApplicationSummary, ThemePreference } from '@shared/contracts/domain';
+import type { ApplicationSummary } from '@shared/contracts/domain';
 
 export type AppShellProps = {
   applications: ApplicationSummary[];
@@ -9,7 +9,5 @@ export type AppShellProps = {
   onLoadMoreApplications: () => void;
   onOpenApplication: (applicationId: string) => void;
   onOpenHome: () => void;
-  onThemeChange: (theme: ThemePreference) => void;
   selectedApplicationId: string | null;
-  theme: ThemePreference;
 };

@@ -323,6 +323,8 @@ export const App = (): React.JSX.Element => {
         void handleReviewFileSystemPermissions(target)
       }
       onRetryDoctor={() => void runDoctor()}
+      onThemeChange={(nextTheme) => void handleThemeChange(nextTheme)}
+      theme={theme}
     >
       {fileSystemPermissionState !== null &&
         fileSystemPermissionState.platform !== 'unsupported' && (
@@ -345,9 +347,7 @@ export const App = (): React.JSX.Element => {
         onLoadMoreApplications={() => void loadMoreApplications()}
         onOpenApplication={(applicationId) => void openApplication(applicationId)}
         onOpenHome={() => setView('home')}
-        onThemeChange={(nextTheme) => void handleThemeChange(nextTheme)}
         selectedApplicationId={selectedApplication?.id ?? null}
-        theme={theme}
       >
       {globalError !== null && <Alert className={styles.globalAlert} dismissible onClose={() => setGlobalError(null)} variant="danger">{globalError}</Alert>}
       {view === 'home' && isLoadingApplications && (

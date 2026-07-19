@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SetupGuideModal } from '@components/SetupGuideModal';
+import { ThemeSwitch } from '@components/ThemeSwitch';
 import {
   isGeneralSetupReady,
   resolveSetupWorkflows,
@@ -21,6 +22,8 @@ export const WindowHeader = ({
   isReviewingFileSystemPermissions,
   onReviewFileSystemPermissions,
   onRetryDoctor,
+  onThemeChange,
+  theme,
 }: WindowHeaderProps): React.JSX.Element => {
   const [isSetupGuideOpen, setIsSetupGuideOpen] = useState(false);
   const workflows = resolveSetupWorkflows(doctorReport, application);
@@ -53,6 +56,7 @@ export const WindowHeader = ({
             Release distribution
           </div>
         </div>
+        <ThemeSwitch onChange={onThemeChange} theme={theme} />
         <button
           aria-haspopup="dialog"
           className={`${styles.setupButton} ${setupTone}`}

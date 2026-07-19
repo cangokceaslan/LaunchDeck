@@ -13,6 +13,8 @@ export const WindowFrame = ({
   isReviewingFileSystemPermissions,
   onReviewFileSystemPermissions,
   onRetryDoctor,
+  onThemeChange,
+  theme,
 }: WindowFrameProps): React.JSX.Element => (
   <div className={styles.frame}>
     <WindowHeader
@@ -25,6 +27,8 @@ export const WindowFrame = ({
       isReviewingFileSystemPermissions={isReviewingFileSystemPermissions}
       onReviewFileSystemPermissions={onReviewFileSystemPermissions}
       onRetryDoctor={onRetryDoctor}
+      onThemeChange={onThemeChange}
+      theme={theme}
     />
     <div className={styles.content}>{children}</div>
   </div>

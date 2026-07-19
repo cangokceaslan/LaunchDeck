@@ -1,0 +1,119 @@
+.switch {
+  -webkit-app-region: no-drag;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 2px;
+  grid-template-columns: repeat(3, 54px);
+  margin: 0 var(--space-2) 0 0;
+  padding: 3px;
+  position: relative;
+
+  &[data-selected-theme='light'] .indicator {
+    transform: translateX(56px);
+  }
+
+  &[data-selected-theme='dark'] .indicator {
+    transform: translateX(112px);
+  }
+
+  label {
+    cursor: pointer;
+    margin: 0;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  input {
+    height: 1px;
+    opacity: 0;
+    position: absolute;
+    width: 1px;
+
+    &:focus-visible + .option {
+      box-shadow: var(--shadow-focus);
+    }
+
+    &:checked + .option {
+      color: var(--color-primary-strong);
+    }
+  }
+}
+
+.legend {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0 0 0 0);
+}
+
+.indicator {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow-soft);
+  height: 26px;
+  left: 3px;
+  position: absolute;
+  top: 3px;
+  transition: transform var(--motion-fast);
+  width: 54px;
+}
+
+.option {
+  align-items: center;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.62rem;
+  font-weight: 700;
+  gap: 4px;
+  height: 26px;
+  justify-content: center;
+  transition: color var(--motion-fast);
+
+  svg {
+    fill: none;
+    height: 12px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.4;
+    width: 12px;
+  }
+}
+
+@media (max-width: 680px) {
+  .switch {
+    grid-template-columns: repeat(3, 30px);
+
+    &[data-selected-theme='light'] .indicator {
+      transform: translateX(32px);
+    }
+
+    &[data-selected-theme='dark'] .indicator {
+      transform: translateX(64px);
+    }
+  }
+
+  .indicator {
+    width: 30px;
+  }
+
+  .option > span {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator,
+  .option {
+    transition: none;
+  }
+}
