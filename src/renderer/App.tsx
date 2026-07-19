@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Spinner } from 'react-bootstrap';
 import { AppShell } from '@components/AppShell';
 import { FileSystemPermissionPrompt } from '@components/FileSystemPermissionPrompt';
+import { SplashLoader } from '@components/SplashLoader';
 import { WindowFrame } from '@components/WindowFrame';
 import { ApplicationDetail } from '@screens/ApplicationDetail';
 import { ApplicationList } from '@screens/ApplicationList';
@@ -35,6 +36,7 @@ export const App = (): React.JSX.Element => {
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [applicationCursor, setApplicationCursor] = useState<ApplicationListCursor | null>(null);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
+  const [isPreparingWorkspace, setIsPreparingWorkspace] = useState(true);
   const [isLoadingMoreApplications, setIsLoadingMoreApplications] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailModel | null>(null);
   const [history, setHistory] = useState<RunHistorySummary[]>([]);
@@ -145,17 +147,20 @@ export const App = (): React.JSX.Element => {
     if (hasStarted.current) return;
     hasStarted.current = true;
     void runDoctor();
-    void refreshApplications()
+    const applicationsRequest = refreshApplications()
       .catch((error: unknown) => setGlobalError(normalizeErrorMessage(error)))
       .finally(() => setIsLoadingApplications(false));
-    void window.desktopApi
+    const settingsRequest = window.desktopApi
       .getSettings()
       .then((settings) => setTheme(settings.theme))
       .catch((error: unknown) => setGlobalError(normalizeErrorMessage(error)));
-    void window.desktopApi
+    const permissionRequest = window.desktopApi
       .getFileSystemPermissionState()
       .then(setFileSystemPermissionState)
       .catch((error: unknown) => setFileSystemPermissionError(normalizeErrorMessage(error)));
+    void Promise.allSettled([applicationsRequest, settingsRequest, permissionRequest]).then(() =>
+      setIsPreparingWorkspace(false),
+    );
   }, []);
 
   useEffect(() => {
@@ -339,6 +344,8 @@ export const App = (): React.JSX.Element => {
   const supportedPlatforms: ReleasePlatform[] = doctorReport?.supportedPlatforms ?? ['android'];
   const setupApplication =
     view === 'detail' || view === 'edit' || view === 'release' ? selectedApplication : null;
+
+  if (isPreparingWorkspace) return <SplashLoader />;
 
   return (
     <WindowFrame

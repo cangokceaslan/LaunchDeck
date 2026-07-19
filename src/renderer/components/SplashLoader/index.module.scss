@@ -1,0 +1,79 @@
+.splash {
+  -webkit-app-region: drag;
+  align-items: center;
+  background: var(--color-background);
+  color: var(--color-text);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+}
+
+.content {
+  align-items: center;
+  display: grid;
+  gap: var(--space-4);
+  justify-items: center;
+  width: min(240px, 100%);
+}
+
+.icon {
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: block;
+  height: 72px;
+  object-fit: cover;
+  width: 72px;
+}
+
+.copy {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+
+  strong {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  span {
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+  }
+}
+
+.progress {
+  background: var(--color-border);
+  border-radius: 999px;
+  height: 2px;
+  overflow: hidden;
+  width: 112px;
+
+  span {
+    animation: prepare 1.2s ease-in-out infinite;
+    background: var(--color-primary);
+    border-radius: inherit;
+    display: block;
+    height: 100%;
+    width: 42%;
+  }
+}
+
+@keyframes prepare {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(350%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress span {
+    animation: none;
+    transform: none;
+    width: 100%;
+  }
+}
