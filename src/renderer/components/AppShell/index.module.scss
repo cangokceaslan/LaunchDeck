@@ -17,39 +17,8 @@
     overflow: hidden;
     padding: var(--space-4);
 
-    .brand {
-      align-items: center;
-      background: transparent;
-      border: 0;
-      color: var(--color-on-sidebar);
-      display: flex;
-      gap: var(--space-3);
-      padding: var(--space-2);
-      text-align: left;
-      width: 100%;
-
-      img {
-        border-radius: 10px;
-        height: 40px;
-        width: 40px;
-      }
-
-      span {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-
-        small {
-          color: var(--color-sidebar-muted);
-          font-size: 0.72rem;
-          margin-top: 2px;
-        }
-      }
-    }
-
     .navigation {
       flex: 1;
-      margin-top: var(--space-8);
       min-height: 0;
       overflow-y: auto;
       padding-right: 2px;
@@ -72,6 +41,14 @@
           border: 0;
           color: var(--color-sidebar-muted);
           font-size: 1.2rem;
+        }
+
+        .applicationsButton {
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          padding: 0;
+          text-transform: uppercase;
         }
       }
 
@@ -125,6 +102,14 @@
         color: var(--color-sidebar-muted);
         font-size: 0.82rem;
         padding: var(--space-3) var(--space-2);
+      }
+
+      .loadMoreSentinel {
+        color: var(--color-sidebar-muted);
+        font-size: 0.7rem;
+        min-height: 28px;
+        padding: var(--space-2);
+        text-align: center;
       }
     }
 

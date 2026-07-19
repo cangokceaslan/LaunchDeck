@@ -33,7 +33,7 @@ export const desktopApi: DesktopApi = {
     ipcRenderer.invoke(IPC_CHANNELS.iosProjectConfigurationDiscover, projectPath),
   getApplication: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.applicationGet, applicationId),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.settingsGet),
-  listApplications: () => ipcRenderer.invoke(IPC_CHANNELS.applicationList),
+  listApplications: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationList, request),
   listFastActions: (applicationId) =>
     ipcRenderer.invoke(IPC_CHANNELS.fastActionList, applicationId),
   listIosSchemes: (workspaceOrProjectPath) =>

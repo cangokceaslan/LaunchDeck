@@ -2,7 +2,8 @@ import type {
   AndroidProjectMetadataRequest,
   AndroidProjectMetadataResult,
   ApplicationDetail,
-  ApplicationSummary,
+  ApplicationListRequest,
+  ApplicationPage,
   CreateApplicationRequest,
   DeleteApplicationResult,
   IosProjectMetadataRequest,
@@ -52,7 +53,7 @@ export type DesktopApi = {
   deleteFastAction: (request: DeleteFastActionRequest) => Promise<DeleteFastActionResult>;
   getApplication: (applicationId: string) => Promise<ApplicationDetail | null>;
   getSettings: () => Promise<AppSettings>;
-  listApplications: () => Promise<ApplicationSummary[]>;
+  listApplications: (request: ApplicationListRequest) => Promise<ApplicationPage>;
   listFastActions: (applicationId: string) => Promise<FastAction[]>;
   listIosSchemes: (workspaceOrProjectPath: string) => Promise<IosSchemeListResult>;
   listRunHistory: (applicationId: string) => Promise<RunHistorySummary[]>;

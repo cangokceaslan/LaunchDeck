@@ -157,9 +157,25 @@ export type ApplicationSummary = {
   createdAt: string;
   firebaseProjectId: string;
   id: string;
+  lastActivityAt: string;
   name: string;
   platforms: ReleasePlatform[];
   updatedAt: string;
+};
+
+export type ApplicationListCursor = {
+  id: string;
+  lastActivityAt: string;
+};
+
+export type ApplicationListRequest = {
+  cursor?: ApplicationListCursor;
+  pageSize: number;
+};
+
+export type ApplicationPage = {
+  applications: ApplicationSummary[];
+  nextCursor: ApplicationListCursor | null;
 };
 
 export type ApplicationDetail = ApplicationSummary & {

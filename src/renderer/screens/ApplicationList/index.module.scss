@@ -100,6 +100,16 @@
     }
   }
 
+  .loadMoreSentinel {
+    align-items: center;
+    color: var(--color-text-muted);
+    display: flex;
+    font-size: 0.78rem;
+    justify-content: center;
+    min-height: 48px;
+    padding-top: var(--space-3);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .grid .applicationCard {
       transition: none;

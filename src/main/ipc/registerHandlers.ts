@@ -13,6 +13,7 @@ import { IPC_CHANNELS } from '@shared/contracts/ipc';
 import {
   androidProjectMetadataRequestSchema,
   applicationIdSchema,
+  applicationListRequestSchema,
   createApplicationRequestSchema,
   createFastActionRequestSchema,
   deleteFastActionRequestSchema,
@@ -69,9 +70,13 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     return dependencies.doctorService.run();
   });
 
-  ipcMain.handle(IPC_CHANNELS.applicationList, (event) => {
+  ipcMain.handle(IPC_CHANNELS.applicationList, (event, payload: unknown) => {
     assertTrustedSender(event);
-    return dependencies.applicationRepository.list();
+    try {
+      return dependencies.applicationRepository.list(applicationListRequestSchema.parse(payload));
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
   });
   ipcMain.handle(IPC_CHANNELS.applicationGet, (event, payload: unknown) => {
     assertTrustedSender(event);

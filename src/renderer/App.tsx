@@ -5,12 +5,12 @@ import { WindowFrame } from '@components/WindowFrame';
 import { ApplicationDetail } from '@screens/ApplicationDetail';
 import { ApplicationList } from '@screens/ApplicationList';
 import { ApplicationSetup } from '@screens/ApplicationSetup';
-import { Doctor } from '@screens/Doctor';
 import { ReleasePipeline } from '@screens/ReleasePipeline';
 import type { ReleasePipelineIntent } from '@screens/ReleasePipeline/index.types';
 import { normalizeErrorMessage } from '@renderer/utils/formatting';
 import type {
   ApplicationDetail as ApplicationDetailModel,
+  ApplicationListCursor,
   ApplicationSummary,
   ReleasePlatform,
   ThemePreference,
@@ -21,12 +21,16 @@ import styles from '@renderer/App.module.scss';
 
 type View = 'home' | 'setup' | 'detail' | 'edit' | 'release';
 
+const APPLICATION_PAGE_SIZE = 20;
+
 export const App = (): React.JSX.Element => {
   const [doctorReport, setDoctorReport] = useState<DoctorReport | null>(null);
   const [isCheckingDoctor, setIsCheckingDoctor] = useState(true);
   const [doctorError, setDoctorError] = useState<string | null>(null);
-  const [hasPassedDoctor, setHasPassedDoctor] = useState(false);
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
+  const [applicationCursor, setApplicationCursor] = useState<ApplicationListCursor | null>(null);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(true);
+  const [isLoadingMoreApplications, setIsLoadingMoreApplications] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailModel | null>(null);
   const [history, setHistory] = useState<RunHistorySummary[]>([]);
   const [fastActions, setFastActions] = useState<FastAction[]>([]);
@@ -37,20 +41,45 @@ export const App = (): React.JSX.Element => {
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [globalError, setGlobalError] = useState<string | null>(null);
   const hasStarted = useRef(false);
+  const applicationQueryVersion = useRef(0);
+  const isLoadingMoreApplicationsRef = useRef(false);
 
   const refreshApplications = async (): Promise<ApplicationSummary[]> => {
-    const nextApplications = await window.desktopApi.listApplications();
-    setApplications(nextApplications);
-    return nextApplications;
+    const queryVersion = applicationQueryVersion.current + 1;
+    applicationQueryVersion.current = queryVersion;
+    const page = await window.desktopApi.listApplications({ pageSize: APPLICATION_PAGE_SIZE });
+    if (applicationQueryVersion.current === queryVersion) {
+      setApplications(page.applications);
+      setApplicationCursor(page.nextCursor);
+    }
+    return page.applications;
   };
 
-  const enterApplication = async (): Promise<void> => {
+  const loadMoreApplications = async (): Promise<void> => {
+    if (applicationCursor === null || isLoadingMoreApplicationsRef.current) return;
+    const queryVersion = applicationQueryVersion.current;
+    const cursor = applicationCursor;
+    isLoadingMoreApplicationsRef.current = true;
+    setIsLoadingMoreApplications(true);
     try {
-      await refreshApplications();
+      const page = await window.desktopApi.listApplications({
+        cursor,
+        pageSize: APPLICATION_PAGE_SIZE,
+      });
+      if (applicationQueryVersion.current !== queryVersion) return;
+      setApplications((currentApplications) => {
+        const loadedIds = new Set(currentApplications.map((application) => application.id));
+        return [
+          ...currentApplications,
+          ...page.applications.filter((application) => !loadedIds.has(application.id)),
+        ];
+      });
+      setApplicationCursor(page.nextCursor);
     } catch (error) {
       setGlobalError(normalizeErrorMessage(error));
     } finally {
-      setHasPassedDoctor(true);
+      isLoadingMoreApplicationsRef.current = false;
+      setIsLoadingMoreApplications(false);
     }
   };
 
@@ -60,12 +89,6 @@ export const App = (): React.JSX.Element => {
     try {
       const report = await window.desktopApi.runDoctor();
       setDoctorReport(report);
-      const hasActionableWarning =
-        report.os === 'darwin' &&
-        report.checks.some((check) => check.code === 'xcode' && check.status === 'warning');
-      if (report.isReady && !hasActionableWarning) {
-        await enterApplication();
-      }
     } catch (error) {
       setDoctorError(normalizeErrorMessage(error));
     } finally {
@@ -108,6 +131,9 @@ export const App = (): React.JSX.Element => {
     if (hasStarted.current) return;
     hasStarted.current = true;
     void runDoctor();
+    void refreshApplications()
+      .catch((error: unknown) => setGlobalError(normalizeErrorMessage(error)))
+      .finally(() => setIsLoadingApplications(false));
     void window.desktopApi
       .getSettings()
       .then((settings) => setTheme(settings.theme))
@@ -125,10 +151,6 @@ export const App = (): React.JSX.Element => {
     mediaQuery.addEventListener('change', applyTheme);
     return () => mediaQuery.removeEventListener('change', applyTheme);
   }, [theme]);
-
-  const handleContinue = async (): Promise<void> => {
-    await enterApplication();
-  };
 
   const handleThemeChange = async (nextTheme: ThemePreference): Promise<void> => {
     setTheme(nextTheme);
@@ -165,7 +187,7 @@ export const App = (): React.JSX.Element => {
     if (selectedApplication === null) return;
     try {
       await window.desktopApi.clearRunHistory(selectedApplication.id);
-      await loadHistory(selectedApplication.id);
+      await Promise.all([loadHistory(selectedApplication.id), refreshApplications()]);
     } catch (error) {
       setGlobalError(normalizeErrorMessage(error));
     }
@@ -174,7 +196,7 @@ export const App = (): React.JSX.Element => {
   const handleReleaseFinished = async (): Promise<void> => {
     if (selectedApplication === null) return;
     try {
-      await loadHistory(selectedApplication.id);
+      await Promise.all([loadHistory(selectedApplication.id), refreshApplications()]);
     } catch (error) {
       setGlobalError(normalizeErrorMessage(error));
     }
@@ -230,42 +252,22 @@ export const App = (): React.JSX.Element => {
     }
   };
 
-  if (
-    !hasPassedDoctor &&
-    isCheckingDoctor &&
-    (doctorReport === null || doctorReport.isReady)
-  ) {
-    return (
-      <WindowFrame>
-        <div className={styles.startupLoading} role="status">
-          <Spinner animation="border" size="sm" />
-          <span>Preparing LaunchDeck…</span>
-        </div>
-      </WindowFrame>
-    );
-  }
-
-  if (!hasPassedDoctor) {
-    return (
-      <WindowFrame>
-        <Doctor
-          errorMessage={doctorError}
-          isChecking={isCheckingDoctor}
-          onContinue={() => void handleContinue()}
-          onRetry={() => void runDoctor()}
-          report={doctorReport}
-        />
-      </WindowFrame>
-    );
-  }
-
   const supportedPlatforms: ReleasePlatform[] = doctorReport?.supportedPlatforms ?? ['android'];
 
   return (
-    <WindowFrame>
+    <WindowFrame
+      application={selectedApplication}
+      doctorError={doctorError}
+      doctorReport={doctorReport}
+      isCheckingDoctor={isCheckingDoctor}
+      onRetryDoctor={() => void runDoctor()}
+    >
       <AppShell
         applications={applications}
+        hasMoreApplications={applicationCursor !== null}
+        isLoadingMoreApplications={isLoadingMoreApplications}
         onAddApplication={() => { setSelectedApplication(null); setView('setup'); }}
+        onLoadMoreApplications={() => void loadMoreApplications()}
         onOpenApplication={(applicationId) => void openApplication(applicationId)}
         onOpenHome={() => setView('home')}
         onThemeChange={(nextTheme) => void handleThemeChange(nextTheme)}
@@ -273,10 +275,18 @@ export const App = (): React.JSX.Element => {
         theme={theme}
       >
       {globalError !== null && <Alert className={styles.globalAlert} dismissible onClose={() => setGlobalError(null)} variant="danger">{globalError}</Alert>}
-      {view === 'home' && (
+      {view === 'home' && isLoadingApplications && (
+        <div className={styles.loading} role="status">
+          <Spinner animation="border" size="sm" /> Loading applications…
+        </div>
+      )}
+      {view === 'home' && !isLoadingApplications && (
         <ApplicationList
           applications={applications}
+          hasMoreApplications={applicationCursor !== null}
+          isLoadingMoreApplications={isLoadingMoreApplications}
           onAddApplication={() => { setSelectedApplication(null); setView('setup'); }}
+          onLoadMoreApplications={() => void loadMoreApplications()}
           onOpenApplication={(applicationId) => void openApplication(applicationId)}
         />
       )}

@@ -1,9 +1,8 @@
 import type { ApplicationDetail } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
 
-export type WindowFrameProps = {
+export type WindowHeaderProps = {
   application: ApplicationDetail | null;
-  children: React.ReactNode;
   doctorError: string | null;
   doctorReport: DoctorReport | null;
   isCheckingDoctor: boolean;

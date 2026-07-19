@@ -12,7 +12,8 @@ import type {
   AndroidSigningConfiguration,
   AppStoreConnectConfiguration,
   ApplicationDetail,
-  ApplicationSummary,
+  ApplicationListRequest,
+  ApplicationPage,
   GooglePlayConfiguration,
   IosConfiguration,
   PipelineHook,
@@ -191,6 +192,7 @@ export class ApplicationRepository {
       id,
       ios,
       iosSigning: releaseConfiguration.iosSigning,
+      lastActivityAt: readRequiredString(row, 'updated_at'),
       name: readRequiredString(row, 'name'),
       platforms,
       serviceAccountFileName: readRequiredString(row, 'service_account_file_name'),
@@ -461,21 +463,64 @@ export class ApplicationRepository {
     return row === undefined ? null : this.parseApplication(row, true);
   }
 
-  public list(): ApplicationSummary[] {
+  public list(request: ApplicationListRequest): ApplicationPage {
+    const cursor = request.cursor;
     const rows: unknown[] = this.database
-      .prepare('SELECT * FROM applications ORDER BY updated_at DESC, name COLLATE NOCASE')
-      .all();
-    return rows.map((row) => {
+      .prepare(
+        `WITH application_activity AS (
+          SELECT applications.*,
+            CASE
+              WHEN latest_runs.finished_at IS NOT NULL
+                AND latest_runs.finished_at > applications.updated_at
+              THEN latest_runs.finished_at
+              ELSE applications.updated_at
+            END AS last_activity_at
+          FROM applications
+          LEFT JOIN (
+            SELECT application_id, MAX(finished_at) AS finished_at
+            FROM release_runs
+            GROUP BY application_id
+          ) AS latest_runs ON latest_runs.application_id = applications.id
+        )
+        SELECT * FROM application_activity
+        WHERE ? IS NULL
+          OR last_activity_at < ?
+          OR (last_activity_at = ? AND id > ?)
+        ORDER BY last_activity_at DESC, id ASC
+        LIMIT ?`,
+      )
+      .all(
+        cursor?.lastActivityAt ?? null,
+        cursor?.lastActivityAt ?? null,
+        cursor?.lastActivityAt ?? null,
+        cursor?.id ?? null,
+        request.pageSize + 1,
+      );
+    const pageRows = rows.slice(0, request.pageSize);
+    const applications = pageRows.map((row) => {
+      if (!isRecord(row)) {
+        throw new Error('Invalid SQLite application summary record.');
+      }
       const detail = this.parseApplication(row, false);
+      const lastActivityAt = readRequiredString(row, 'last_activity_at');
       return {
         createdAt: detail.createdAt,
         firebaseProjectId: detail.firebaseProjectId,
         id: detail.id,
+        lastActivityAt,
         name: detail.name,
         platforms: detail.platforms,
         updatedAt: detail.updatedAt,
       };
     });
+    const lastApplication = applications.at(-1);
+    return {
+      applications,
+      nextCursor:
+        rows.length > request.pageSize && lastApplication !== undefined
+          ? { id: lastApplication.id, lastActivityAt: lastApplication.lastActivityAt }
+          : null,
+    };
   }
 
   public delete(id: string): boolean {
