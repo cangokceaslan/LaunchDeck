@@ -21,6 +21,7 @@ const categorySectionIds: Record<DocumentationCategoryId, string[]> = {
     'overview',
     'what-launchdeck-does',
     'screenshots',
+    'in-app-documentation',
     'platform-support',
     'choose-the-right-workflow',
     'quick-start',

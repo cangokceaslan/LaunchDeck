@@ -10,6 +10,7 @@ The product language is English (US). This repository is private and `UNLICENSED
 
 - [What LaunchDeck does](#what-launchdeck-does)
 - [Screenshots](#screenshots)
+- [In-app documentation](#in-app-documentation)
 - [Platform support](#platform-support)
 - [Choose the right workflow](#choose-the-right-workflow)
 - [Quick start](#quick-start)
@@ -68,6 +69,38 @@ All screenshots use the fictional **Northstar Mobile** fixture. They contain fix
 | --- | --- |
 | ![LaunchDeck setup guide](images/screenshots/setup-guide.png) | ![LaunchDeck pipeline progress](images/screenshots/pipeline-progress.png) |
 | ![LaunchDeck release pipeline](images/screenshots/release-pipeline.png) | ![LaunchDeck release history](images/screenshots/release-history.png) |
+
+## In-app documentation
+
+LaunchDeck includes this complete guide inside the desktop application. Select the circular **?** button in the lower-right corner of any workspace view to open the full-screen Help Center. The current screen and any active release pipeline remain mounted behind the Help Center, so closing it returns you to the same state.
+
+![LaunchDeck in-app documentation center](images/screenshots/documentation-center.png)
+
+### Find and navigate topics
+
+- Search is immediate and case-insensitive across topic titles and content. Results include a match count, topic title, and a short excerpt. Select **Clear** or the input's clear control to return to category navigation.
+- Expand or collapse the seven topic categories in the left navigation. The current topic is highlighted, and its category opens automatically.
+- Use **On this page** to jump to H3 and H4 headings. The thin line below the header shows reading progress for the current topic.
+- Use **Previous topic** and **Next topic** at the end of an article to read the guide sequentially.
+- Internal guide links select the correct topic and, when applicable, its nested heading. Approved HTTPS links open in the system browser.
+- Press `Escape` or select the close control to return to the workspace. Keyboard focus remains trapped inside the Help Center while it is open and returns to the launch control after closing.
+
+The first opening in a session starts from a topic related to the current view:
+
+| Current view | Initial topic |
+| --- | --- |
+| Applications | Quick start |
+| Add or edit application | Complete application setup reference |
+| Application detail or release history | Release results, history, and fast actions |
+| Release pipeline | Run a release |
+
+After the first opening, LaunchDeck preserves the last-read topic for the rest of the application session. It does not persist Help Center state to SQLite or across application restarts.
+
+### Bundled content and safety
+
+`docs/USER_GUIDE.md` is imported as raw text during the renderer build, making it the single content source for the in-app guide. The Help Center does not read documentation from the runtime filesystem, SQLite, preload, credentials, or the network. Guide updates become available in the next application build.
+
+Markdown raw HTML is ignored. Images render only when they resolve to bundled `docs/images/screenshots/*.png` assets; remote and unknown image sources are replaced with a safe unavailable-image message. External links must use HTTPS and match the application's exact provider-host allowlist. HTTP, script URLs, subdomain lookalikes, and unknown hosts are not clickable. The Help Center supports GFM tables, task lists, fenced code, blockquote warnings, light/dark/system themes, reduced motion, and the application's minimum window size.
 
 ## Platform support
 
@@ -1157,6 +1190,7 @@ http://127.0.0.1:4178/?scenario=setup-guide
 http://127.0.0.1:4178/?scenario=release-pipeline
 http://127.0.0.1:4178/?scenario=pipeline-progress
 http://127.0.0.1:4178/?scenario=release-history
+http://127.0.0.1:4178/?scenario=documentation-center
 ```
 
 Canonical captures use a 1440×1000 viewport, light theme, fixed UTC fixture values, and settled fonts/layout. New documentation images belong under `docs/images/screenshots`. Never point the renderer at live application data to “make screenshots realistic.”
