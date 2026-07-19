@@ -4,6 +4,7 @@ import type {
 } from '@shared/contracts/permissions';
 
 export type FileSystemPermissionPromptProps = {
+  directRequestAttempts: number;
   errorMessage: string | null;
   isOpen: boolean;
   isReviewing: boolean;

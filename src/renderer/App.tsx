@@ -337,6 +337,7 @@ export const App = (): React.JSX.Element => {
       {fileSystemPermissionState !== null &&
         fileSystemPermissionState.platform !== 'unsupported' && (
           <FileSystemPermissionPrompt
+            directRequestAttempts={fileSystemPermissionState.directRequestAttempts}
             errorMessage={fileSystemPermissionError}
             isOpen={
               !fileSystemPermissionState.hasConfirmedAccess && !isPermissionPromptDismissed

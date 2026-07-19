@@ -57,11 +57,15 @@ export const WindowHeader = ({
           aria-haspopup="dialog"
           className={`${styles.setupButton} ${setupTone}`}
           onClick={() => setIsSetupGuideOpen(true)}
-          title="View release setup requirements"
+          title={
+            application === null
+              ? 'View workspace configuration'
+              : 'View release setup requirements'
+          }
           type="button"
         >
           <span aria-hidden="true" className={styles.setupStatusDot} />
-          Setup
+          {application === null ? 'Configuration' : 'Setup'}
         </button>
         <div className={styles.windowControls}>
           <button

@@ -37,6 +37,8 @@ const PLATFORM_TARGETS: Record<
   win32: ['fileSystem', 'controlledFolders'],
 };
 
+const DIRECT_REQUEST_ATTEMPTS_BEFORE_SETTINGS = 2;
+
 const resolvePlatform = (): FileSystemPermissionPlatform =>
   process.platform === 'darwin' || process.platform === 'win32'
     ? process.platform
@@ -60,7 +62,7 @@ const resolveSettingsUrl = (
 };
 
 export class FileSystemPermissionService {
-  private readonly attemptedDirectRequests = new Set<FileSystemPermissionTarget>();
+  private readonly directRequestAttempts = new Map<FileSystemPermissionTarget, number>();
   private isRequestInProgress = false;
 
   public constructor(private readonly settings: SettingsRepository) {}
@@ -70,15 +72,16 @@ export class FileSystemPermissionService {
     const hasConfirmedAccess = this.settings.hasConfirmedFileSystemAccess();
     const platformTargets = platform === 'unsupported' ? [] : PLATFORM_TARGETS[platform];
     const directRequestTarget = DIRECT_REQUEST_TARGETS[platform];
+    const requestAttempts =
+      directRequestTarget === undefined
+        ? 0
+        : (this.directRequestAttempts.get(directRequestTarget) ?? 0);
     return {
+      directRequestAttempts: requestAttempts,
       hasConfirmedAccess,
       platform,
-      settingsTargets: platformTargets.filter(
-        (target) =>
-          hasConfirmedAccess ||
-          target !== directRequestTarget ||
-          this.attemptedDirectRequests.has(target),
-      ),
+      settingsTargets:
+        requestAttempts >= DIRECT_REQUEST_ATTEMPTS_BEFORE_SETTINGS ? platformTargets : [],
     };
   }
 
@@ -107,17 +110,19 @@ export class FileSystemPermissionService {
       throw new Error('The requested file access setting is unavailable on this platform.');
     }
     const directRequestTarget = DIRECT_REQUEST_TARGETS[platform];
+    const requestAttempts = this.directRequestAttempts.get(target) ?? 0;
     const shouldOpenSettings =
       target !== directRequestTarget ||
-      this.settings.hasConfirmedFileSystemAccess() ||
-      this.attemptedDirectRequests.has(target);
+      requestAttempts >= DIRECT_REQUEST_ATTEMPTS_BEFORE_SETTINGS;
     if (shouldOpenSettings) {
       await shell.openExternal(settingsUrl);
-      this.attemptedDirectRequests.delete(target);
+      if (directRequestTarget !== undefined) {
+        this.directRequestAttempts.delete(directRequestTarget);
+      }
       return { outcome: 'settingsOpened', state: this.getState() };
     }
 
-    this.attemptedDirectRequests.add(target);
+    this.directRequestAttempts.set(target, requestAttempts + 1);
     const options: OpenDialogOptions = {
       buttonLabel: 'Allow access',
       message:
@@ -140,7 +145,7 @@ export class FileSystemPermissionService {
       );
     }
     this.settings.markFileSystemAccessConfirmed();
-    this.attemptedDirectRequests.delete(target);
+    this.directRequestAttempts.delete(target);
     return { outcome: 'accessConfirmed', state: this.getState() };
   }
 }

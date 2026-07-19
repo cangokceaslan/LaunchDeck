@@ -11,6 +11,7 @@ import type { DoctorCheck } from '@shared/contracts/doctor';
 import {
   getFileSystemPermissionPlatformLabel,
   getFileSystemPermissionTargets,
+  getPrimaryFileSystemPermissionTarget,
 } from '@renderer/utils/fileSystemPermissions';
 import styles from '@components/SetupGuideModal/index.module.scss';
 
@@ -67,6 +68,17 @@ export const SetupGuideModal = ({
     fileSystemPermissionState.platform !== 'unsupported'
       ? getFileSystemPermissionPlatformLabel(fileSystemPermissionState.platform)
       : null;
+  const primaryPermissionTarget =
+    fileSystemPermissionState !== null &&
+    fileSystemPermissionState.platform !== 'unsupported'
+      ? getPrimaryFileSystemPermissionTarget(fileSystemPermissionState.platform)
+      : null;
+  const shouldOfferPermissionSettings =
+    primaryPermissionTarget !== null &&
+    fileSystemPermissionState?.settingsTargets.includes(primaryPermissionTarget) === true;
+  const visiblePermissionTargets = shouldOfferPermissionSettings
+    ? permissionTargets
+    : permissionTargets.filter((target) => target.target === primaryPermissionTarget);
 
   return (
     <Modal
@@ -81,10 +93,10 @@ export const SetupGuideModal = ({
       <Modal.Header closeButton>
         <div className={styles.modalHeading}>
           <span className={styles.eyebrow}>
-            {isGeneralSetup ? 'Environment requirements' : 'Release requirements'}
+            {isGeneralSetup ? 'Workspace configuration' : 'Release requirements'}
           </span>
           <Modal.Title id="setup-guide-title">
-            {isGeneralSetup ? 'General Setup' : 'Setup guide'}
+            {isGeneralSetup ? 'Configuration' : 'Setup guide'}
           </Modal.Title>
           <p>
             {isGeneralSetup
@@ -96,7 +108,7 @@ export const SetupGuideModal = ({
       <Modal.Body>
         <div className={styles.summary}>
           <div>
-            <strong>{isGeneralSetup ? 'LaunchDeck environment' : application.name}</strong>
+            <strong>{isGeneralSetup ? 'LaunchDeck configuration' : application.name}</strong>
             <span>
               {isChecking || isPermissionStateLoading
                 ? 'Checking installed tools…'
@@ -112,14 +124,17 @@ export const SetupGuideModal = ({
             !isPermissionStateLoading &&
             (isGeneralSetup ? isGeneralReady : isReadyToWork) && (
               <StatusPill
-                label={isGeneralSetup ? 'General setup ready' : 'Ready to work'}
+                label={isGeneralSetup ? 'Configuration ready' : 'Ready to work'}
                 tone="success"
               />
             )}
           {!isChecking &&
             !isPermissionStateLoading &&
             !(isGeneralSetup ? isGeneralReady : isReadyToWork) && (
-              <StatusPill label="Setup needed" tone="warning" />
+              <StatusPill
+                label={isGeneralSetup ? 'Configuration needed' : 'Setup needed'}
+                tone="warning"
+              />
             )}
         </div>
 
@@ -174,7 +189,7 @@ export const SetupGuideModal = ({
               />
             </header>
             <div className={styles.permissionTargets}>
-              {permissionTargets.map((target) => {
+              {visiblePermissionTargets.map((target) => {
                 const shouldOpenSettings = fileSystemPermissionState.settingsTargets.includes(
                   target.target,
                 );
@@ -182,7 +197,15 @@ export const SetupGuideModal = ({
                   <div className={styles.permissionTarget} key={target.target}>
                     <div>
                       <strong>{target.label}</strong>
-                      <span>{shouldOpenSettings ? 'Settings fallback' : 'Direct request'}</span>
+                      <span>
+                        {shouldOpenSettings
+                          ? 'Settings fallback'
+                          : fileSystemPermissionState.hasConfirmedAccess
+                            ? 'Verified access'
+                            : fileSystemPermissionState.directRequestAttempts > 0
+                              ? 'Second request'
+                              : 'Direct request'}
+                      </span>
                       <p>{target.detail}</p>
                     </div>
                     <Button
@@ -197,16 +220,24 @@ export const SetupGuideModal = ({
                           : 'Requesting…'
                         : shouldOpenSettings
                           ? 'Open settings'
-                          : 'Request access'}
+                          : fileSystemPermissionState.hasConfirmedAccess
+                            ? 'Verify access'
+                            : fileSystemPermissionState.directRequestAttempts > 0
+                              ? 'Request again'
+                              : 'Request access'}
                     </Button>
                   </div>
                 );
               })}
             </div>
             <p className={styles.permissionNote}>
-              LaunchDeck first uses a native folder request. If access is not confirmed, repeating
-              the action opens the relevant {permissionPlatformLabel} setting. Access is marked
-              ready only after a selected folder can be read and written.
+              {shouldOfferPermissionSettings
+                ? `Repeated folder requests did not confirm access. Open the relevant ${permissionPlatformLabel} setting, then return and verify access again.`
+                : fileSystemPermissionState.hasConfirmedAccess
+                  ? 'Access was previously confirmed. Use Verify access to check another project or artifact folder.'
+                : fileSystemPermissionState.directRequestAttempts > 0
+                  ? `Access was not confirmed. Request it once more; if the folder remains unavailable, LaunchDeck will offer the relevant ${permissionPlatformLabel} settings.`
+                  : 'LaunchDeck verifies access with a native folder request. Access is ready only after the selected folder can be read and written.'}
             </p>
           </section>
         )}

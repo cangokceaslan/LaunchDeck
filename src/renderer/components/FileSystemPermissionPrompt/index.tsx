@@ -8,6 +8,7 @@ import {
 import styles from '@components/FileSystemPermissionPrompt/index.module.scss';
 
 export const FileSystemPermissionPrompt = ({
+  directRequestAttempts,
   errorMessage,
   isOpen,
   isReviewing,
@@ -20,6 +21,9 @@ export const FileSystemPermissionPrompt = ({
   const targets = getFileSystemPermissionTargets(platform);
   const primaryTarget = getPrimaryFileSystemPermissionTarget(platform);
   const shouldOpenSettings = settingsTargets.includes(primaryTarget);
+  const visibleTargets = shouldOpenSettings
+    ? targets
+    : targets.filter((target) => target.target === primaryTarget);
 
   return (
     <Modal
@@ -46,7 +50,7 @@ export const FileSystemPermissionPrompt = ({
         {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
 
         <div className={styles.targetList}>
-          {targets.map((target) => (
+          {visibleTargets.map((target) => (
             <div className={styles.target} key={target.target}>
               <span aria-hidden="true">{target.isPrimary ? '01' : '02'}</span>
               <div>
@@ -59,8 +63,10 @@ export const FileSystemPermissionPrompt = ({
 
         <p className={styles.note}>
           {shouldOpenSettings
-            ? `The previous request did not confirm access. Open the relevant ${platformLabel} setting, then request access again to verify it.`
-            : `A native folder request is used first. If access is not confirmed, the next attempt opens the relevant ${platformLabel} setting.`}
+            ? `Repeated requests did not confirm access. Open the relevant ${platformLabel} setting, then return and verify a folder again.`
+            : directRequestAttempts > 0
+              ? `Access was not confirmed. Request it once more; if the folder remains unavailable, LaunchDeck will open the relevant ${platformLabel} setting.`
+              : `LaunchDeck first asks you to choose a folder and verifies read and write access directly.`}
         </p>
       </Modal.Body>
       <Modal.Footer>
@@ -79,7 +85,9 @@ export const FileSystemPermissionPrompt = ({
               : 'Requesting…'
             : shouldOpenSettings
               ? 'Open system settings'
-              : 'Request access'}
+              : directRequestAttempts > 0
+                ? 'Request again'
+                : 'Request access'}
         </Button>
       </Modal.Footer>
     </Modal>
