@@ -1,4 +1,3 @@
-import { Button } from 'react-bootstrap';
 import { ApplicationLogo } from '@components/ApplicationLogo';
 import { useInfiniteScroll } from '@hooks/useInfiniteScroll';
 import type { AppShellProps } from '@components/AppShell/index.types';

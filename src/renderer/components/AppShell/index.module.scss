@@ -203,61 +203,132 @@
     }
 
     .sidebarFooter {
-      border-top: 1px solid var(--color-sidebar-divider);
       display: grid;
       flex: 0 0 auto;
       gap: var(--space-2);
       padding: var(--space-3) var(--space-1) 0;
+      position: relative;
+
+      &::before {
+        background: var(--color-sidebar-divider);
+        content: '';
+        height: 1px;
+        left: var(--space-1);
+        position: absolute;
+        right: var(--space-1);
+        top: 0;
+      }
 
       .addButton {
+        appearance: none;
         align-items: center;
-        background: var(--color-sidebar-action);
-        border-color: var(--color-sidebar-action);
-        border-radius: var(--radius-md);
-        color: var(--color-on-sidebar-action);
-        display: flex;
-        font-weight: 700;
-        gap: var(--space-3);
-        justify-content: flex-start;
-        min-height: 46px;
-        padding: 6px 9px;
+        background: linear-gradient(135deg, var(--color-sidebar-accent-soft), var(--color-surface));
+        border: 1px solid var(--color-sidebar-accent-border);
+        border-radius: var(--radius-lg);
+        color: var(--color-on-sidebar);
+        cursor: pointer;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 38px minmax(0, 1fr) 26px;
+        min-height: 68px;
+        padding: 10px;
+        text-align: left;
         transition:
           background var(--motion-fast),
           border-color var(--motion-fast),
+          box-shadow var(--motion-fast),
           transform var(--motion-fast);
         width: 100%;
 
-        &:hover,
-        &:focus-visible {
-          background: var(--color-sidebar-action-hover);
-          border-color: var(--color-sidebar-action-hover);
-          color: var(--color-on-sidebar-action);
+        &:hover {
+          background: var(--color-sidebar-accent-soft);
+          border-color: var(--color-sidebar-accent);
+          box-shadow: var(--shadow-soft);
+          transform: translateY(-2px);
         }
 
-        &:hover {
-          transform: translateY(-1px);
+        &:active {
+          box-shadow: none;
+          transform: translateY(0);
         }
 
         .addIcon {
           align-items: center;
-          background: var(--color-on-sidebar-action);
-          border-radius: 9px;
-          color: var(--color-sidebar-action);
+          background: var(--color-sidebar-action);
+          border-radius: 11px;
+          color: var(--color-on-sidebar-action);
           display: flex;
           flex: 0 0 auto;
-          height: 30px;
+          height: 38px;
           justify-content: center;
-          width: 30px;
+          transition: background var(--motion-fast), transform var(--motion-fast);
+          width: 38px;
         }
 
         .addIcon svg {
           fill: none;
-          height: 16px;
+          height: 20px;
           stroke: currentColor;
           stroke-linecap: round;
           stroke-linejoin: round;
-          stroke-width: 1.8;
-          width: 16px;
+          stroke-width: 1.65;
+          width: 20px;
+        }
+
+        .addCopy {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+
+          strong {
+            color: var(--color-on-sidebar);
+            font-size: 0.79rem;
+            font-weight: 750;
+            line-height: 1.25;
+          }
+
+          small {
+            color: var(--color-sidebar-muted);
+            font-size: 0.65rem;
+            line-height: 1.25;
+            margin-top: 3px;
+          }
+        }
+
+        .addArrow {
+          align-items: center;
+          border: 1px solid var(--color-sidebar-divider);
+          border-radius: 999px;
+          color: var(--color-sidebar-accent);
+          display: flex;
+          height: 26px;
+          justify-content: center;
+          transition:
+            background var(--motion-fast),
+            border-color var(--motion-fast),
+            transform var(--motion-fast);
+          width: 26px;
+
+          svg {
+            fill: none;
+            height: 14px;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.8;
+            width: 14px;
+          }
+        }
+
+        &:hover .addIcon {
+          background: var(--color-sidebar-action-hover);
+          transform: rotate(-2deg) scale(1.03);
+        }
+
+        &:hover .addArrow {
+          background: var(--color-surface);
+          border-color: var(--color-sidebar-accent-border);
+          transform: translateX(2px);
         }
       }
     }
