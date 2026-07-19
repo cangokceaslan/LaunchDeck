@@ -261,7 +261,7 @@ export const ApplicationDetail = ({
             <h2>Release history</h2>
             <p>Review every pipeline, inspect its snapshot, or start it again.</p>
           </div>
-          {history.length > 0 && <Button onClick={onClearHistory} size="sm" variant="link">Clear history</Button>}
+          <Button onClick={onClearHistory} size="sm" variant="link">Clear history</Button>
         </div>
         {isHistoryLoading ? (
           <div className={styles.historyEmpty}><Spinner animation="border" size="sm" /> Loading history…</div>
