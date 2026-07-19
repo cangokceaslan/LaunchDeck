@@ -16,26 +16,45 @@ export const ApplicationLogo = ({
         width="64%"
       >
         <rect
-          height="20"
-          rx="3.2"
+          fill="currentColor"
+          fillOpacity="0.1"
+          height="18"
+          rx="4.5"
           strokeWidth="1.7"
-          width="13"
-          x="5.5"
-          y="2"
+          width="18"
+          x="3"
+          y="3"
         />
-        <path d="M10 5h4" strokeWidth="1.5" />
         <rect
           fill="currentColor"
-          fillOpacity="0.14"
-          height="7"
-          rx="1.8"
-          strokeWidth="1.3"
-          width="8"
-          x="8"
-          y="8"
+          height="5"
+          rx="1.5"
+          stroke="none"
+          width="5"
+          x="6.5"
+          y="6.5"
         />
-        <path d="M10.25 10.25h3.5M10.25 12.75h2" strokeWidth="1.3" />
-        <circle cx="12" cy="18.5" fill="currentColor" r="0.8" stroke="none" />
+        <rect
+          fill="currentColor"
+          fillOpacity="0.38"
+          height="5"
+          rx="1.5"
+          stroke="none"
+          width="5"
+          x="12.5"
+          y="6.5"
+        />
+        <rect
+          fill="currentColor"
+          fillOpacity="0.38"
+          height="5"
+          rx="1.5"
+          stroke="none"
+          width="5"
+          x="6.5"
+          y="12.5"
+        />
+        <path d="M15 13v4M13 15h4" strokeWidth="1.7" />
       </svg>
     ) : (
       <img alt="" draggable={false} src={iconDataUrl} />
