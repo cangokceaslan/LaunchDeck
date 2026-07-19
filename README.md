@@ -4,7 +4,7 @@ LaunchDeck is a security-focused Electron desktop application for building, sign
 
 > **Last verified: 2026-07-20.** Provider consoles, role names, permissions, upload requirements, and navigation paths can change. Follow the linked official documentation if a screen no longer matches this guide.
 
-The product language is English (US). This repository is private and `UNLICENSED` unless the repository owner states otherwise.
+The product language is English (US). The canonical source repository is [https://www.github.com/cangokceaslan/LaunchDeck](https://www.github.com/cangokceaslan/LaunchDeck). LaunchDeck is distributed under the [MIT License](https://www.github.com/cangokceaslan/LaunchDeck/blob/main/LICENSE).
 
 ## Table of contents
 
@@ -106,9 +106,9 @@ Markdown raw HTML is ignored. Images render only when they resolve to bundled `d
 
 | Host operating system | Android workflow | iOS workflow | Packaged target |
 | --- | --- | --- | --- |
-| macOS | Supported | Supported | DMG and ZIP |
-| Windows | Supported | Not supported | NSIS installer |
-| Linux | Supported | Not supported | AppImage and DEB |
+| macOS | Supported | Supported | Unsigned universal DMG |
+| Windows | Supported | Not supported | Unsigned x64 NSIS installer |
+| Linux | Supported from source | Not supported | No installer from `yarn release` |
 
 iOS is blocked on non-macOS hosts in both the renderer and main process. A missing optional integration does not disable unrelated workflows: for example, a missing Firebase CLI does not prevent local artifacts or store delivery, and a missing Xcode installation does not prevent Android work.
 
@@ -167,8 +167,8 @@ For application users:
 For source contributors:
 
 ```bash
-git clone <repository-url>
-cd firebase-app-distribution
+git clone https://www.github.com/cangokceaslan/LaunchDeck.git
+cd LaunchDeck
 npm install --global yarn@1
 yarn install --frozen-lockfile
 yarn dev
@@ -363,7 +363,9 @@ Electron `safeStorage` must have a real encrypted backend. Install and unlock a 
 yarn install --frozen-lockfile
 ```
 
-The postinstall step rebuilds native `better-sqlite3` bindings for the installed Electron version. The package/version allowlist in `package.json` limits dependencies permitted to run install scripts.
+Use Node.js 22 LTS, version 22.12 or later, for dependency installation and release packaging. The postinstall step rebuilds native `better-sqlite3` bindings for the installed Electron version. The package/version allowlist in `package.json` limits dependencies permitted to run install scripts.
+
+Electron is pinned to exact version `42.2.0`, and `better-sqlite3` is pinned to `12.11.1`. Electron 42 uses native module ABI 146; the release process depends on the matching macOS arm64/x64 and Windows x64 prebuilt SQLite bindings. Do not independently upgrade Electron or `better-sqlite3`: update and verify the pair together.
 
 ### Available commands
 
@@ -371,15 +373,98 @@ The postinstall step rebuilds native `better-sqlite3` bindings for the installed
 | --- | --- | --- |
 | `yarn dev` | Start the Electron development application | Runs the main, preload, and renderer development entries |
 | `yarn screenshots:dev` | Start the isolated deterministic screenshot site | Serves scenarios from `tools/screenshots` |
+| `yarn cloc` | Count maintained Electron application code | Counts `src`, `scripts`, configuration, and package metadata; excludes dependencies and generated output |
 | `yarn typecheck` | Check node and web TypeScript projects | No build artifacts |
 | `yarn build` | Build production main, preload, and renderer assets | Writes bundled output under `out` |
 | `yarn preview` | Preview built Electron assets | Requires an existing build |
 | `yarn package` | Build and create an unpacked application directory | Uses electron-builder `--dir` |
-| `yarn dist` | Build and create platform installer/archive artifacts | Writes under `release` |
+| `yarn release` | Create the verified macOS and Windows installers | macOS-only orchestrator around electron-builder; writes under `releases` |
+| `yarn dist` | Alias for `yarn release` | Produces the same two verified installers |
 
-Packaging targets are DMG/ZIP on macOS, NSIS on Windows, and AppImage/DEB on Linux. Source maps are disabled for production and JavaScript is obfuscated after minification. Obfuscation is not a security boundary; process isolation, typed IPC, validation, credential encryption, and main-process ownership are the boundaries.
+### Installer release prerequisites
 
-Package signing/notarization is separate from mobile artifact signing and is not configured merely by running `yarn dist`. Configure desktop signing identities, notarization credentials, and CI secret handling according to the target operating system before public distribution.
+`yarn release` intentionally runs only on macOS because it creates a universal macOS application and DMG while cross-packaging the Windows NSIS installer. Prepare:
+
+- Node.js 22.12 or later and the frozen Yarn dependencies.
+- macOS `hdiutil` and `lipo`, which ship with macOS/Xcode tooling.
+- Wine on `PATH` as `wine` or `wine64`. NSIS does not require Mono. The current Homebrew command is:
+
+  ```bash
+  brew install --cask wine-stable
+  ```
+
+  The [Homebrew Wine Stable page](https://formulae.brew.sh/cask/wine-stable) is authoritative for the current cask and requirements. As of this guide's verification date, that cask is deprecated and scheduled to be disabled on 2026-09-01; use a supported Wine distribution if Homebrew no longer provides it.
+
+- Rosetta 2 when Wine or one of its components needs Intel translation on Apple silicon. macOS normally offers installation when an Intel-only component opens. See [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527). Confirm Rosetta is permitted by organizational policy before installing it.
+- Git LFS for cloning or pushing the tracked installer payloads. Follow [Install Git Large File Storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage), then run `git lfs install` once for the current user.
+
+The [electron-builder multi-platform guide](https://www.electron.build/docs/features/multi-platform-build/) explains the limits of cross-platform packaging. This repository can package Windows from macOS because `better-sqlite3` publishes the exact Windows prebuild required by Electron ABI 146; the release script does not attempt unsupported native source cross-compilation.
+
+### Create the desktop installers
+
+From a clean checkout on macOS:
+
+```bash
+yarn install --frozen-lockfile
+yarn release
+```
+
+The release orchestrator:
+
+1. Checks the host, Node version, Electron/SQLite versions, Wine, `hdiutil`, and `lipo` before packaging.
+2. Removes stale generated `out` assets and runs the production `electron-vite` build once.
+3. Verifies that the main, preload, and renderer bundles are obfuscated and that production source maps are absent.
+4. Uses electron-builder to create an unsigned universal macOS DMG and an unsigned Windows x64 NSIS EXE in an isolated staging directory.
+5. Verifies the macOS executable and SQLite binding contain both `arm64` and `x86_64` slices, the Windows executable and binding are valid PE x64 files, and signing remains absent.
+6. Runs `hdiutil verify`, calculates SHA-256 manifests, and promotes both platform directories only after every check succeeds.
+7. Restores the host-native SQLite binding even after failure or cancellation and removes the run staging directory.
+
+Existing published files remain untouched if either platform fails. A successful version `1.0.0` release contains only:
+
+```text
+releases/
+├── macos/
+│   ├── LaunchDeck-1.0.0-macos-universal.dmg
+│   └── LaunchDeck-1.0.0-macos-universal.dmg.sha256
+└── windows/
+    ├── LaunchDeck-Setup-1.0.0-windows-x64.exe
+    └── LaunchDeck-Setup-1.0.0-windows-x64.exe.sha256
+```
+
+The workflow does **not** create a Linux installer or `releases/linux` directory. Linux users may run supported Android workflows from source, but Linux packaging is outside this release command.
+
+### Verify installer checksums
+
+Verify repository artifacts on macOS or Linux from their platform directories:
+
+```bash
+(cd releases/macos && shasum -a 256 -c LaunchDeck-1.0.0-macos-universal.dmg.sha256)
+(cd releases/windows && shasum -a 256 -c LaunchDeck-Setup-1.0.0-windows-x64.exe.sha256)
+hdiutil verify releases/macos/LaunchDeck-1.0.0-macos-universal.dmg
+```
+
+On Windows, calculate the EXE hash in PowerShell and compare the lowercase value with the first field in the `.sha256` file:
+
+```powershell
+(Get-FileHash .\releases\windows\LaunchDeck-Setup-1.0.0-windows-x64.exe -Algorithm SHA256).Hash.ToLower()
+Get-Content .\releases\windows\LaunchDeck-Setup-1.0.0-windows-x64.exe.sha256
+```
+
+A matching checksum proves the bytes match the published manifest; it does not establish publisher identity or make an unsigned installer trusted.
+
+### Git LFS and unsigned distribution
+
+`.gitattributes` routes `releases/**/*.dmg` and `releases/**/*.exe` through Git LFS. Their `.sha256` files remain ordinary Git text. After cloning, run `git lfs pull` if installer files are still small text pointers. Review GitHub's [large-file limits and distribution guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github) before changing binary retention or publishing additional versions.
+
+Both installers are deliberately unsigned:
+
+- macOS packaging sets `identity: null` and disables notarization. Gatekeeper may block or warn about the DMG/application because Apple cannot verify a Developer ID signature or notarization ticket.
+- Windows packaging sets `signExecutable: false`. Microsoft Defender SmartScreen may warn because the EXE has no Authenticode publisher identity or reputation.
+- Signing-related `APPLE_*`, `CSC_*`, and `WIN_CSC_*` variables are removed from release child processes so a developer's ambient credentials cannot silently sign these artifacts.
+
+Do not instruct users to bypass an operating-system warning without first verifying the source and SHA-256 value. Production public distribution should add properly protected signing and notarization credentials in a separately reviewed workflow.
+
+Production JavaScript for Electron main, preload, and renderer is minified and obfuscated. Obfuscation raises the cost of casual inspection but is **not** a security boundary and does not protect embedded secrets. Process isolation, typed IPC, validation, credential encryption, and main-process ownership remain the security boundaries.
 
 ## First launch and Doctor
 
@@ -1167,7 +1252,8 @@ Before the first real release:
 - Custom commands are non-interactive and do not implement shell syntax.
 - Release history is local to the workstation and retained until manually cleared; it is not a shared audit service.
 - `safeStorage` encryption is tied to the local OS credential context and is not a cross-machine secret vault.
-- Desktop package code signing/notarization and auto-update distribution are outside the documented mobile-release workflow.
+- `yarn release` must run on macOS and creates only the universal macOS DMG and Windows x64 NSIS installer; it does not create Linux packages.
+- The tracked desktop installers are unsigned and not notarized. Desktop code signing, notarization, and auto-update distribution require a separate credential-controlled workflow.
 
 ## Screenshot renderer
 
@@ -1219,6 +1305,8 @@ src/
 └── types/                 # Global renderer declarations
 
 tools/screenshots/         # Isolated deterministic documentation renderer
+scripts/release.cjs        # Atomic macOS/Windows electron-builder orchestrator
+releases/                  # Git LFS installers and Git-tracked SHA-256 manifests
 docs/images/screenshots/  # Generated fictional screenshots
 docs/USER_GUIDE.md         # Canonical comprehensive guide
 README.md                  # GitHub-root mirror of this guide
@@ -1257,6 +1345,7 @@ Absolute TypeScript aliases preserve runtime ownership. Renderer modules must ne
 
 ### LaunchDeck development prerequisites
 
+- [LaunchDeck source repository](https://www.github.com/cangokceaslan/LaunchDeck)
 - [Node.js downloads](https://nodejs.org/en/download)
 - [Yarn Classic installation](https://classic.yarnpkg.com/lang/en/docs/install/)
 - [Eclipse Temurin JDK](https://adoptium.net/temurin/releases/)
@@ -1267,6 +1356,11 @@ Absolute TypeScript aliases preserve runtime ownership. Renderer modules must ne
 - [Xcode resources](https://developer.apple.com/xcode/resources/)
 - [Install Xcode command-line tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools/)
 - [macOS Privacy & Security settings](https://support.apple.com/guide/mac-help/change-privacy-security-settings-on-mac-mchl211c911f/mac)
+- [electron-builder multi-platform builds](https://www.electron.build/docs/features/multi-platform-build/)
+- [Homebrew Wine Stable](https://formulae.brew.sh/cask/wine-stable)
+- [Rosetta on Apple silicon](https://support.apple.com/en-us/102527)
+- [Install Git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage)
+- [GitHub large-file limits and distribution](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
 
 ### Firebase
 
