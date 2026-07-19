@@ -4,6 +4,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import '@themes/index.css';
 import '@renderer/global.scss';
 import { App } from '@renderer/App';
+import { initializeAnalytics } from '@renderer/utils/Analytics';
 
 const rootElement = document.getElementById('root');
 if (rootElement === null) {
@@ -12,6 +13,7 @@ if (rootElement === null) {
 
 document.documentElement.dataset.theme = 'light';
 document.documentElement.dataset.bsTheme = 'light';
+initializeAnalytics();
 
 createRoot(rootElement).render(
   <StrictMode>
