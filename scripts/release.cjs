@@ -56,9 +56,9 @@ const electronBuilderCliPath = resolvePackageScript(
   'electron-builder',
   'cli.js',
 );
-const electronRebuildCliPath = resolvePackageScript(
-  '@electron/rebuild',
-  path.join('lib', 'cli.js'),
+const electronRebuildCliPath = path.join(
+  path.dirname(require.resolve('@electron/rebuild')),
+  'cli.js',
 );
 
 const describeCommand = (executablePath, commandArguments) =>
