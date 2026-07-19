@@ -323,6 +323,7 @@ export const App = (): React.JSX.Element => {
   const applicationSetupWorkflows = resolveSetupWorkflows(doctorReport, selectedApplication);
   const needsPermissionConfirmation =
     fileSystemPermissionState !== null &&
+    fileSystemPermissionState.isPermissionRequired &&
     fileSystemPermissionState.platform !== 'unsupported' &&
     !fileSystemPermissionState.hasConfirmedAccess;
   const isApplicationSetupChecking = isCheckingDoctor || fileSystemPermissionState === null;
@@ -346,6 +347,7 @@ export const App = (): React.JSX.Element => {
       onRetryDoctor={() => void runDoctor()}
     >
       {fileSystemPermissionState !== null &&
+        fileSystemPermissionState.isPermissionRequired &&
         fileSystemPermissionState.platform !== 'unsupported' && (
           <FileSystemPermissionPrompt
             directRequestAttempts={fileSystemPermissionState.directRequestAttempts}

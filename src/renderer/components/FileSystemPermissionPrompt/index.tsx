@@ -43,8 +43,8 @@ export const FileSystemPermissionPrompt = ({
       </Modal.Header>
       <Modal.Body>
         <p className={styles.intro}>
-          LaunchDeck reads selected project and credential folders and writes generated artifacts.
-          Request access to a folder you plan to use before starting a release.
+          LaunchDeck reads project and credential folders and writes generated artifacts. Grant
+          system access before starting a release.
         </p>
 
         {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
@@ -66,7 +66,9 @@ export const FileSystemPermissionPrompt = ({
             ? `Repeated requests did not confirm access. Open the relevant ${platformLabel} setting, then return and verify a folder again.`
             : directRequestAttempts > 0
               ? `Access was not confirmed. Request it once more; if the folder remains unavailable, LaunchDeck will open the relevant ${platformLabel} setting.`
-              : `LaunchDeck first asks you to choose a folder and verifies read and write access directly.`}
+              : platform === 'darwin'
+                ? 'LaunchDeck will ask macOS for protected folder access directly.'
+                : 'LaunchDeck first asks you to choose a folder and verifies read and write access directly.'}
         </p>
       </Modal.Body>
       <Modal.Footer>

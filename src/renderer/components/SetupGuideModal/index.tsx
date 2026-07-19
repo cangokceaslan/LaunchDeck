@@ -49,6 +49,7 @@ export const SetupGuideModal = ({
   const isPermissionStateLoading = fileSystemPermissionState === null;
   const hasSupportedPermissionSettings =
     fileSystemPermissionState !== null &&
+    fileSystemPermissionState.isPermissionRequired &&
     fileSystemPermissionState.platform !== 'unsupported';
   const needsPermissionConfirmation =
     hasSupportedPermissionSettings && !fileSystemPermissionState.hasConfirmedAccess;
@@ -237,7 +238,9 @@ export const SetupGuideModal = ({
                   ? 'Access was previously confirmed. Use Verify access to check another project or artifact folder.'
                 : fileSystemPermissionState.directRequestAttempts > 0
                   ? `Access was not confirmed. Request it once more; if the folder remains unavailable, LaunchDeck will offer the relevant ${permissionPlatformLabel} settings.`
-                  : 'LaunchDeck verifies access with a native folder request. Access is ready only after the selected folder can be read and written.'}
+                  : fileSystemPermissionState.platform === 'darwin'
+                    ? 'LaunchDeck requests protected folder access directly from macOS. Access is ready only after the system permission is granted.'
+                    : 'LaunchDeck verifies access with a native folder request. Access is ready only after the selected folder can be read and written.'}
             </p>
           </section>
         )}

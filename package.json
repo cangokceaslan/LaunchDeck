@@ -57,6 +57,13 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "extendInfo": {
+        "NSDesktopFolderUsageDescription": "LaunchDeck needs access to project files and generated release artifacts stored on your Desktop.",
+        "NSDocumentsFolderUsageDescription": "LaunchDeck needs access to project files, credentials, and generated release artifacts stored in Documents.",
+        "NSDownloadsFolderUsageDescription": "LaunchDeck needs access to release artifacts and project files stored in Downloads.",
+        "NSNetworkVolumesUsageDescription": "LaunchDeck needs access to project files and release artifacts stored on network volumes.",
+        "NSRemovableVolumesUsageDescription": "LaunchDeck needs access to project files and release artifacts stored on removable volumes."
+      },
       "icon": "resources/launch-icon-macos.png",
       "target": [
         "dmg",

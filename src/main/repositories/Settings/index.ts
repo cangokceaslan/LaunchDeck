@@ -3,7 +3,7 @@ import type { AppSettings } from '@shared/contracts/settings';
 import type { ThemePreference } from '@shared/contracts/domain';
 
 const SETTINGS_KEYS = {
-  fileSystemAccessConfirmed: 'launchdeck.fileSystemAccessConfirmed',
+  fileSystemAccessConfirmed: 'launchdeck.productionFileSystemAccessConfirmed',
   pickerDirectory: 'launchdeck.pickerDirectory',
   theme: 'launchdeck.theme',
 } as const;

@@ -17,9 +17,9 @@ const TARGETS: Record<
   darwin: [
     {
       detail:
-        'Choose a project or artifact folder to confirm that LaunchDeck can read and write it.',
+        'Grant Documents access through the native macOS prompt. Other protected locations are requested only when used.',
       isPrimary: true,
-      label: 'Project folder access',
+      label: 'Protected folder access',
       target: 'filesAndFolders',
     },
     {

@@ -9,6 +9,7 @@ export type FileSystemPermissionTarget =
 export type FileSystemPermissionState = {
   directRequestAttempts: number;
   hasConfirmedAccess: boolean;
+  isPermissionRequired: boolean;
   platform: FileSystemPermissionPlatform;
   settingsTargets: FileSystemPermissionTarget[];
 };

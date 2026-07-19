@@ -18,7 +18,9 @@ export const isGeneralSetupReady = (
 ): boolean => {
   if (report === null || permissionState === null) return false;
   const hasConfirmedPermissions =
-    permissionState.platform === 'unsupported' || permissionState.hasConfirmedAccess;
+    !permissionState.isPermissionRequired ||
+    permissionState.platform === 'unsupported' ||
+    permissionState.hasConfirmedAccess;
   const checks = resolveGeneralSetupChecks(report);
   return (
     hasConfirmedPermissions &&

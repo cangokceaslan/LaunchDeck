@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
-import { access } from 'node:fs/promises';
-import { dialog, shell, type BrowserWindow, type OpenDialogOptions } from 'electron';
+import { access, readdir } from 'node:fs/promises';
+import { app, dialog, shell, type BrowserWindow, type OpenDialogOptions } from 'electron';
 import type { SettingsRepository } from '@main/repositories/Settings';
 import type {
   FileSystemPermissionPlatform,
@@ -69,7 +69,9 @@ export class FileSystemPermissionService {
 
   public getState(): FileSystemPermissionState {
     const platform = resolvePlatform();
-    const hasConfirmedAccess = this.settings.hasConfirmedFileSystemAccess();
+    const isPermissionRequired = app.isPackaged && platform !== 'unsupported';
+    const hasConfirmedAccess =
+      !isPermissionRequired || this.settings.hasConfirmedFileSystemAccess();
     const platformTargets = platform === 'unsupported' ? [] : PLATFORM_TARGETS[platform];
     const directRequestTarget = DIRECT_REQUEST_TARGETS[platform];
     const requestAttempts =
@@ -79,9 +81,12 @@ export class FileSystemPermissionService {
     return {
       directRequestAttempts: requestAttempts,
       hasConfirmedAccess,
+      isPermissionRequired,
       platform,
       settingsTargets:
-        requestAttempts >= DIRECT_REQUEST_ATTEMPTS_BEFORE_SETTINGS ? platformTargets : [],
+        isPermissionRequired && requestAttempts >= DIRECT_REQUEST_ATTEMPTS_BEFORE_SETTINGS
+          ? platformTargets
+          : [],
     };
   }
 
@@ -105,6 +110,9 @@ export class FileSystemPermissionService {
     owner: BrowserWindow | null,
   ): Promise<FileSystemPermissionRequestResult> {
     const platform = resolvePlatform();
+    if (!app.isPackaged) {
+      return { outcome: 'accessConfirmed', state: this.getState() };
+    }
     const settingsUrl = resolveSettingsUrl(platform, target);
     if (settingsUrl === null) {
       throw new Error('The requested file access setting is unavailable on this platform.');
@@ -123,6 +131,19 @@ export class FileSystemPermissionService {
     }
 
     this.directRequestAttempts.set(target, requestAttempts + 1);
+    if (platform === 'darwin') {
+      try {
+        const documentsPath = app.getPath('documents');
+        await readdir(documentsPath);
+        await access(documentsPath, constants.R_OK | constants.W_OK);
+      } catch {
+        return { outcome: 'requestCancelled', state: this.getState() };
+      }
+      this.settings.markFileSystemAccessConfirmed();
+      this.directRequestAttempts.delete(target);
+      return { outcome: 'accessConfirmed', state: this.getState() };
+    }
+
     const options: OpenDialogOptions = {
       buttonLabel: 'Allow access',
       message:
