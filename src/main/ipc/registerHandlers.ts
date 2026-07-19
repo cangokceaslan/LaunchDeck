@@ -6,6 +6,7 @@ import type { SettingsRepository } from '@main/repositories/Settings';
 import type { ApplicationService } from '@main/services/Application';
 import type { DoctorService } from '@main/services/Doctor';
 import type { FastActionService } from '@main/services/FastAction';
+import type { FileSystemPermissionService } from '@main/services/FileSystemPermissions';
 import type { IosBuilder } from '@main/services/IosBuilder';
 import type { ReleaseRunner } from '@main/services/ReleaseRunner';
 import { assertTrustedSender, toSafeErrorMessage } from '@main/ipc/index.utils';
@@ -17,6 +18,7 @@ import {
   createApplicationRequestSchema,
   createFastActionRequestSchema,
   deleteFastActionRequestSchema,
+  fileSystemPermissionTargetSchema,
   iosProjectMetadataRequestSchema,
   iosProjectDiscoveryRequestSchema,
   iosSchemeListRequestSchema,
@@ -34,6 +36,7 @@ type HandlerDependencies = {
   applicationService: ApplicationService;
   doctorService: DoctorService;
   fastActionService: FastActionService;
+  fileSystemPermissionService: FileSystemPermissionService;
   historyRepository: RunHistoryRepository;
   iosBuilder: IosBuilder;
   releaseRunner: ReleaseRunner;
@@ -68,6 +71,21 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
   ipcMain.handle(IPC_CHANNELS.doctorRun, async (event) => {
     assertTrustedSender(event);
     return dependencies.doctorService.run();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.fileSystemPermissionGet, (event) => {
+    assertTrustedSender(event);
+    return dependencies.fileSystemPermissionService.getState();
+  });
+  ipcMain.handle(IPC_CHANNELS.fileSystemPermissionReview, async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return await dependencies.fileSystemPermissionService.review(
+        fileSystemPermissionTargetSchema.parse(payload),
+      );
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
   });
 
   ipcMain.handle(IPC_CHANNELS.applicationList, (event, payload: unknown) => {

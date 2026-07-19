@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Spinner } from 'react-bootstrap';
 import { AppShell } from '@components/AppShell';
+import { FileSystemPermissionPrompt } from '@components/FileSystemPermissionPrompt';
 import { WindowFrame } from '@components/WindowFrame';
 import { ApplicationDetail } from '@screens/ApplicationDetail';
 import { ApplicationList } from '@screens/ApplicationList';
@@ -16,6 +17,10 @@ import type {
   ThemePreference,
 } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
+import type {
+  FileSystemPermissionState,
+  FileSystemPermissionTarget,
+} from '@shared/contracts/permissions';
 import type { FastAction, RunHistorySummary } from '@shared/contracts/release';
 import styles from '@renderer/App.module.scss';
 
@@ -40,6 +45,14 @@ export const App = (): React.JSX.Element => {
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [fileSystemPermissionState, setFileSystemPermissionState] =
+    useState<FileSystemPermissionState | null>(null);
+  const [fileSystemPermissionError, setFileSystemPermissionError] = useState<string | null>(
+    null,
+  );
+  const [isPermissionPromptDismissed, setIsPermissionPromptDismissed] = useState(false);
+  const [isReviewingFileSystemPermissions, setIsReviewingFileSystemPermissions] =
+    useState(false);
   const hasStarted = useRef(false);
   const applicationQueryVersion = useRef(0);
   const isLoadingMoreApplicationsRef = useRef(false);
@@ -138,6 +151,10 @@ export const App = (): React.JSX.Element => {
       .getSettings()
       .then((settings) => setTheme(settings.theme))
       .catch((error: unknown) => setGlobalError(normalizeErrorMessage(error)));
+    void window.desktopApi
+      .getFileSystemPermissionState()
+      .then(setFileSystemPermissionState)
+      .catch((error: unknown) => setFileSystemPermissionError(normalizeErrorMessage(error)));
   }, []);
 
   useEffect(() => {
@@ -158,6 +175,22 @@ export const App = (): React.JSX.Element => {
       await window.desktopApi.updateTheme(nextTheme);
     } catch (error) {
       setGlobalError(normalizeErrorMessage(error));
+    }
+  };
+
+  const handleReviewFileSystemPermissions = async (
+    target: FileSystemPermissionTarget,
+  ): Promise<void> => {
+    setFileSystemPermissionError(null);
+    setIsReviewingFileSystemPermissions(true);
+    try {
+      const permissionState = await window.desktopApi.reviewFileSystemPermissions(target);
+      setFileSystemPermissionState(permissionState);
+      setIsPermissionPromptDismissed(true);
+    } catch (error) {
+      setFileSystemPermissionError(normalizeErrorMessage(error));
+    } finally {
+      setIsReviewingFileSystemPermissions(false);
     }
   };
 
@@ -259,9 +292,28 @@ export const App = (): React.JSX.Element => {
       application={selectedApplication}
       doctorError={doctorError}
       doctorReport={doctorReport}
+      fileSystemPermissionError={fileSystemPermissionError}
+      fileSystemPermissionState={fileSystemPermissionState}
       isCheckingDoctor={isCheckingDoctor}
+      isReviewingFileSystemPermissions={isReviewingFileSystemPermissions}
+      onReviewFileSystemPermissions={(target) =>
+        void handleReviewFileSystemPermissions(target)
+      }
       onRetryDoctor={() => void runDoctor()}
     >
+      {fileSystemPermissionState !== null &&
+        fileSystemPermissionState.platform !== 'unsupported' && (
+          <FileSystemPermissionPrompt
+            errorMessage={fileSystemPermissionError}
+            isOpen={
+              !fileSystemPermissionState.hasReviewed && !isPermissionPromptDismissed
+            }
+            isReviewing={isReviewingFileSystemPermissions}
+            onClose={() => setIsPermissionPromptDismissed(true)}
+            onReview={(target) => void handleReviewFileSystemPermissions(target)}
+            platform={fileSystemPermissionState.platform}
+          />
+        )}
       <AppShell
         applications={applications}
         hasMoreApplications={applicationCursor !== null}

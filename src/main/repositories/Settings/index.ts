@@ -3,6 +3,7 @@ import type { AppSettings } from '@shared/contracts/settings';
 import type { ThemePreference } from '@shared/contracts/domain';
 
 const SETTINGS_KEYS = {
+  fileSystemPermissionsReviewed: 'launchdeck.fileSystemPermissionsReviewed',
   pickerDirectory: 'launchdeck.pickerDirectory',
   theme: 'launchdeck.theme',
 } as const;
@@ -29,7 +30,7 @@ export class SettingsRepository {
     }
   }
 
-  private writeValue(key: string, value: string): void {
+  private writeValue(key: string, value: unknown): void {
     this.database
       .prepare(
         `INSERT INTO settings (key, value_json, updated_at) VALUES (?, ?, ?)
@@ -49,6 +50,14 @@ export class SettingsRepository {
   public getLastPickerDirectory(pickerId: string): string | null {
     const directory = this.readValue(`${SETTINGS_KEYS.pickerDirectory}.${pickerId}`);
     return typeof directory === 'string' && directory.trim() !== '' ? directory : null;
+  }
+
+  public hasReviewedFileSystemPermissions(): boolean {
+    return this.readValue(SETTINGS_KEYS.fileSystemPermissionsReviewed) === true;
+  }
+
+  public markFileSystemPermissionsReviewed(): void {
+    this.writeValue(SETTINGS_KEYS.fileSystemPermissionsReviewed, true);
   }
 
   public updateLastPickerDirectory(pickerId: string, directory: string): void {

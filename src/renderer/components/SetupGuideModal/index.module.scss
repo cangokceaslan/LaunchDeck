@@ -80,6 +80,96 @@
     gap: var(--space-4);
   }
 
+  .permissionSection {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    overflow: hidden;
+
+    > header {
+      align-items: center;
+      display: flex;
+      gap: var(--space-4);
+      justify-content: space-between;
+      padding: var(--space-4);
+
+      h2 {
+        font-size: 0.92rem;
+        margin: 1px 0 2px;
+      }
+
+      p {
+        color: var(--color-text-muted);
+        font-size: 0.76rem;
+        margin: 0;
+      }
+    }
+  }
+
+  .sectionEyebrow {
+    color: var(--color-primary-strong);
+    display: block;
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .permissionTargets {
+    background: var(--color-surface-subtle);
+    border-top: 1px solid var(--color-border);
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+
+  .permissionTarget {
+    align-items: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    gap: var(--space-3);
+    justify-content: space-between;
+    padding: var(--space-3);
+
+    > div {
+      min-width: 0;
+    }
+
+    strong {
+      font-size: 0.78rem;
+    }
+
+    span {
+      color: var(--color-primary-strong);
+      font-size: 0.63rem;
+      font-weight: 700;
+      margin-left: var(--space-2);
+      text-transform: uppercase;
+    }
+
+    p {
+      color: var(--color-text-muted);
+      font-size: 0.72rem;
+      margin: 2px 0 0;
+    }
+
+    button {
+      flex: 0 0 auto;
+    }
+  }
+
+  .permissionNote {
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    line-height: 1.45;
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+  }
+
   .workflow {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -206,6 +296,12 @@
   }
 
   @media (max-width: 680px) {
+    .permissionSection > header,
+    .permissionTarget {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
     .workflow > header {
       grid-template-columns: auto minmax(0, 1fr);
 

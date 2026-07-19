@@ -32,6 +32,7 @@ export const desktopApi: DesktopApi = {
   discoverIosProjectConfiguration: (projectPath) =>
     ipcRenderer.invoke(IPC_CHANNELS.iosProjectConfigurationDiscover, projectPath),
   getApplication: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.applicationGet, applicationId),
+  getFileSystemPermissionState: () => ipcRenderer.invoke(IPC_CHANNELS.fileSystemPermissionGet),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.settingsGet),
   listApplications: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationList, request),
   listFastActions: (applicationId) =>
@@ -51,6 +52,8 @@ export const desktopApi: DesktopApi = {
     ipcRenderer.invoke(IPC_CHANNELS.androidProjectMetadataResolve, request),
   resolveIosProjectMetadata: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.iosProjectMetadataResolve, request),
+  reviewFileSystemPermissions: (target) =>
+    ipcRenderer.invoke(IPC_CHANNELS.fileSystemPermissionReview, target),
   runDoctor: () => ipcRenderer.invoke(IPC_CHANNELS.doctorRun),
   startRelease: (planId) => ipcRenderer.invoke(IPC_CHANNELS.releaseStart, planId),
   updateApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationUpdate, request),

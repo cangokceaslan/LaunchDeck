@@ -2,19 +2,43 @@ import { Alert, Button, Modal, Spinner } from 'react-bootstrap';
 import { StatusPill } from '@components/StatusPill';
 import type { SetupGuideModalProps } from '@components/SetupGuideModal/index.types';
 import { resolveSetupWorkflows } from '@components/SetupGuideModal/index.utils';
+import {
+  getFileSystemPermissionPlatformLabel,
+  getFileSystemPermissionTargets,
+} from '@renderer/utils/fileSystemPermissions';
 import styles from '@components/SetupGuideModal/index.module.scss';
 
 export const SetupGuideModal = ({
   application,
   errorMessage,
+  fileSystemPermissionError,
+  fileSystemPermissionState,
   isChecking,
   isOpen,
+  isReviewingFileSystemPermissions,
   onClose,
+  onReviewFileSystemPermissions,
   onRetry,
   report,
 }: SetupGuideModalProps): React.JSX.Element => {
   const workflows = resolveSetupWorkflows(report, application);
   const readyWorkflowCount = workflows.filter((workflow) => workflow.isReady).length;
+  const isPermissionStateLoading = fileSystemPermissionState === null;
+  const hasSupportedPermissionSettings =
+    fileSystemPermissionState !== null &&
+    fileSystemPermissionState.platform !== 'unsupported';
+  const needsPermissionReview =
+    hasSupportedPermissionSettings && !fileSystemPermissionState.hasReviewed;
+  const isReadyToWork = readyWorkflowCount > 0 && !needsPermissionReview;
+  const permissionTargets =
+    fileSystemPermissionState === null
+      ? []
+      : getFileSystemPermissionTargets(fileSystemPermissionState.platform);
+  const permissionPlatformLabel =
+    fileSystemPermissionState !== null &&
+    fileSystemPermissionState.platform !== 'unsupported'
+      ? getFileSystemPermissionPlatformLabel(fileSystemPermissionState.platform)
+      : null;
 
   return (
     <Modal
@@ -47,16 +71,63 @@ export const SetupGuideModal = ({
                 : `${readyWorkflowCount} of ${workflows.length} release paths ready`}
             </span>
           </div>
-          {isChecking && <Spinner animation="border" role="status" size="sm" />}
-          {!isChecking && readyWorkflowCount > 0 && (
+          {(isChecking || isPermissionStateLoading) && (
+            <Spinner animation="border" role="status" size="sm" />
+          )}
+          {!isChecking && !isPermissionStateLoading && isReadyToWork && (
             <StatusPill label="Ready to work" tone="success" />
           )}
-          {!isChecking && readyWorkflowCount === 0 && (
+          {!isChecking && !isPermissionStateLoading && !isReadyToWork && (
             <StatusPill label="Setup needed" tone="warning" />
           )}
         </div>
 
         {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
+        {fileSystemPermissionError !== null && (
+          <Alert variant="danger">{fileSystemPermissionError}</Alert>
+        )}
+
+        {hasSupportedPermissionSettings && permissionPlatformLabel !== null && (
+          <section className={styles.permissionSection}>
+            <header>
+              <div>
+                <span className={styles.sectionEyebrow}>System access</span>
+                <h2>File system permissions</h2>
+                <p>
+                  Review {permissionPlatformLabel} access for project folders, credentials, and
+                  generated artifacts.
+                </p>
+              </div>
+              <StatusPill
+                label={fileSystemPermissionState.hasReviewed ? 'Reviewed' : 'Review needed'}
+                tone={fileSystemPermissionState.hasReviewed ? 'success' : 'warning'}
+              />
+            </header>
+            <div className={styles.permissionTargets}>
+              {permissionTargets.map((target) => (
+                <div className={styles.permissionTarget} key={target.target}>
+                  <div>
+                    <strong>{target.label}</strong>
+                    <span>{target.isPrimary ? 'Recommended first' : 'Only when blocked'}</span>
+                    <p>{target.detail}</p>
+                  </div>
+                  <Button
+                    disabled={isReviewingFileSystemPermissions}
+                    onClick={() => onReviewFileSystemPermissions(target.target)}
+                    size="sm"
+                    variant="outline-secondary"
+                  >
+                    {isReviewingFileSystemPermissions ? 'Opening…' : 'Open settings'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <p className={styles.permissionNote}>
+              “Reviewed” means the relevant settings page was opened. LaunchDeck cannot inspect
+              the operating-system switch, so {permissionPlatformLabel} remains authoritative.
+            </p>
+          </section>
+        )}
 
         <div className={styles.workflowList}>
           {workflows.map((workflow, index) => (

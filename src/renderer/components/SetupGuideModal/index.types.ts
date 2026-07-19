@@ -1,5 +1,9 @@
 import type { ApplicationDetail } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
+import type {
+  FileSystemPermissionState,
+  FileSystemPermissionTarget,
+} from '@shared/contracts/permissions';
 
 export type SetupWorkflowId = 'artifact' | 'firebase' | 'store';
 
@@ -20,9 +24,13 @@ export type SetupWorkflowSummary = {
 export type SetupGuideModalProps = {
   application: ApplicationDetail | null;
   errorMessage: string | null;
+  fileSystemPermissionError: string | null;
+  fileSystemPermissionState: FileSystemPermissionState | null;
   isChecking: boolean;
   isOpen: boolean;
+  isReviewingFileSystemPermissions: boolean;
   onClose: () => void;
+  onReviewFileSystemPermissions: (target: FileSystemPermissionTarget) => void;
   onRetry: () => void;
   report: DoctorReport | null;
 };

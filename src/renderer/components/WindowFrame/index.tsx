@@ -7,7 +7,11 @@ export const WindowFrame = ({
   children,
   doctorError,
   doctorReport,
+  fileSystemPermissionError,
+  fileSystemPermissionState,
   isCheckingDoctor,
+  isReviewingFileSystemPermissions,
+  onReviewFileSystemPermissions,
   onRetryDoctor,
 }: WindowFrameProps): React.JSX.Element => (
   <div className={styles.frame}>
@@ -15,7 +19,11 @@ export const WindowFrame = ({
       application={application}
       doctorError={doctorError}
       doctorReport={doctorReport}
+      fileSystemPermissionError={fileSystemPermissionError}
+      fileSystemPermissionState={fileSystemPermissionState}
       isCheckingDoctor={isCheckingDoctor}
+      isReviewingFileSystemPermissions={isReviewingFileSystemPermissions}
+      onReviewFileSystemPermissions={onReviewFileSystemPermissions}
       onRetryDoctor={onRetryDoctor}
     />
     <div className={styles.content}>{children}</div>

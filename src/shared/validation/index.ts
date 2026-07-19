@@ -559,6 +559,12 @@ export const updateArtifactOutputDirectoryRequestSchema = z.object({
 });
 
 export const applicationIdSchema = z.string().uuid();
+export const fileSystemPermissionTargetSchema = z.enum([
+  'controlledFolders',
+  'fileSystem',
+  'filesAndFolders',
+  'fullDiskAccess',
+]);
 export const applicationListRequestSchema = z.object({
   cursor: z.object({
     id: z.string().uuid(),

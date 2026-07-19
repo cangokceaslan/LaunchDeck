@@ -14,6 +14,7 @@ import { ApplicationService } from '@main/services/Application';
 import { CredentialVault } from '@main/services/CredentialVault';
 import { DoctorService } from '@main/services/Doctor';
 import { FastActionService } from '@main/services/FastAction';
+import { FileSystemPermissionService } from '@main/services/FileSystemPermissions';
 import { IosBuilder } from '@main/services/IosBuilder';
 import { ReleaseRunner } from '@main/services/ReleaseRunner';
 import { ReleaseNotificationService } from '@main/services/ReleaseNotification';
@@ -45,6 +46,7 @@ const bootstrap = async (): Promise<void> => {
     applicationService: new ApplicationService(applicationRepository, iosBuilder),
     doctorService: new DoctorService(firebaseCli),
     fastActionService: new FastActionService(applicationRepository, fastActionRepository),
+    fileSystemPermissionService: new FileSystemPermissionService(settingsRepository),
     historyRepository,
     iosBuilder,
     releaseRunner,

@@ -17,6 +17,10 @@ import type {
 } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
 import type {
+  FileSystemPermissionState,
+  FileSystemPermissionTarget,
+} from '@shared/contracts/permissions';
+import type {
   CancelReleaseResult,
   CreateFastActionRequest,
   DeleteFastActionRequest,
@@ -52,6 +56,7 @@ export type DesktopApi = {
   deleteApplication: (applicationId: string) => Promise<DeleteApplicationResult>;
   deleteFastAction: (request: DeleteFastActionRequest) => Promise<DeleteFastActionResult>;
   getApplication: (applicationId: string) => Promise<ApplicationDetail | null>;
+  getFileSystemPermissionState: () => Promise<FileSystemPermissionState>;
   getSettings: () => Promise<AppSettings>;
   listApplications: (request: ApplicationListRequest) => Promise<ApplicationPage>;
   listFastActions: (applicationId: string) => Promise<FastAction[]>;
@@ -66,6 +71,9 @@ export type DesktopApi = {
   resolveIosProjectMetadata: (
     request: IosProjectMetadataRequest,
   ) => Promise<IosProjectMetadataResult>;
+  reviewFileSystemPermissions: (
+    target: FileSystemPermissionTarget,
+  ) => Promise<FileSystemPermissionState>;
   runDoctor: () => Promise<DoctorReport>;
   startRelease: (planId: string) => Promise<StartReleaseResult>;
   updateApplication: (request: UpdateApplicationRequest) => Promise<ApplicationDetail>;
