@@ -9,6 +9,7 @@
 
   .sidebar {
     background: var(--color-sidebar);
+    box-shadow: var(--shadow-sidebar);
     color: var(--color-on-sidebar);
     display: flex;
     flex-direction: column;
@@ -16,6 +17,8 @@
     min-height: 0;
     overflow: hidden;
     padding: var(--space-3);
+    position: relative;
+    z-index: 1;
 
     .navigation {
       flex: 1;

@@ -2,12 +2,15 @@
   align-items: stretch;
   background: var(--color-sidebar);
   border-bottom: 1px solid var(--color-sidebar-divider);
+  box-shadow: var(--shadow-header);
   color: var(--color-on-sidebar);
   display: flex;
   flex: 0 0 46px;
   height: 46px;
   justify-content: space-between;
+  position: relative;
   user-select: none;
+  z-index: 2;
 
   .dragRegion {
     -webkit-app-region: drag;

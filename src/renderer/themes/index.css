@@ -3,14 +3,14 @@
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-subtle: #eef1f6;
-  --color-sidebar: #0d1730;
-  --color-sidebar-muted: #9eabc3;
-  --color-on-sidebar: #ffffff;
-  --color-sidebar-hover: rgb(255 255 255 / 9%);
-  --color-sidebar-divider: rgb(255 255 255 / 10%);
-  --color-sidebar-accent: #fbbf24;
-  --color-sidebar-accent-soft: rgb(245 158 11 / 17%);
-  --color-sidebar-accent-border: rgb(245 158 11 / 30%);
+  --color-sidebar: #fffdf9;
+  --color-sidebar-muted: #6f7787;
+  --color-on-sidebar: #273044;
+  --color-sidebar-hover: #f2f4f7;
+  --color-sidebar-divider: #e2e6ed;
+  --color-sidebar-accent: #dc7b08;
+  --color-sidebar-accent-soft: #fff2d8;
+  --color-sidebar-accent-border: #f2c46d;
   --color-text: #172033;
   --color-text-muted: #68738a;
   --color-border: #dfe4ec;
@@ -39,6 +39,8 @@
   --color-log-danger: #ff8b96;
   --shadow-soft: 0 10px 30px rgb(22 32 51 / 8%);
   --shadow-focus: 0 0 0 3px rgb(37 99 235 / 22%);
+  --shadow-header: 0 1px 10px rgb(39 48 68 / 6%);
+  --shadow-sidebar: 4px 0 18px rgb(39 48 68 / 5%);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
@@ -62,6 +64,12 @@
   --color-surface-subtle: #1b2940;
   --color-sidebar: #070d19;
   --color-sidebar-muted: #8f9cb4;
+  --color-on-sidebar: #ffffff;
+  --color-sidebar-hover: rgb(255 255 255 / 9%);
+  --color-sidebar-divider: rgb(255 255 255 / 10%);
+  --color-sidebar-accent: #fbbf24;
+  --color-sidebar-accent-soft: rgb(245 158 11 / 17%);
+  --color-sidebar-accent-border: rgb(245 158 11 / 30%);
   --color-text: #eef2f9;
   --color-text-muted: #a2aec2;
   --color-border: #293750;
@@ -79,4 +87,6 @@
   --color-log: #050914;
   --color-log-text: #d8e0ef;
   --shadow-soft: 0 14px 36px rgb(0 0 0 / 24%);
+  --shadow-header: none;
+  --shadow-sidebar: none;
 }
