@@ -19,9 +19,11 @@ import { FileSystemPermissionService } from '@main/services/FileSystemPermission
 import { IosBuilder } from '@main/services/IosBuilder';
 import { ReleaseRunner } from '@main/services/ReleaseRunner';
 import { ReleaseNotificationService } from '@main/services/ReleaseNotification';
+import { initializeExecutableSearchPath } from '@main/utils/Executable';
 import { createMainWindow } from '@main/windows/MainWindow';
 
 const bootstrap = async (): Promise<void> => {
+  await initializeExecutableSearchPath();
   const database = await openApplicationDatabase(app.getPath('userData'));
   const credentialVault = new CredentialVault();
   const applicationRepository = new ApplicationRepository(database, credentialVault);
