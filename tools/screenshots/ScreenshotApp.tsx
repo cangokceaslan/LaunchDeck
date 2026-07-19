@@ -1,4 +1,5 @@
 import { AppShell } from '@components/AppShell';
+import { DocumentationCenter } from '@components/DocumentationCenter';
 import { PipelineProgress } from '@components/PipelineProgress';
 import { SetupGuideModal } from '@components/SetupGuideModal';
 import { WindowFrame } from '@components/WindowFrame';
@@ -23,6 +24,7 @@ type ScreenshotScenario =
   | 'application-setup'
   | 'applications'
   | 'doctor'
+  | 'documentation-center'
   | 'pipeline-progress'
   | 'release-history'
   | 'release-pipeline'
@@ -37,6 +39,7 @@ const scenarios: ScreenshotScenario[] = [
   'release-pipeline',
   'pipeline-progress',
   'release-history',
+  'documentation-center',
 ];
 
 const noop = (): void => undefined;
@@ -155,6 +158,15 @@ export const ScreenshotApp = (): React.JSX.Element => {
     return (
       <ScreenFrame selectedApplicationId={application.id}>
         <ApplicationDetailFixture />
+      </ScreenFrame>
+    );
+  }
+
+  if (scenario === 'documentation-center') {
+    return (
+      <ScreenFrame selectedApplicationId={application.id}>
+        <ApplicationDetailFixture />
+        <DocumentationCenter context="setup" isOpen onClose={noop} onOpen={noop} />
       </ScreenFrame>
     );
   }
