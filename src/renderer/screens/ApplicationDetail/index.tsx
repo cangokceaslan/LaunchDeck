@@ -99,11 +99,20 @@ export const ApplicationDetail = ({
             <div className={styles.applicationHeading}>
               <h1>{application.name}</h1>
               <button
-                className={styles.editSetupBadge}
-                onClick={onEdit}
+                aria-haspopup="dialog"
+                className={`${styles.setupBadge} ${
+                  isSetupChecking
+                    ? styles.setupChecking
+                    : isSetupReady
+                      ? styles.setupReady
+                      : styles.setupNeeded
+                }`}
+                onClick={onShowSetup}
+                title="View application setup requirements"
                 type="button"
               >
-                Edit setup
+                <span aria-hidden="true" />
+                Setup
               </button>
             </div>
             <div className={styles.platforms}>
@@ -114,22 +123,9 @@ export const ApplicationDetail = ({
           </div>
         </div>
         <div className={styles.actions}>
-          <button
-            aria-haspopup="dialog"
-            className={`${styles.setupButton} ${
-              isSetupChecking
-                ? styles.setupChecking
-                : isSetupReady
-                  ? styles.setupReady
-                  : styles.setupNeeded
-            }`}
-            onClick={onShowSetup}
-            title="View application setup requirements"
-            type="button"
-          >
-            <span aria-hidden="true" />
-            Setup
-          </button>
+          <Button className={styles.editSetupButton} onClick={onEdit} variant="outline-primary">
+            Edit setup
+          </Button>
           <Button onClick={onStartRelease}>New release</Button>
         </div>
       </header>

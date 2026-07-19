@@ -159,6 +159,28 @@
           background: var(--color-primary);
         }
       }
+
+      .platforms {
+        display: flex;
+        gap: var(--space-2);
+      }
+    }
+
+    .actions {
+      align-items: center;
+      display: flex;
+      gap: var(--space-2);
+
+      .editSetupButton {
+        --bs-btn-active-bg: var(--color-primary-soft);
+        --bs-btn-active-border-color: var(--color-primary-strong);
+        --bs-btn-active-color: var(--color-primary-strong);
+        --bs-btn-border-color: var(--color-primary);
+        --bs-btn-color: var(--color-primary-strong);
+        --bs-btn-hover-bg: var(--color-primary-soft);
+        --bs-btn-hover-border-color: var(--color-primary-strong);
+        --bs-btn-hover-color: var(--color-primary-strong);
+      }
     }
   }
 
