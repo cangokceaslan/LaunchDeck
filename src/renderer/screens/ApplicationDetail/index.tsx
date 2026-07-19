@@ -256,11 +256,7 @@ export const ApplicationDetail = ({
 
       <section className={styles.history}>
         <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.eyebrow}>Release archive</span>
-            <h2>Release history</h2>
-            <p>Review every pipeline, inspect its snapshot, or start it again.</p>
-          </div>
+          <h2>Release history</h2>
           <Button onClick={onClearHistory} size="sm" variant="link">Clear history</Button>
         </div>
         {isHistoryLoading ? (
@@ -301,37 +297,29 @@ export const ApplicationDetail = ({
                     </div>
                   </div>
                   <div className={styles.historyFacts}>
-                    <div>
-                      <span>Destinations</span>
-                      <strong>
-                        {configuration === null
-                          ? 'Snapshot unavailable'
-                          : configuration.destinations.map(formatHistoryDestination).join(' + ')}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Duration</span>
-                      <strong>{formatRunDuration(run.startedAt, run.finishedAt)}</strong>
-                    </div>
-                    <div>
-                      <span>Version</span>
-                      <strong>
-                        {versionSummaries.length === 0
-                          ? 'Artifact version'
-                          : versionSummaries.map((version) => `${version.platform} ${version.versionName}`).join(' · ')}
-                      </strong>
-                    </div>
-                  </div>
-                  <footer className={styles.historyCardFooter}>
-                    <code>Run {run.id.slice(0, 8)}</code>
-                    <span className={styles.historyDetailsLabel}>
-                      View details
-                      <svg aria-hidden="true" viewBox="0 0 16 16">
-                        <path d="m6 3.75 4.25 4.25L6 12.25" />
-                      </svg>
+                    <span>
+                      {configuration === null
+                        ? 'Snapshot unavailable'
+                        : configuration.destinations.map(formatHistoryDestination).join(' + ')}
                     </span>
+                    <span>{formatRunDuration(run.startedAt, run.finishedAt)}</span>
+                    <span>
+                      {versionSummaries.length === 0
+                        ? 'Artifact version'
+                        : versionSummaries.map((version) => `${version.platform} ${version.versionName}`).join(' · ')}
+                    </span>
+                  </div>
+                  <div className={styles.historyActions}>
                     <Button
-                      className={styles.historyRepeatButton}
+                      className={styles.historyActionButton}
+                      onClick={() => onOpenHistory(run)}
+                      size="sm"
+                      variant="outline-secondary"
+                    >
+                      View details
+                    </Button>
+                    <Button
+                      className={styles.historyActionButton}
                       disabled={configuration === null}
                       onClick={() => onRepeatHistory(run)}
                       size="sm"
@@ -340,7 +328,7 @@ export const ApplicationDetail = ({
                     >
                       {getHistoryActionLabel(run.outcome)}
                     </Button>
-                  </footer>
+                  </div>
                 </article>
               );
             })}
