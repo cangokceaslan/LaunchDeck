@@ -271,7 +271,7 @@ export const ApplicationDetail = ({
                 ? []
                 : resolveFastActionVersionSummaries(configuration);
               return (
-                <article className={styles.historyCard} data-outcome={run.outcome} key={run.id}>
+                <article className={styles.historyCard} key={run.id}>
                   <button
                     aria-label={`Open details for ${formatMode(run.mode)} release from ${formatDateTime(run.finishedAt)}`}
                     className={styles.historyOpenTarget}
