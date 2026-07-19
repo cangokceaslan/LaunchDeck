@@ -53,8 +53,8 @@ export const desktopApi: DesktopApi = {
     ipcRenderer.invoke(IPC_CHANNELS.androidProjectMetadataResolve, request),
   resolveIosProjectMetadata: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.iosProjectMetadataResolve, request),
-  reviewFileSystemPermissions: (target) =>
-    ipcRenderer.invoke(IPC_CHANNELS.fileSystemPermissionReview, target),
+  requestFileSystemAccess: (target) =>
+    ipcRenderer.invoke(IPC_CHANNELS.fileSystemPermissionRequest, target),
   runDoctor: () => ipcRenderer.invoke(IPC_CHANNELS.doctorRun),
   startRelease: (planId) => ipcRenderer.invoke(IPC_CHANNELS.releaseStart, planId),
   updateApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationUpdate, request),

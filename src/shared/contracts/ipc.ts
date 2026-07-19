@@ -14,7 +14,7 @@ export const IPC_CHANNELS = {
   fastActionList: 'fast-action:list',
   fastActionUpdate: 'fast-action:update',
   fileSystemPermissionGet: 'file-system-permission:get',
-  fileSystemPermissionReview: 'file-system-permission:review',
+  fileSystemPermissionRequest: 'file-system-permission:request',
   historyClear: 'history:clear',
   historyList: 'history:list',
   iosProjectConfigurationDiscover: 'ios:project-configuration-discover',

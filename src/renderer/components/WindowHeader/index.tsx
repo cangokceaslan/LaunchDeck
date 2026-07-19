@@ -19,23 +19,23 @@ export const WindowHeader = ({
   fileSystemPermissionError,
   fileSystemPermissionState,
   isCheckingDoctor,
-  isReviewingFileSystemPermissions,
   onReviewFileSystemPermissions,
   onRetryDoctor,
   onThemeChange,
+  reviewingFileSystemPermissionTarget,
   theme,
 }: WindowHeaderProps): React.JSX.Element => {
   const [isSetupGuideOpen, setIsSetupGuideOpen] = useState(false);
   const workflows = resolveSetupWorkflows(doctorReport, application);
   const hasReadyWorkflow = workflows.some((workflow) => workflow.isReady);
   const isGeneralReady = isGeneralSetupReady(doctorReport, fileSystemPermissionState);
-  const needsPermissionReview =
+  const needsPermissionConfirmation =
     fileSystemPermissionState !== null &&
     fileSystemPermissionState.platform !== 'unsupported' &&
-    !fileSystemPermissionState.hasReviewed;
+    !fileSystemPermissionState.hasConfirmedAccess;
   const setupTone = isCheckingDoctor || fileSystemPermissionState === null
     ? styles.setupChecking
-    : (application === null ? isGeneralReady : hasReadyWorkflow && !needsPermissionReview)
+    : (application === null ? isGeneralReady : hasReadyWorkflow && !needsPermissionConfirmation)
       ? styles.setupReady
       : styles.setupNeeded;
 
@@ -110,11 +110,11 @@ export const WindowHeader = ({
         fileSystemPermissionState={fileSystemPermissionState}
         isChecking={isCheckingDoctor}
         isOpen={isSetupGuideOpen}
-        isReviewingFileSystemPermissions={isReviewingFileSystemPermissions}
         onClose={() => setIsSetupGuideOpen(false)}
         onReviewFileSystemPermissions={onReviewFileSystemPermissions}
         onRetry={onRetryDoctor}
         report={doctorReport}
+        reviewingFileSystemPermissionTarget={reviewingFileSystemPermissionTarget}
       />
     </>
   );

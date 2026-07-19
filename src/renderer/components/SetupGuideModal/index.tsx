@@ -35,11 +35,11 @@ export const SetupGuideModal = ({
   fileSystemPermissionState,
   isChecking,
   isOpen,
-  isReviewingFileSystemPermissions,
   onClose,
   onReviewFileSystemPermissions,
   onRetry,
   report,
+  reviewingFileSystemPermissionTarget,
 }: SetupGuideModalProps): React.JSX.Element => {
   const workflows = resolveSetupWorkflows(report, application);
   const readyWorkflowCount = workflows.filter((workflow) => workflow.isReady).length;
@@ -49,15 +49,15 @@ export const SetupGuideModal = ({
   const hasSupportedPermissionSettings =
     fileSystemPermissionState !== null &&
     fileSystemPermissionState.platform !== 'unsupported';
-  const needsPermissionReview =
-    hasSupportedPermissionSettings && !fileSystemPermissionState.hasReviewed;
-  const isReadyToWork = readyWorkflowCount > 0 && !needsPermissionReview;
+  const needsPermissionConfirmation =
+    hasSupportedPermissionSettings && !fileSystemPermissionState.hasConfirmedAccess;
+  const isReadyToWork = readyWorkflowCount > 0 && !needsPermissionConfirmation;
   const isGeneralReady = isGeneralSetupReady(report, fileSystemPermissionState);
   const generalRequiredCount =
     generalChecks.length + (hasSupportedPermissionSettings ? 1 : 0);
   const generalReadyCount =
     generalChecks.filter((check) => check.status === 'passed').length +
-    (hasSupportedPermissionSettings && fileSystemPermissionState.hasReviewed ? 1 : 0);
+    (hasSupportedPermissionSettings && fileSystemPermissionState.hasConfirmedAccess ? 1 : 0);
   const permissionTargets =
     fileSystemPermissionState === null
       ? []
@@ -156,40 +156,57 @@ export const SetupGuideModal = ({
           <section className={styles.permissionSection}>
             <header>
               <div>
-                <span className={styles.sectionEyebrow}>System access</span>
+                <span className={styles.sectionEyebrow}>
+                  {isGeneralSetup ? 'Configuration' : 'System access'}
+                </span>
                 <h2>File system permissions</h2>
                 <p>
-                  Review {permissionPlatformLabel} access for project folders, credentials, and
-                  generated artifacts.
+                  Request access for project folders, credentials, and generated artifacts.
                 </p>
               </div>
               <StatusPill
-                label={fileSystemPermissionState.hasReviewed ? 'Reviewed' : 'Review needed'}
-                tone={fileSystemPermissionState.hasReviewed ? 'success' : 'warning'}
+                label={
+                  fileSystemPermissionState.hasConfirmedAccess
+                    ? 'Access confirmed'
+                    : 'Access needed'
+                }
+                tone={fileSystemPermissionState.hasConfirmedAccess ? 'success' : 'warning'}
               />
             </header>
             <div className={styles.permissionTargets}>
-              {permissionTargets.map((target) => (
-                <div className={styles.permissionTarget} key={target.target}>
-                  <div>
-                    <strong>{target.label}</strong>
-                    <span>{target.isPrimary ? 'Recommended first' : 'Only when blocked'}</span>
-                    <p>{target.detail}</p>
+              {permissionTargets.map((target) => {
+                const shouldOpenSettings = fileSystemPermissionState.settingsTargets.includes(
+                  target.target,
+                );
+                return (
+                  <div className={styles.permissionTarget} key={target.target}>
+                    <div>
+                      <strong>{target.label}</strong>
+                      <span>{shouldOpenSettings ? 'Settings fallback' : 'Direct request'}</span>
+                      <p>{target.detail}</p>
+                    </div>
+                    <Button
+                      disabled={reviewingFileSystemPermissionTarget !== null}
+                      onClick={() => onReviewFileSystemPermissions(target.target)}
+                      size="sm"
+                      variant="outline-secondary"
+                    >
+                      {reviewingFileSystemPermissionTarget === target.target
+                        ? shouldOpenSettings
+                          ? 'Opening…'
+                          : 'Requesting…'
+                        : shouldOpenSettings
+                          ? 'Open settings'
+                          : 'Request access'}
+                    </Button>
                   </div>
-                  <Button
-                    disabled={isReviewingFileSystemPermissions}
-                    onClick={() => onReviewFileSystemPermissions(target.target)}
-                    size="sm"
-                    variant="outline-secondary"
-                  >
-                    {isReviewingFileSystemPermissions ? 'Opening…' : 'Open settings'}
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <p className={styles.permissionNote}>
-              “Reviewed” means the relevant settings page was opened. LaunchDeck cannot inspect
-              the operating-system switch, so {permissionPlatformLabel} remains authoritative.
+              LaunchDeck first uses a native folder request. If access is not confirmed, repeating
+              the action opens the relevant {permissionPlatformLabel} setting. Access is marked
+              ready only after a selected folder can be read and written.
             </p>
           </section>
         )}

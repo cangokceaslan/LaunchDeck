@@ -19,6 +19,7 @@ import type {
 } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
 import type {
+  FileSystemPermissionRequestResult,
   FileSystemPermissionState,
   FileSystemPermissionTarget,
 } from '@shared/contracts/permissions';
@@ -74,9 +75,9 @@ export type DesktopApi = {
   resolveIosProjectMetadata: (
     request: IosProjectMetadataRequest,
   ) => Promise<IosProjectMetadataResult>;
-  reviewFileSystemPermissions: (
+  requestFileSystemAccess: (
     target: FileSystemPermissionTarget,
-  ) => Promise<FileSystemPermissionState>;
+  ) => Promise<FileSystemPermissionRequestResult>;
   runDoctor: () => Promise<DoctorReport>;
   startRelease: (planId: string) => Promise<StartReleaseResult>;
   updateApplication: (request: UpdateApplicationRequest) => Promise<ApplicationDetail>;

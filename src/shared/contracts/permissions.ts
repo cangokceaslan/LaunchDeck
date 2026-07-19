@@ -7,6 +7,12 @@ export type FileSystemPermissionTarget =
   | 'fullDiskAccess';
 
 export type FileSystemPermissionState = {
-  hasReviewed: boolean;
+  hasConfirmedAccess: boolean;
   platform: FileSystemPermissionPlatform;
+  settingsTargets: FileSystemPermissionTarget[];
+};
+
+export type FileSystemPermissionRequestResult = {
+  outcome: 'accessConfirmed' | 'requestCancelled' | 'settingsOpened';
+  state: FileSystemPermissionState;
 };

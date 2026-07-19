@@ -17,14 +17,14 @@ const TARGETS: Record<
   darwin: [
     {
       detail:
-        'Review access to protected Desktop, Documents, and Downloads locations used by your projects.',
+        'Choose a project or artifact folder to confirm that LaunchDeck can read and write it.',
       isPrimary: true,
-      label: 'Files & Folders',
+      label: 'Project folder access',
       target: 'filesAndFolders',
     },
     {
       detail:
-        'Only review this broader access when a selected protected location remains unavailable.',
+        'Open this broader macOS setting only when a protected location remains unavailable.',
       isPrimary: false,
       label: 'Full Disk Access',
       target: 'fullDiskAccess',
@@ -32,14 +32,15 @@ const TARGETS: Record<
   ],
   win32: [
     {
-      detail: 'Review whether desktop apps can access the Windows file system.',
+      detail:
+        'Choose a project or artifact folder to confirm that LaunchDeck can read and write it.',
       isPrimary: true,
-      label: 'File system access',
+      label: 'Project folder access',
       target: 'fileSystem',
     },
     {
       detail:
-        'If Windows Security blocks artifact writes, allow LaunchDeck through ransomware protection.',
+        'Open Windows Security when ransomware protection continues to block artifact writes.',
       isPrimary: false,
       label: 'Controlled folder access',
       target: 'controlledFolders',

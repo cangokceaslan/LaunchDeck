@@ -10,4 +10,5 @@ export type FileSystemPermissionPromptProps = {
   onClose: () => void;
   onReview: (target: FileSystemPermissionTarget) => void;
   platform: Exclude<FileSystemPermissionPlatform, 'unsupported'>;
+  settingsTargets: FileSystemPermissionTarget[];
 };

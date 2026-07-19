@@ -12,9 +12,9 @@ export type WindowHeaderProps = {
   fileSystemPermissionError: string | null;
   fileSystemPermissionState: FileSystemPermissionState | null;
   isCheckingDoctor: boolean;
-  isReviewingFileSystemPermissions: boolean;
   onReviewFileSystemPermissions: (target: FileSystemPermissionTarget) => void;
   onRetryDoctor: () => void;
   onThemeChange: (theme: ThemePreference) => void;
+  reviewingFileSystemPermissionTarget: FileSystemPermissionTarget | null;
   theme: ThemePreference;
 };

@@ -52,8 +52,8 @@ export const App = (): React.JSX.Element => {
     null,
   );
   const [isPermissionPromptDismissed, setIsPermissionPromptDismissed] = useState(false);
-  const [isReviewingFileSystemPermissions, setIsReviewingFileSystemPermissions] =
-    useState(false);
+  const [reviewingFileSystemPermissionTarget, setReviewingFileSystemPermissionTarget] =
+    useState<FileSystemPermissionTarget | null>(null);
   const hasStarted = useRef(false);
   const applicationQueryVersion = useRef(0);
   const isLoadingMoreApplicationsRef = useRef(false);
@@ -182,16 +182,24 @@ export const App = (): React.JSX.Element => {
   const handleReviewFileSystemPermissions = async (
     target: FileSystemPermissionTarget,
   ): Promise<void> => {
+    if (reviewingFileSystemPermissionTarget !== null) return;
     setFileSystemPermissionError(null);
-    setIsReviewingFileSystemPermissions(true);
+    setReviewingFileSystemPermissionTarget(target);
     try {
-      const permissionState = await window.desktopApi.reviewFileSystemPermissions(target);
-      setFileSystemPermissionState(permissionState);
-      setIsPermissionPromptDismissed(true);
+      const result = await window.desktopApi.requestFileSystemAccess(target);
+      setFileSystemPermissionState(result.state);
+      if (result.outcome === 'accessConfirmed') {
+        setIsPermissionPromptDismissed(true);
+      }
     } catch (error) {
       setFileSystemPermissionError(normalizeErrorMessage(error));
+      try {
+        setFileSystemPermissionState(await window.desktopApi.getFileSystemPermissionState());
+      } catch {
+        // Preserve the actionable permission error from the original request.
+      }
     } finally {
-      setIsReviewingFileSystemPermissions(false);
+      setReviewingFileSystemPermissionTarget(null);
     }
   };
 
@@ -340,7 +348,7 @@ export const App = (): React.JSX.Element => {
       fileSystemPermissionError={fileSystemPermissionError}
       fileSystemPermissionState={fileSystemPermissionState}
       isCheckingDoctor={isCheckingDoctor}
-      isReviewingFileSystemPermissions={isReviewingFileSystemPermissions}
+      reviewingFileSystemPermissionTarget={reviewingFileSystemPermissionTarget}
       onReviewFileSystemPermissions={(target) =>
         void handleReviewFileSystemPermissions(target)
       }
@@ -353,12 +361,13 @@ export const App = (): React.JSX.Element => {
           <FileSystemPermissionPrompt
             errorMessage={fileSystemPermissionError}
             isOpen={
-              !fileSystemPermissionState.hasReviewed && !isPermissionPromptDismissed
+              !fileSystemPermissionState.hasConfirmedAccess && !isPermissionPromptDismissed
             }
-            isReviewing={isReviewingFileSystemPermissions}
+            isReviewing={reviewingFileSystemPermissionTarget !== null}
             onClose={() => setIsPermissionPromptDismissed(true)}
             onReview={(target) => void handleReviewFileSystemPermissions(target)}
             platform={fileSystemPermissionState.platform}
+            settingsTargets={fileSystemPermissionState.settingsTargets}
           />
         )}
       <AppShell

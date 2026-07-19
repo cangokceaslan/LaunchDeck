@@ -10,10 +10,10 @@ export const WindowFrame = ({
   fileSystemPermissionError,
   fileSystemPermissionState,
   isCheckingDoctor,
-  isReviewingFileSystemPermissions,
   onReviewFileSystemPermissions,
   onRetryDoctor,
   onThemeChange,
+  reviewingFileSystemPermissionTarget,
   theme,
 }: WindowFrameProps): React.JSX.Element => (
   <div className={styles.frame}>
@@ -24,10 +24,10 @@ export const WindowFrame = ({
       fileSystemPermissionError={fileSystemPermissionError}
       fileSystemPermissionState={fileSystemPermissionState}
       isCheckingDoctor={isCheckingDoctor}
-      isReviewingFileSystemPermissions={isReviewingFileSystemPermissions}
       onReviewFileSystemPermissions={onReviewFileSystemPermissions}
       onRetryDoctor={onRetryDoctor}
       onThemeChange={onThemeChange}
+      reviewingFileSystemPermissionTarget={reviewingFileSystemPermissionTarget}
       theme={theme}
     />
     <div className={styles.content}>{children}</div>

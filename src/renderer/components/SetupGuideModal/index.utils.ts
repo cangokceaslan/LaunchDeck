@@ -17,11 +17,11 @@ export const isGeneralSetupReady = (
   permissionState: FileSystemPermissionState | null,
 ): boolean => {
   if (report === null || permissionState === null) return false;
-  const hasReviewedPermissions =
-    permissionState.platform === 'unsupported' || permissionState.hasReviewed;
+  const hasConfirmedPermissions =
+    permissionState.platform === 'unsupported' || permissionState.hasConfirmedAccess;
   const checks = resolveGeneralSetupChecks(report);
   return (
-    hasReviewedPermissions &&
+    hasConfirmedPermissions &&
     checks.length > 0 &&
     checks.every((check) => check.status === 'passed')
   );

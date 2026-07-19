@@ -80,11 +80,12 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     assertTrustedSender(event);
     return dependencies.fileSystemPermissionService.getState();
   });
-  ipcMain.handle(IPC_CHANNELS.fileSystemPermissionReview, async (event, payload: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.fileSystemPermissionRequest, async (event, payload: unknown) => {
     assertTrustedSender(event);
     try {
-      return await dependencies.fileSystemPermissionService.review(
+      return await dependencies.fileSystemPermissionService.request(
         fileSystemPermissionTargetSchema.parse(payload),
+        BrowserWindow.fromWebContents(event.sender),
       );
     } catch (error) {
       throw new Error(toSafeErrorMessage(error));

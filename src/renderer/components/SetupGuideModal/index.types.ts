@@ -28,9 +28,9 @@ export type SetupGuideModalProps = {
   fileSystemPermissionState: FileSystemPermissionState | null;
   isChecking: boolean;
   isOpen: boolean;
-  isReviewingFileSystemPermissions: boolean;
   onClose: () => void;
   onReviewFileSystemPermissions: (target: FileSystemPermissionTarget) => void;
   onRetry: () => void;
   report: DoctorReport | null;
+  reviewingFileSystemPermissionTarget: FileSystemPermissionTarget | null;
 };

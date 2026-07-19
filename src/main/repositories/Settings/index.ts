@@ -3,7 +3,7 @@ import type { AppSettings } from '@shared/contracts/settings';
 import type { ThemePreference } from '@shared/contracts/domain';
 
 const SETTINGS_KEYS = {
-  fileSystemPermissionsReviewed: 'launchdeck.fileSystemPermissionsReviewed',
+  fileSystemAccessConfirmed: 'launchdeck.fileSystemAccessConfirmed',
   pickerDirectory: 'launchdeck.pickerDirectory',
   theme: 'launchdeck.theme',
 } as const;
@@ -52,12 +52,12 @@ export class SettingsRepository {
     return typeof directory === 'string' && directory.trim() !== '' ? directory : null;
   }
 
-  public hasReviewedFileSystemPermissions(): boolean {
-    return this.readValue(SETTINGS_KEYS.fileSystemPermissionsReviewed) === true;
+  public hasConfirmedFileSystemAccess(): boolean {
+    return this.readValue(SETTINGS_KEYS.fileSystemAccessConfirmed) === true;
   }
 
-  public markFileSystemPermissionsReviewed(): void {
-    this.writeValue(SETTINGS_KEYS.fileSystemPermissionsReviewed, true);
+  public markFileSystemAccessConfirmed(): void {
+    this.writeValue(SETTINGS_KEYS.fileSystemAccessConfirmed, true);
   }
 
   public updateLastPickerDirectory(pickerId: string, directory: string): void {

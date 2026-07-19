@@ -14,10 +14,12 @@ export const FileSystemPermissionPrompt = ({
   onClose,
   onReview,
   platform,
+  settingsTargets,
 }: FileSystemPermissionPromptProps): React.JSX.Element => {
   const platformLabel = getFileSystemPermissionPlatformLabel(platform);
   const targets = getFileSystemPermissionTargets(platform);
   const primaryTarget = getPrimaryFileSystemPermissionTarget(platform);
+  const shouldOpenSettings = settingsTargets.includes(primaryTarget);
 
   return (
     <Modal
@@ -32,14 +34,13 @@ export const FileSystemPermissionPrompt = ({
       <Modal.Header>
         <div>
           <span className={styles.eyebrow}>{platformLabel} access</span>
-          <Modal.Title id="file-system-permission-title">Review file access</Modal.Title>
+          <Modal.Title id="file-system-permission-title">Allow file access</Modal.Title>
         </div>
       </Modal.Header>
       <Modal.Body>
         <p className={styles.intro}>
           LaunchDeck reads selected project and credential folders and writes generated artifacts.
-          {` ${platformLabel}`} may restrict these locations, so review the relevant system setting
-          before starting a release.
+          Request access to a folder you plan to use before starting a release.
         </p>
 
         {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
@@ -57,8 +58,9 @@ export const FileSystemPermissionPrompt = ({
         </div>
 
         <p className={styles.note}>
-          LaunchDeck cannot read these operating-system switches directly. Opening the settings
-          page records that you reviewed them; {platformLabel} remains authoritative.
+          {shouldOpenSettings
+            ? `The previous request did not confirm access. Open the relevant ${platformLabel} setting, then request access again to verify it.`
+            : `A native folder request is used first. If access is not confirmed, the next attempt opens the relevant ${platformLabel} setting.`}
         </p>
       </Modal.Body>
       <Modal.Footer>
@@ -71,7 +73,13 @@ export const FileSystemPermissionPrompt = ({
           variant="primary"
         >
           {isReviewing && <Spinner animation="border" className={styles.spinner} size="sm" />}
-          {isReviewing ? 'Opening…' : 'Open system settings'}
+          {isReviewing
+            ? shouldOpenSettings
+              ? 'Opening…'
+              : 'Requesting…'
+            : shouldOpenSettings
+              ? 'Open system settings'
+              : 'Request access'}
         </Button>
       </Modal.Footer>
     </Modal>
