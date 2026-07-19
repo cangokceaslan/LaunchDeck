@@ -8,7 +8,7 @@ import type {
   RunHistoryPage,
   RunHistorySummary,
 } from '@shared/contracts/release';
-import { fastActionConfigurationSchema } from '@shared/validation';
+import { fastActionConfigurationSchema, releaseResultSchema } from '@shared/validation';
 
 const parsePlatforms = (serializedPlatforms: string): ReleasePlatform[] => {
   const platforms: unknown = JSON.parse(serializedPlatforms);
@@ -43,6 +43,18 @@ const parseConfiguration = (serializedConfiguration: unknown): FastActionConfigu
   return result.data;
 };
 
+const parseResult = (serializedResult: unknown): ReleaseResult => {
+  if (typeof serializedResult !== 'string') {
+    throw new Error('Invalid release history result data.');
+  }
+  const parsedResult: unknown = JSON.parse(serializedResult);
+  const result = releaseResultSchema.safeParse(parsedResult);
+  if (!result.success) {
+    throw new Error('Invalid release history result snapshot.');
+  }
+  return result.data;
+};
+
 const parseRunHistoryRow = (row: unknown): RunHistorySummary => {
   if (!isRecord(row)) {
     throw new Error('Invalid build history record.');
@@ -70,6 +82,7 @@ const parseRunHistoryRow = (row: unknown): RunHistorySummary => {
     mode,
     outcome,
     platforms: parsePlatforms(read('platforms_json')),
+    result: parseResult(row.result_json),
     startedAt: read('started_at'),
   };
 };
@@ -103,7 +116,7 @@ export class RunHistoryRepository {
     const rows: unknown[] = this.database
       .prepare(
         `SELECT id, application_id, mode, platforms_json, outcome, started_at, finished_at,
-          configuration_json
+          configuration_json, result_json
          FROM release_runs
          WHERE application_id = ?
            AND (

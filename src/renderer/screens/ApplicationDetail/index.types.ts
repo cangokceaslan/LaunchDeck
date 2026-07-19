@@ -5,8 +5,10 @@ export type ApplicationDetailProps = {
   application: ApplicationDetailModel;
   fastActions: FastAction[];
   history: RunHistorySummary[];
+  hasMoreHistory: boolean;
   isChangingIcon: boolean;
   isHistoryLoading: boolean;
+  isLoadingMoreHistory: boolean;
   isSetupChecking: boolean;
   isSetupReady: boolean;
   onClearHistory: () => void;
@@ -16,6 +18,8 @@ export type ApplicationDetailProps = {
   onDeleteFastAction: (fastActionId: string) => void;
   onEdit: () => void;
   onEditFastAction: (fastAction: FastAction) => void;
+  onLoadMoreHistory: () => void;
+  onOpenHistory: (run: RunHistorySummary) => void;
   onRemoveIcon: () => void;
   onRepeatHistory: (run: RunHistorySummary) => void;
   onRunFastAction: (fastAction: FastAction) => void;

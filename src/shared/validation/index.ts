@@ -408,6 +408,39 @@ const releaseConfigurationSchema = z.object({
   version: releaseVersionInputSchema.optional(),
 });
 
+const releasePhaseSchema = z.enum([
+  'validating',
+  'versioning',
+  'preBuild',
+  'build',
+  'postBuild',
+  'preUpload',
+  'upload',
+  'storeUpload',
+  'postUpload',
+  'saving',
+  'verifying',
+]);
+
+export const releaseResultSchema = z.object({
+  applicationId: z.string().uuid(),
+  finishedAt: z.iso.datetime(),
+  mode: z.enum(['buildOnly', 'uploadOnly', 'buildAndUpload']),
+  outcome: z.enum(['succeeded', 'partiallySucceeded', 'failed', 'cancelled']),
+  platforms: z.array(z.object({
+    artifactPath: nonEmptyPathSchema.optional(),
+    buildStatus: z.enum(['notRequested', 'succeeded', 'failed']),
+    errorMessage: z.string().max(10_000).optional(),
+    failedPhase: releasePhaseSchema.optional(),
+    firebaseStatus: z.enum(['notRequested', 'succeeded', 'failed']),
+    platform: z.enum(['android', 'ios']),
+    storeStatus: z.enum(['notRequested', 'succeeded', 'failed']),
+    uploadStatus: z.enum(['notRequested', 'succeeded', 'failed']),
+  })).max(2),
+  runId: z.string().uuid(),
+  startedAt: z.iso.datetime(),
+});
+
 type ReleaseConfigurationInput = z.infer<typeof releaseConfigurationSchema>;
 
 const validateReleaseConfiguration = (

@@ -9,6 +9,7 @@ import { WindowFrame } from '@components/WindowFrame';
 import { ApplicationDetail } from '@screens/ApplicationDetail';
 import { ApplicationList } from '@screens/ApplicationList';
 import { ApplicationSetup } from '@screens/ApplicationSetup';
+import { ReleaseHistoryDetail } from '@screens/ReleaseHistoryDetail';
 import { ReleasePipeline } from '@screens/ReleasePipeline';
 import type { ReleasePipelineIntent } from '@screens/ReleasePipeline/index.types';
 import { normalizeErrorMessage } from '@renderer/utils/formatting';
@@ -24,12 +25,17 @@ import type {
   FileSystemPermissionState,
   FileSystemPermissionTarget,
 } from '@shared/contracts/permissions';
-import type { FastAction, RunHistorySummary } from '@shared/contracts/release';
+import type {
+  FastAction,
+  RunHistoryCursor,
+  RunHistorySummary,
+} from '@shared/contracts/release';
 import styles from '@renderer/App.module.scss';
 
-type View = 'home' | 'setup' | 'detail' | 'edit' | 'release';
+type View = 'home' | 'setup' | 'detail' | 'edit' | 'history' | 'release';
 
 const APPLICATION_PAGE_SIZE = 20;
+const HISTORY_PAGE_SIZE = 8;
 
 export const App = (): React.JSX.Element => {
   const [doctorReport, setDoctorReport] = useState<DoctorReport | null>(null);
@@ -41,10 +47,13 @@ export const App = (): React.JSX.Element => {
   const [isPreparingWorkspace, setIsPreparingWorkspace] = useState(true);
   const [isLoadingMoreApplications, setIsLoadingMoreApplications] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailModel | null>(null);
+  const [selectedHistoryRun, setSelectedHistoryRun] = useState<RunHistorySummary | null>(null);
   const [history, setHistory] = useState<RunHistorySummary[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<RunHistoryCursor | null>(null);
   const [fastActions, setFastActions] = useState<FastAction[]>([]);
   const [releaseIntent, setReleaseIntent] = useState<ReleasePipelineIntent | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false);
   const [isChangingApplicationIcon, setIsChangingApplicationIcon] = useState(false);
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<ThemePreference>('system');
@@ -60,7 +69,9 @@ export const App = (): React.JSX.Element => {
     useState<FileSystemPermissionTarget | null>(null);
   const hasStarted = useRef(false);
   const applicationQueryVersion = useRef(0);
+  const historyQueryVersion = useRef(0);
   const isLoadingMoreApplicationsRef = useRef(false);
+  const isLoadingMoreHistoryRef = useRef(false);
 
   const refreshApplications = async (): Promise<ApplicationSummary[]> => {
     const queryVersion = applicationQueryVersion.current + 1;
@@ -115,12 +126,50 @@ export const App = (): React.JSX.Element => {
   };
 
   const loadHistory = async (applicationId: string): Promise<void> => {
+    const queryVersion = historyQueryVersion.current + 1;
+    historyQueryVersion.current = queryVersion;
     setIsHistoryLoading(true);
     try {
-      const page = await window.desktopApi.listRunHistory({ applicationId, pageSize: 10 });
-      setHistory(page.runs);
+      const page = await window.desktopApi.listRunHistory({
+        applicationId,
+        pageSize: HISTORY_PAGE_SIZE,
+      });
+      if (historyQueryVersion.current === queryVersion) {
+        setHistory(page.runs);
+        setHistoryCursor(page.nextCursor);
+      }
     } finally {
-      setIsHistoryLoading(false);
+      if (historyQueryVersion.current === queryVersion) setIsHistoryLoading(false);
+    }
+  };
+
+  const loadMoreHistory = async (): Promise<void> => {
+    if (
+      selectedApplication === null ||
+      historyCursor === null ||
+      isLoadingMoreHistoryRef.current
+    ) return;
+    const queryVersion = historyQueryVersion.current;
+    const cursor = historyCursor;
+    isLoadingMoreHistoryRef.current = true;
+    setIsLoadingMoreHistory(true);
+    try {
+      const page = await window.desktopApi.listRunHistory({
+        applicationId: selectedApplication.id,
+        cursor,
+        pageSize: HISTORY_PAGE_SIZE,
+      });
+      if (historyQueryVersion.current !== queryVersion) return;
+      setHistory((currentHistory) => {
+        const loadedIds = new Set(currentHistory.map((run) => run.id));
+        return [...currentHistory, ...page.runs.filter((run) => !loadedIds.has(run.id))];
+      });
+      setHistoryCursor(page.nextCursor);
+    } catch (error) {
+      setGlobalError(normalizeErrorMessage(error));
+    } finally {
+      isLoadingMoreHistoryRef.current = false;
+      setIsLoadingMoreHistory(false);
     }
   };
 
@@ -138,6 +187,8 @@ export const App = (): React.JSX.Element => {
       }
       setFastActions([]);
       setHistory([]);
+      setHistoryCursor(null);
+      setSelectedHistoryRun(null);
       setIsApplicationSetupGuideOpen(false);
       setSelectedApplication(application);
       setView('detail');
@@ -225,7 +276,9 @@ export const App = (): React.JSX.Element => {
     try {
       await window.desktopApi.deleteApplication(selectedApplication.id);
       setSelectedApplication(null);
+      setSelectedHistoryRun(null);
       setHistory([]);
+      setHistoryCursor(null);
       setFastActions([]);
       setReleaseIntent(null);
       setIsApplicationSetupGuideOpen(false);
@@ -391,7 +444,7 @@ export const App = (): React.JSX.Element => {
         applications={applications}
         hasMoreApplications={applicationCursor !== null}
         isLoadingMoreApplications={isLoadingMoreApplications}
-        onAddApplication={() => { setSelectedApplication(null); setView('setup'); }}
+        onAddApplication={() => { setSelectedApplication(null); setSelectedHistoryRun(null); setView('setup'); }}
         onLoadMoreApplications={() => void loadMoreApplications()}
         onOpenApplication={(applicationId) => void openApplication(applicationId)}
         onOpenHome={() => setView('home')}
@@ -408,7 +461,7 @@ export const App = (): React.JSX.Element => {
           applications={applications}
           hasMoreApplications={applicationCursor !== null}
           isLoadingMoreApplications={isLoadingMoreApplications}
-          onAddApplication={() => { setSelectedApplication(null); setView('setup'); }}
+          onAddApplication={() => { setSelectedApplication(null); setSelectedHistoryRun(null); setView('setup'); }}
           onLoadMoreApplications={() => void loadMoreApplications()}
           onOpenApplication={(applicationId) => void openApplication(applicationId)}
         />
@@ -433,9 +486,11 @@ export const App = (): React.JSX.Element => {
         <ApplicationDetail
           application={selectedApplication}
           fastActions={fastActions}
+          hasMoreHistory={historyCursor !== null}
           history={history}
           isChangingIcon={isChangingApplicationIcon}
           isHistoryLoading={isHistoryLoading}
+          isLoadingMoreHistory={isLoadingMoreHistory}
           isSetupChecking={isApplicationSetupChecking}
           isSetupReady={isApplicationSetupReady}
           onChangeIcon={() => void handleChangeApplicationIcon()}
@@ -445,11 +500,21 @@ export const App = (): React.JSX.Element => {
           onDeleteFastAction={(fastActionId) => void handleDeleteFastAction(fastActionId)}
           onEdit={() => { setIsApplicationSetupGuideOpen(false); setView('edit'); }}
           onEditFastAction={(fastAction) => { setReleaseIntent({ fastAction, kind: 'editFastAction' }); setView('release'); }}
+          onLoadMoreHistory={() => void loadMoreHistory()}
+          onOpenHistory={(run) => { setSelectedHistoryRun(run); setView('history'); }}
           onRemoveIcon={() => void handleRemoveApplicationIcon()}
           onRepeatHistory={handleRepeatHistory}
           onRunFastAction={handleRunFastAction}
           onShowSetup={() => setIsApplicationSetupGuideOpen(true)}
           onStartRelease={() => { setReleaseIntent({ kind: 'newRelease' }); setView('release'); }}
+        />
+      )}
+      {view === 'history' && selectedApplication !== null && selectedHistoryRun !== null && (
+        <ReleaseHistoryDetail
+          applicationName={selectedApplication.name}
+          onBack={() => setView('detail')}
+          onRepeat={handleRepeatHistory}
+          run={selectedHistoryRun}
         />
       )}
       {view === 'release' && selectedApplication !== null && releaseIntent !== null && (

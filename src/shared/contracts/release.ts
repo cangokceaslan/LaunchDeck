@@ -212,6 +212,7 @@ export type RunHistorySummary = {
   mode: ReleaseMode;
   outcome: ReleaseResult['outcome'];
   platforms: ReleasePlatform[];
+  result: ReleaseResult;
   startedAt: string;
 };
 

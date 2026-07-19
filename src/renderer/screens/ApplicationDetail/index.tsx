@@ -8,31 +8,24 @@ import {
   formatOutcome,
   formatPlatform,
 } from '@renderer/utils/formatting';
+import {
+  formatHistoryDestination,
+  formatRunDuration,
+  getHistoryActionLabel,
+  getHistoryOutcomeTone,
+} from '@renderer/utils/releaseHistory';
+import { resolveFastActionVersionSummaries } from '@renderer/utils/releaseConfiguration';
 import type { ApplicationDetailProps } from '@screens/ApplicationDetail/index.types';
-import { resolveFastActionVersionSummaries } from '@screens/ApplicationDetail/index.utils';
-import type { DistributionDestination } from '@shared/contracts/domain';
 import styles from '@screens/ApplicationDetail/index.module.scss';
-
-const outcomeTone = (outcome: ApplicationDetailProps['history'][number]['outcome']) => {
-  if (outcome === 'succeeded') return 'success' as const;
-  if (outcome === 'partiallySucceeded') return 'warning' as const;
-  if (outcome === 'cancelled') return 'neutral' as const;
-  return 'danger' as const;
-};
-
-const formatDestination = (destination: DistributionDestination): string =>
-  destination === 'artifact'
-    ? 'Artifact'
-    : destination === 'firebase'
-      ? 'Firebase'
-      : 'Store';
 
 export const ApplicationDetail = ({
   application,
   fastActions,
+  hasMoreHistory,
   history,
   isChangingIcon,
   isHistoryLoading,
+  isLoadingMoreHistory,
   isSetupChecking,
   isSetupReady,
   onClearHistory,
@@ -42,6 +35,8 @@ export const ApplicationDetail = ({
   onDeleteFastAction,
   onEdit,
   onEditFastAction,
+  onLoadMoreHistory,
+  onOpenHistory,
   onRemoveIcon,
   onRepeatHistory,
   onRunFastAction,
@@ -261,7 +256,11 @@ export const ApplicationDetail = ({
 
       <section className={styles.history}>
         <div className={styles.sectionHeader}>
-          <div><span className={styles.eyebrow}>Up to 10 records</span><h2>Release history</h2></div>
+          <div>
+            <span className={styles.eyebrow}>Release archive</span>
+            <h2>Release history</h2>
+            <p>Review every pipeline, inspect its snapshot, or start it again.</p>
+          </div>
           {history.length > 0 && <Button onClick={onClearHistory} size="sm" variant="link">Clear history</Button>}
         </div>
         {isHistoryLoading ? (
@@ -276,51 +275,86 @@ export const ApplicationDetail = ({
                 ? []
                 : resolveFastActionVersionSummaries(configuration);
               return (
-                <article className={styles.historyCard} key={run.id}>
-                  <div className={styles.historyHeader}>
-                    <StatusPill label={formatOutcome(run.outcome)} tone={outcomeTone(run.outcome)} />
-                    <div><strong>{formatMode(run.mode)}</strong><small>{run.platforms.map(formatPlatform).join(' + ')}</small></div>
-                    <time>{formatDateTime(run.finishedAt)}</time>
-                    <Button disabled={configuration === null} onClick={() => onRepeatHistory(run)} size="sm">
-                      {run.outcome === 'failed' || run.outcome === 'partiallySucceeded'
-                        ? 'Retry'
-                        : 'Repeat'}
-                    </Button>
+                <article className={styles.historyCard} data-outcome={run.outcome} key={run.id}>
+                  <button
+                    aria-label={`Open details for ${formatMode(run.mode)} release from ${formatDateTime(run.finishedAt)}`}
+                    className={styles.historyOpenTarget}
+                    onClick={() => onOpenHistory(run)}
+                    type="button"
+                  />
+                  <div className={styles.historyCardTop}>
+                    <StatusPill
+                      label={formatOutcome(run.outcome)}
+                      tone={getHistoryOutcomeTone(run.outcome)}
+                    />
+                    <time dateTime={run.finishedAt}>{formatDateTime(run.finishedAt)}</time>
                   </div>
-                  {configuration === null ? (
-                    <p className={styles.legacyHistoryMessage}>Full selections are unavailable for releases created before history snapshots.</p>
-                  ) : (
-                    <>
-                      <div className={styles.historySelections}>
-                        <div><span>Source</span><strong>{configuration.mode === 'uploadOnly' ? 'Existing artifact' : 'New build'}</strong></div>
-                        <div><span>Destinations</span><strong>{configuration.destinations.map(formatDestination).join(' + ')}</strong></div>
-                        <div><span>Platforms</span><strong>{configuration.platforms.map(formatPlatform).join(' + ')}</strong></div>
-                        <div><span>Optional artifact signing</span><strong>{configuration.artifactSigningPlatforms.length === 0 ? 'Not requested' : configuration.artifactSigningPlatforms.map(formatPlatform).join(' + ')}</strong></div>
-                        {configuration.androidArtifactType !== undefined && <div><span>Android artifact</span><strong>{configuration.androidArtifactType.toUpperCase()}</strong></div>}
-                        {configuration.destinations.includes('firebase') && <div><span>Tester groups</span><strong>{configuration.distributionGroups.join(', ')}</strong></div>}
-                      </div>
-                      {versionSummaries.length > 0 && (
-                        <div aria-label="Release versions" className={styles.historyVersions}>
-                          {versionSummaries.map((version) => (
-                            <span key={version.platform}>
-                              <b>{version.platform}</b>
-                              <code>{version.versionName}</code>
-                              <small>{version.counterLabel} {version.counterValue}</small>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className={styles.historyDetails}>
-                        {configuration.artifactOutputDirectoryPath !== undefined && <div><span>Output directory</span><code>{configuration.artifactOutputDirectoryPath}</code></div>}
-                        {configuration.androidArtifactPath !== undefined && <div><span>Android source</span><code>{configuration.androidArtifactPath}</code></div>}
-                        {configuration.iosArtifactPath !== undefined && <div><span>iOS source</span><code>{configuration.iosArtifactPath}</code></div>}
-                        {configuration.releaseNotes !== '' && <div><span>Release notes</span><p>{configuration.releaseNotes}</p></div>}
-                      </div>
-                    </>
-                  )}
+                  <div className={styles.historyCardTitle}>
+                    <div>
+                      <span>Pipeline</span>
+                      <h3>{formatMode(run.mode)}</h3>
+                    </div>
+                    <div className={styles.historyPlatforms}>
+                      {run.platforms.map((platform) => (
+                        <span key={platform}>{formatPlatform(platform)}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={styles.historyFacts}>
+                    <div>
+                      <span>Destinations</span>
+                      <strong>
+                        {configuration === null
+                          ? 'Snapshot unavailable'
+                          : configuration.destinations.map(formatHistoryDestination).join(' + ')}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Duration</span>
+                      <strong>{formatRunDuration(run.startedAt, run.finishedAt)}</strong>
+                    </div>
+                    <div>
+                      <span>Version</span>
+                      <strong>
+                        {versionSummaries.length === 0
+                          ? 'Artifact version'
+                          : versionSummaries.map((version) => `${version.platform} ${version.versionName}`).join(' · ')}
+                      </strong>
+                    </div>
+                  </div>
+                  <footer className={styles.historyCardFooter}>
+                    <code>Run {run.id.slice(0, 8)}</code>
+                    <span className={styles.historyDetailsLabel}>
+                      View details
+                      <svg aria-hidden="true" viewBox="0 0 16 16">
+                        <path d="m6 3.75 4.25 4.25L6 12.25" />
+                      </svg>
+                    </span>
+                    <Button
+                      className={styles.historyRepeatButton}
+                      disabled={configuration === null}
+                      onClick={() => onRepeatHistory(run)}
+                      size="sm"
+                      title={configuration === null ? 'This legacy run has no repeatable configuration snapshot.' : undefined}
+                      variant={run.outcome === 'failed' || run.outcome === 'partiallySucceeded' ? 'primary' : 'outline-secondary'}
+                    >
+                      {getHistoryActionLabel(run.outcome)}
+                    </Button>
+                  </footer>
                 </article>
               );
             })}
+          </div>
+        )}
+        {hasMoreHistory && (
+          <div className={styles.historyLoadMore}>
+            <Button
+              disabled={isLoadingMoreHistory}
+              onClick={onLoadMoreHistory}
+              variant="outline-secondary"
+            >
+              {isLoadingMoreHistory ? <><Spinner animation="border" size="sm" /> Loading older releases…</> : 'Load older releases'}
+            </Button>
           </div>
         )}
       </section>
