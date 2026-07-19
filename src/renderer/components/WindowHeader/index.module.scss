@@ -1,8 +1,8 @@
 .header {
   align-items: stretch;
-  background: var(--color-surface-raised);
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
+  background: var(--color-sidebar);
+  border-bottom: 1px solid var(--color-sidebar-divider);
+  color: var(--color-on-sidebar);
   display: flex;
   flex: 0 0 46px;
   height: 46px;
@@ -37,14 +37,14 @@
       }
 
       > span {
-        color: var(--color-text-muted);
+        color: var(--color-sidebar-muted);
         font-size: 0.67rem;
       }
     }
 
     .context {
       align-items: center;
-      color: var(--color-text-muted);
+      color: var(--color-sidebar-muted);
       display: flex;
       font-family: var(--font-mono);
       font-size: 0.65rem;
@@ -53,7 +53,7 @@
       padding-right: var(--space-3);
 
       .statusDot {
-        background: var(--color-success);
+        background: var(--color-window-maximize);
         border-radius: 50%;
         height: 6px;
         width: 6px;
@@ -65,10 +65,10 @@
     -webkit-app-region: no-drag;
     align-items: center;
     align-self: center;
-    background: var(--color-surface-subtle);
-    border: 1px solid var(--color-border);
+    background: var(--color-sidebar-hover);
+    border: 1px solid var(--color-sidebar-divider);
     border-radius: 999px;
-    color: var(--color-text);
+    color: var(--color-on-sidebar);
     display: flex;
     flex: 0 0 auto;
     font-size: 0.68rem;
@@ -79,8 +79,8 @@
     transition: background var(--motion-fast), border-color var(--motion-fast);
 
     &:hover {
-      background: var(--color-primary-soft);
-      border-color: var(--color-primary);
+      background: var(--color-sidebar-accent-soft);
+      border-color: var(--color-sidebar-accent-border);
     }
 
     .setupStatusDot {
@@ -91,15 +91,21 @@
     }
 
     &.setupReady {
-      color: var(--color-success);
+      .setupStatusDot {
+        background: var(--color-window-maximize);
+      }
     }
 
     &.setupNeeded {
-      color: var(--color-warning);
+      .setupStatusDot {
+        background: var(--color-window-minimize);
+      }
     }
 
     &.setupChecking {
-      color: var(--color-primary-strong);
+      .setupStatusDot {
+        background: var(--color-sidebar-accent);
+      }
     }
   }
 

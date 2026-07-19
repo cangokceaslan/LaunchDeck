@@ -1,22 +1,23 @@
 .switch {
   -webkit-app-region: no-drag;
-  background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border);
+  align-self: center;
+  background: var(--color-sidebar-hover);
+  border: 1px solid var(--color-sidebar-divider);
   border-radius: 999px;
   display: grid;
   flex: 0 0 auto;
   gap: 2px;
-  grid-template-columns: repeat(3, 54px);
+  grid-template-columns: repeat(3, 28px);
   margin: 0 var(--space-2) 0 0;
-  padding: 3px;
+  padding: 2px;
   position: relative;
 
   &[data-selected-theme='light'] .indicator {
-    transform: translateX(56px);
+    transform: translateX(30px);
   }
 
   &[data-selected-theme='dark'] .indicator {
-    transform: translateX(112px);
+    transform: translateX(60px);
   }
 
   label {
@@ -38,8 +39,12 @@
     }
 
     &:checked + .option {
-      color: var(--color-primary-strong);
+      color: var(--color-sidebar-accent);
     }
+  }
+
+  label:hover .option {
+    color: var(--color-on-sidebar);
   }
 }
 
@@ -54,60 +59,34 @@
 }
 
 .indicator {
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-strong);
+  background: var(--color-sidebar-accent-soft);
+  border: 1px solid var(--color-sidebar-accent-border);
   border-radius: 999px;
-  box-shadow: var(--shadow-soft);
-  height: 26px;
-  left: 3px;
+  height: 28px;
+  left: 2px;
   position: absolute;
-  top: 3px;
+  top: 2px;
   transition: transform var(--motion-fast);
-  width: 54px;
+  width: 28px;
 }
 
 .option {
   align-items: center;
   border-radius: 999px;
-  color: var(--color-text-muted);
+  color: var(--color-sidebar-muted);
   display: flex;
-  font-size: 0.62rem;
-  font-weight: 700;
-  gap: 4px;
-  height: 26px;
+  height: 28px;
   justify-content: center;
   transition: color var(--motion-fast);
 
   svg {
     fill: none;
-    height: 12px;
+    height: 13px;
     stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 1.4;
-    width: 12px;
-  }
-}
-
-@media (max-width: 680px) {
-  .switch {
-    grid-template-columns: repeat(3, 30px);
-
-    &[data-selected-theme='light'] .indicator {
-      transform: translateX(32px);
-    }
-
-    &[data-selected-theme='dark'] .indicator {
-      transform: translateX(64px);
-    }
-  }
-
-  .indicator {
-    width: 30px;
-  }
-
-  .option > span {
-    display: none;
+    width: 13px;
   }
 }
 

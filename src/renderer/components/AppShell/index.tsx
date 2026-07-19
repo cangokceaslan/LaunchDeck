@@ -27,9 +27,19 @@ export const AppShell = ({
         <nav aria-label="Applications" className={styles.navigation}>
           <div className={styles.navigationHeader}>
             <button className={styles.applicationsButton} onClick={onOpenHome} type="button">
-              Applications
+              <span aria-hidden="true" className={styles.applicationsIcon}>
+                <svg viewBox="0 0 16 16">
+                  <rect height="4" rx="1" width="4" x="2" y="2" />
+                  <rect height="4" rx="1" width="4" x="10" y="2" />
+                  <rect height="4" rx="1" width="4" x="2" y="10" />
+                  <rect height="4" rx="1" width="4" x="10" y="10" />
+                </svg>
+              </span>
+              <span>Applications</span>
             </button>
-            <button aria-label="Add application" onClick={onAddApplication} type="button">+</button>
+            <span aria-label={`${applications.length}${hasMoreApplications ? ' or more' : ''} applications`} className={styles.applicationCount}>
+              {applications.length}{hasMoreApplications ? '+' : ''}
+            </span>
           </div>
           {applications.length === 0 ? (
             <p className={styles.sidebarEmpty}>No applications added yet.</p>
@@ -50,7 +60,7 @@ export const AppShell = ({
                   className={styles.appInitial}
                   iconDataUrl={application.iconDataUrl}
                 />
-                <span>
+                <span className={styles.appCopy}>
                   <strong>{application.name}</strong>
                   <small>{application.platforms.map((platform) => (platform === 'ios' ? 'iOS' : 'Android')).join(' + ')}</small>
                 </span>
@@ -69,7 +79,10 @@ export const AppShell = ({
           )}
         </nav>
         <div className={styles.sidebarFooter}>
-          <Button className={styles.addButton} onClick={onAddApplication} size="sm" variant="outline-light">
+          <Button className={styles.addButton} onClick={onAddApplication} size="sm">
+            <svg aria-hidden="true" viewBox="0 0 16 16">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
             Add application
           </Button>
         </div>

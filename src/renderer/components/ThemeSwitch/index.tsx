@@ -39,6 +39,7 @@ export const ThemeSwitch = ({ onChange, theme }: ThemeSwitchProps): React.JSX.El
     {OPTIONS.map((option) => (
       <label key={option.theme} title={`${option.label} theme`}>
         <input
+          aria-label={`${option.label} theme`}
           checked={theme === option.theme}
           name="launchdeck-theme"
           onChange={() => onChange(option.theme)}
@@ -47,7 +48,6 @@ export const ThemeSwitch = ({ onChange, theme }: ThemeSwitchProps): React.JSX.El
         />
         <span className={styles.option}>
           <ThemeIcon theme={option.theme} />
-          <span>{option.label}</span>
         </span>
       </label>
     ))}
