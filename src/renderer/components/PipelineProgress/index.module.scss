@@ -260,9 +260,10 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     display: flex;
-    flex: 1;
+    flex: 0 0 auto;
     flex-direction: column;
-    min-height: 320px;
+    height: clamp(300px, 42vh, 440px);
+    min-height: 0;
     overflow: hidden;
 
     > header {
@@ -291,10 +292,11 @@
       flex: 1;
       font-family: var(--font-mono);
       font-size: 0.68rem;
-      min-height: 320px;
+      min-height: 0;
       overflow: auto;
       overflow-anchor: none;
       padding: var(--space-3) var(--space-4);
+      scrollbar-gutter: stable;
 
       .logContent {
         min-height: 100%;
