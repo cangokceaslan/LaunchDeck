@@ -8,6 +8,7 @@ export const APPROVED_EXTERNAL_HOSTS = [
   'developer.android.com',
   'developer.apple.com',
   'developers.google.com',
+  'docs.github.com',
   'firebase.google.com',
   'formulae.brew.sh',
   'github.com',
