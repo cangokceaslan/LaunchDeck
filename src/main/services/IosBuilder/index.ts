@@ -33,6 +33,41 @@ type IosVersionFile = {
   path: string;
 };
 
+const escapeJsonControlCharacters = (value: string): string => {
+  let escapedValue = '';
+  let isInsideString = false;
+  let isEscaped = false;
+
+  for (const character of value) {
+    if (!isInsideString) {
+      escapedValue += character;
+      if (character === '"') isInsideString = true;
+      continue;
+    }
+    if (isEscaped) {
+      escapedValue += character;
+      isEscaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escapedValue += character;
+      isEscaped = true;
+      continue;
+    }
+    if (character === '"') {
+      escapedValue += character;
+      isInsideString = false;
+      continue;
+    }
+    const characterCode = character.charCodeAt(0);
+    escapedValue += characterCode <= 0x1f
+      ? `\\u${characterCode.toString(16).padStart(4, '0')}`
+      : character;
+  }
+
+  return escapedValue;
+};
+
 const isPathInside = (parentPath: string, childPath: string): boolean => {
   const relativePath = path.relative(parentPath, childPath);
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
@@ -131,7 +166,7 @@ const readSchemes = (output: string): string[] => {
   }
   let parsedOutput: unknown;
   try {
-    parsedOutput = JSON.parse(output.slice(jsonStart, jsonEnd + 1));
+    parsedOutput = JSON.parse(escapeJsonControlCharacters(output.slice(jsonStart, jsonEnd + 1)));
   } catch {
     throw new Error('The Xcode scheme list returned invalid JSON.');
   }
@@ -162,7 +197,7 @@ const readProjectMetadata = (output: string): IosProjectMetadataResult => {
   }
   let parsedOutput: unknown;
   try {
-    parsedOutput = JSON.parse(output.slice(jsonStart, jsonEnd + 1));
+    parsedOutput = JSON.parse(escapeJsonControlCharacters(output.slice(jsonStart, jsonEnd + 1)));
   } catch {
     throw new Error('The Xcode build settings returned invalid JSON.');
   }

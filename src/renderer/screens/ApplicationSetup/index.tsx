@@ -97,15 +97,15 @@ const createInitialForm = (application: ApplicationDetail | null): CreateApplica
     androidArtifactTypes: ['apk', 'aab'],
     isEnabled: true,
     isIosIpaEnabled: true,
-    requiresAndroidSigning: false,
-    requiresIosSigning: true,
+    requiresAndroidSigning: true,
+    requiresIosSigning: false,
   },
   artifactOutputDirectoryPath: application?.artifactOutputDirectoryPath ?? null,
   distributionGroups: application?.distributionGroups ?? ['internal-testers'],
   firebaseDistribution: application?.firebaseDistribution ?? {
     isEnabled: true,
-    requiresAndroidSigning: false,
-    requiresIosSigning: true,
+    requiresAndroidSigning: true,
+    requiresIosSigning: false,
   },
   firebaseProjectId: application?.firebaseProjectId ?? '',
   hooks: application?.hooks ?? [],
@@ -171,7 +171,10 @@ export const ApplicationSetup = ({
   } = useIosProjectConfiguration();
   const needsAndroidSigning = form.android !== null && (
     form.googlePlay !== null ||
-    (form.artifactGeneration.isEnabled && form.artifactGeneration.requiresAndroidSigning) ||
+    (form.artifactGeneration.isEnabled && (
+      form.artifactGeneration.requiresAndroidSigning ||
+      form.artifactGeneration.androidArtifactTypes.includes('aab')
+    )) ||
     (form.firebaseDistribution.isEnabled && form.firebaseDistribution.requiresAndroidSigning)
   );
   const needsIosSigning = form.ios !== null && (
@@ -320,21 +323,6 @@ export const ApplicationSetup = ({
     scheme: string,
     configuration: string,
   ): Promise<void> => {
-    setForm((current) => {
-      if (
-        current.ios === null ||
-        current.ios.workspaceOrProjectPath !== workspaceOrProjectPath ||
-        current.ios.scheme !== scheme ||
-        current.ios.configuration !== configuration
-      ) {
-        return current;
-      }
-      return {
-        ...current,
-        ios: { ...current.ios, bundleIdentifier: '' },
-        iosSigning: { ...current.iosSigning, developmentTeamId: '' },
-      };
-    });
     const projectMetadata = await resolveProjectMetadata({
       configuration,
       scheme,
@@ -375,8 +363,16 @@ export const ApplicationSetup = ({
       }
       return {
         ...current,
-        ios: { ...current.ios, bundleIdentifier: '', scheme },
-        iosSigning: { ...current.iosSigning, developmentTeamId: '' },
+        ios: {
+          ...current.ios,
+          bundleIdentifier: current.ios.scheme === scheme
+            ? current.ios.bundleIdentifier
+            : '',
+          scheme,
+        },
+        iosSigning: current.ios.scheme === scheme
+          ? current.iosSigning
+          : { ...current.iosSigning, developmentTeamId: '' },
       };
     });
     if (scheme !== '') {
@@ -766,13 +762,14 @@ export const ApplicationSetup = ({
                   <Form.Label>Bundle ID</Form.Label>
                   <Form.Control
                     aria-busy={isLoadingIosDevelopmentTeam}
-                    placeholder={isLoadingIosDevelopmentTeam ? 'Reading from Xcode project…' : 'Not detected'}
-                    readOnly
+                    onChange={(event) => {
+                      resetIosDevelopmentTeam();
+                      updateIos({ bundleIdentifier: event.target.value });
+                    }}
+                    placeholder={isLoadingIosDevelopmentTeam ? 'Reading from Xcode project…' : 'Enter or detect the Bundle ID'}
                     value={form.ios?.bundleIdentifier ?? ''}
                   />
-                  <Form.Text className={iosDevelopmentTeamError === null ? undefined : styles.fieldError}>
-                    {iosDevelopmentTeamError ?? 'Detected from the selected Xcode project.'}
-                  </Form.Text>
+                  <Form.Text>Enter the Bundle ID manually or use Refresh in the iOS signing section.</Form.Text>
                 </Form.Group>
                 <Form.Group><Form.Label>API Key ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, apiKeyId: event.target.value } }))} required value={form.appStoreConnect.apiKeyId} /></Form.Group>
                 <Form.Group><Form.Label>Issuer ID</Form.Label><Form.Control onChange={(event) => setForm((current) => current.appStoreConnect === null ? current : ({ ...current, appStoreConnect: { ...current.appStoreConnect, issuerId: event.target.value } }))} placeholder="UUID" required value={form.appStoreConnect.issuerId} /></Form.Group>
@@ -782,75 +779,87 @@ export const ApplicationSetup = ({
           </section>
         )}
 
-        {(needsAndroidSigning || needsIosSigning) && (
+        {needsAndroidSigning && (
           <section className={styles.section}>
-            <header><span>07</span><div><h2>Signing configuration</h2><p>Shown only because a selected outcome requires signed artifacts</p></div></header>
+            <header><span>07A</span><div><h2>Android signing configuration</h2><p>Keystore credentials for signed APK and AAB artifacts</p></div></header>
             <div className={styles.sectionBody}>
-              {needsAndroidSigning && (
-                <div className={styles.platformPanel}>
-                  <h3>Android signing</h3>
-                  <Alert variant="info">Select a binary JKS/keystore created by Android Studio or keytool. Keystore passwords are encrypted and never written to YAML, JSON, Gradle files, or renderer storage.</Alert>
-                  <PathField helpText={application?.androidSigning === null || application?.androidSigning === undefined ? 'Select the upload/release keystore.' : `Current: ${application.androidSigning.keystoreFileName}. Leave empty to keep it.`} label="Keystore (.jks or .keystore)" onBrowse={() => void choosePath(window.desktopApi.chooseAndroidKeystore, (keystorePath) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keystorePath } })))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? 'Not selected yet' : 'The existing keystore will be kept'} required={application?.androidSigning === null || application?.androidSigning === undefined} value={form.androidSigning?.keystorePath ?? ''} />
-                  <div className={styles.threeColumns}>
-                    <Form.Group><Form.Label>Key alias</Form.Label><Form.Control onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyAlias: event.target.value } }))} required value={form.androidSigning?.keyAlias ?? ''} /></Form.Group>
-                    <Form.Group><Form.Label>Keystore password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), storePassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.storePassword ?? ''} /></Form.Group>
-                    <Form.Group><Form.Label>Key password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyPassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.keyPassword ?? ''} /></Form.Group>
-                  </div>
+              <div className={styles.platformPanel}>
+                <Alert variant="info">Select a binary JKS/keystore created by Android Studio or keytool. Keystore passwords are encrypted and never written to YAML, JSON, Gradle files, or renderer storage.</Alert>
+                <PathField helpText={application?.androidSigning === null || application?.androidSigning === undefined ? 'Select the upload/release keystore.' : `Current: ${application.androidSigning.keystoreFileName}. Leave empty to keep it.`} label="Keystore (.jks or .keystore)" onBrowse={() => void choosePath(window.desktopApi.chooseAndroidKeystore, (keystorePath) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keystorePath } })))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? 'Not selected yet' : 'The existing keystore will be kept'} required={application?.androidSigning === null || application?.androidSigning === undefined} value={form.androidSigning?.keystorePath ?? ''} />
+                <div className={styles.threeColumns}>
+                  <Form.Group><Form.Label>Key alias</Form.Label><Form.Control onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyAlias: event.target.value } }))} required value={form.androidSigning?.keyAlias ?? ''} /></Form.Group>
+                  <Form.Group><Form.Label>Keystore password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), storePassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.storePassword ?? ''} /></Form.Group>
+                  <Form.Group><Form.Label>Key password</Form.Label><Form.Control autoComplete="new-password" onChange={(event) => setForm((current) => ({ ...current, androidSigning: { ...(current.androidSigning ?? defaultAndroidSigning()), keyPassword: event.target.value } }))} placeholder={application?.androidSigning === null || application?.androidSigning === undefined ? '' : 'Leave empty to keep'} required={application?.androidSigning === null || application?.androidSigning === undefined} type="password" value={form.androidSigning?.keyPassword ?? ''} /></Form.Group>
                 </div>
-              )}
-              {needsIosSigning && (
-                <div className={styles.platformPanel}>
-                  <h3>iOS automatic signing</h3>
-                  <Switch checked={form.iosSigning.isEnabled} label="Use Xcode automatic signing" onChange={(isEnabled) => setForm((current) => ({ ...current, iosSigning: { ...current.iosSigning, isEnabled } }))} />
-                  <Form.Group className={styles.compactField}>
-                    <Form.Label>Apple Development Team ID</Form.Label>
-                    <InputGroup>
-                      <Form.Control
-                        aria-busy={isLoadingIosDevelopmentTeam}
-                        aria-describedby="ios-development-team-feedback"
-                        placeholder={isLoadingIosDevelopmentTeam ? 'Reading from Xcode project…' : 'Not detected'}
-                        readOnly
-                        required
-                        value={form.iosSigning.developmentTeamId}
-                      />
-                      <Button
-                        aria-label="Refresh Apple Development Team ID"
-                        disabled={
-                          isLoadingIosDevelopmentTeam ||
-                          form.ios === null ||
-                          form.ios.workspaceOrProjectPath === '' ||
-                          form.ios.scheme === '' ||
-                          form.ios.configuration === ''
+              </div>
+            </div>
+          </section>
+        )}
+
+        {needsIosSigning && (
+          <section className={styles.section}>
+            <header><span>07B</span><div><h2>iOS signing configuration</h2><p>Xcode automatic signing for IPA and App Store archives</p></div></header>
+            <div className={styles.sectionBody}>
+              <div className={styles.platformPanel}>
+                <Switch checked={form.iosSigning.isEnabled} label="Use Xcode automatic signing" onChange={(isEnabled) => setForm((current) => ({ ...current, iosSigning: { ...current.iosSigning, isEnabled } }))} />
+                <Form.Group className={styles.compactField}>
+                  <Form.Label>Apple Development Team ID</Form.Label>
+                  <InputGroup>
+                    <Form.Control
+                      aria-busy={isLoadingIosDevelopmentTeam}
+                      aria-describedby="ios-development-team-feedback"
+                      maxLength={64}
+                      onChange={(event) => {
+                        resetIosDevelopmentTeam();
+                        setForm((current) => ({
+                          ...current,
+                          iosSigning: {
+                            ...current.iosSigning,
+                            developmentTeamId: event.target.value.toUpperCase(),
+                          },
+                        }));
+                      }}
+                      pattern="[A-Z0-9]{1,64}"
+                      placeholder={isLoadingIosDevelopmentTeam ? 'Reading from Xcode project…' : 'Enter or detect the Team ID'}
+                      value={form.iosSigning.developmentTeamId}
+                    />
+                    <Button
+                      aria-label="Refresh Apple Development Team ID"
+                      disabled={
+                        isLoadingIosDevelopmentTeam ||
+                        form.ios === null ||
+                        form.ios.workspaceOrProjectPath === '' ||
+                        form.ios.scheme === '' ||
+                        form.ios.configuration === ''
+                      }
+                      onClick={() => {
+                        const iosConfiguration = form.ios;
+                        if (iosConfiguration !== null) {
+                          void loadIosDevelopmentTeam(
+                            iosConfiguration.workspaceOrProjectPath,
+                            iosConfiguration.scheme,
+                            iosConfiguration.configuration,
+                          );
                         }
-                        onClick={() => {
-                          const iosConfiguration = form.ios;
-                          if (iosConfiguration !== null) {
-                            void loadIosDevelopmentTeam(
-                              iosConfiguration.workspaceOrProjectPath,
-                              iosConfiguration.scheme,
-                              iosConfiguration.configuration,
-                            );
-                          }
-                        }}
-                        type="button"
-                        variant="outline-secondary"
-                      >
-                        {isLoadingIosDevelopmentTeam ? <Spinner animation="border" size="sm" /> : 'Refresh'}
-                      </Button>
-                    </InputGroup>
-                    <Form.Text
-                      className={iosDevelopmentTeamError === null ? undefined : styles.fieldError}
-                      id="ios-development-team-feedback"
+                      }}
+                      type="button"
+                      variant="outline-secondary"
                     >
-                      {iosDevelopmentTeamError ?? (
-                        form.iosSigning.developmentTeamId === ''
-                          ? 'Select an Xcode project, scheme, and configuration to detect its team.'
-                          : 'Detected from the selected Xcode project. Xcode resolves the certificate and provisioning profile for this team.'
-                      )}
-                    </Form.Text>
-                  </Form.Group>
-                </div>
-              )}
+                      {isLoadingIosDevelopmentTeam ? <Spinner animation="border" size="sm" /> : 'Refresh'}
+                    </Button>
+                  </InputGroup>
+                  <Form.Text
+                    className={iosDevelopmentTeamError === null ? undefined : styles.fieldError}
+                    id="ios-development-team-feedback"
+                  >
+                    {iosDevelopmentTeamError === null
+                      ? form.iosSigning.developmentTeamId === ''
+                        ? 'Enter the Team ID manually or detect it from the selected Xcode project.'
+                        : 'You can edit the Team ID or refresh it from the selected Xcode project.'
+                      : `${iosDevelopmentTeamError} You can enter the Team ID manually.`}
+                  </Form.Text>
+                </Form.Group>
+              </div>
             </div>
           </section>
         )}
@@ -871,12 +880,7 @@ export const ApplicationSetup = ({
               isSaving ||
               (form.googlePlay !== null && isLoadingAndroidProjectMetadata) ||
               (form.android === null && form.ios === null) ||
-              (form.ios !== null && (isLoadingIosSchemes || iosSchemes.length === 0)) ||
-              (needsIosSigning && (
-                isLoadingIosDevelopmentTeam ||
-                !form.iosSigning.isEnabled ||
-                form.iosSigning.developmentTeamId === ''
-              ))
+              (form.ios !== null && (isLoadingIosSchemes || iosSchemes.length === 0))
             }
             type="submit"
           >

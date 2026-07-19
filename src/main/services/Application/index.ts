@@ -228,7 +228,6 @@ const resolveIos = async (
   configuration: CreateApplicationRequest['ios'],
   iosBuilder: IosBuilder,
   isFirebaseEnabled: boolean,
-  shouldResolveProjectMetadata: boolean,
 ): Promise<{
   configuration: IosConfiguration | null;
   developmentTeamId: string | null;
@@ -252,13 +251,6 @@ const resolveIos = async (
   if (!schemes.includes(configuration.scheme)) {
     throw new Error(`The selected scheme was not found in the Xcode project: ${configuration.scheme}`);
   }
-  const projectMetadata = shouldResolveProjectMetadata
-    ? await iosBuilder.resolveProjectMetadata({
-        configuration: configuration.configuration,
-        scheme: configuration.scheme,
-        workspaceOrProjectPath,
-      })
-    : null;
   const metadata = googleServiceInfoPlistPath === null
     ? null
     : await inspectGoogleServiceInfoPlist(googleServiceInfoPlistPath);
@@ -266,13 +258,13 @@ const resolveIos = async (
     configuration: {
       ...configuration,
       artifactPath: resolveOutputPath(projectPath, configuration.artifactPath, '.ipa'),
-      bundleIdentifier: projectMetadata?.bundleIdentifier ?? configuration.bundleIdentifier,
+      bundleIdentifier: configuration.bundleIdentifier,
       firebaseAppId: metadata?.appId ?? null,
       googleServiceInfoPlistPath,
       projectPath,
       workspaceOrProjectPath,
     },
-    developmentTeamId: projectMetadata?.developmentTeamId ?? null,
+    developmentTeamId: null,
     projectId: metadata?.projectId ?? null,
   };
 };
@@ -365,18 +357,12 @@ export class ApplicationService {
     const serviceAccount = request.firebaseDistribution.isEnabled
       ? await inspectServiceAccount(requestedServiceAccountPath)
       : null;
-    const shouldResolveIosProjectMetadata = request.ios !== null && (
-      request.appStoreConnect !== null ||
-      (request.artifactGeneration.isEnabled && request.artifactGeneration.requiresIosSigning) ||
-      (request.firebaseDistribution.isEnabled && request.firebaseDistribution.requiresIosSigning)
-    );
     const [android, ios, hooks, androidSigning, googlePlay, appStoreConnect] = await Promise.all([
       resolveAndroid(request.android, request.firebaseDistribution.isEnabled),
       resolveIos(
         request.ios,
         this.iosBuilder,
         request.firebaseDistribution.isEnabled,
-        shouldResolveIosProjectMetadata,
       ),
       resolveHooks(request.hooks),
       resolveAndroidSigning(request.androidSigning, retainedApplication?.androidSigning),
@@ -410,9 +396,11 @@ export class ApplicationService {
         : { ...googlePlay, packageName: android.packageName ?? googlePlay.packageName },
       hooks,
       ios: ios.configuration,
-      iosSigning: ios.developmentTeamId === null
-        ? request.iosSigning
-        : { ...request.iosSigning, developmentTeamId: ios.developmentTeamId },
+      iosSigning: {
+        ...request.iosSigning,
+        developmentTeamId:
+          request.iosSigning.developmentTeamId.trim() || ios.developmentTeamId || '',
+      },
       name: request.name.trim(),
       serviceAccountFileName: serviceAccount === null ? '' : path.basename(serviceAccount.path),
       serviceAccountPath: serviceAccount?.path ?? null,

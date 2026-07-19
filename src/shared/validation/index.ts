@@ -144,7 +144,11 @@ export const androidSigningConfigurationSchema = z.object({
 });
 
 export const iosSigningConfigurationSchema = z.object({
-  developmentTeamId: z.string().trim().max(64),
+  developmentTeamId: z
+    .string()
+    .trim()
+    .max(64)
+    .regex(/^[A-Z0-9]*$/u, 'Apple Development Team ID must contain only uppercase letters and numbers.'),
   isEnabled: z.boolean(),
 });
 
