@@ -27,6 +27,89 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
+
+    .addApplicationButton {
+      --bs-btn-active-bg: var(--color-primary-strong);
+      --bs-btn-active-border-color: var(--color-primary-strong);
+      --bs-btn-active-color: var(--color-on-primary);
+      --bs-btn-bg: var(--color-primary);
+      --bs-btn-border-color: var(--color-primary);
+      --bs-btn-color: var(--color-on-primary);
+      --bs-btn-hover-bg: var(--color-primary-strong);
+      --bs-btn-hover-border-color: var(--color-primary-strong);
+      --bs-btn-hover-color: var(--color-on-primary);
+      align-items: center;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-soft);
+      display: grid;
+      flex: 0 0 auto;
+      font-size: 0.78rem;
+      gap: 10px;
+      grid-template-columns: 32px auto 22px;
+      min-height: 48px;
+      padding: 6px 9px 6px 7px;
+      transition:
+        border-color var(--motion-fast),
+        box-shadow var(--motion-fast),
+        transform var(--motion-fast);
+
+      &:hover {
+        box-shadow: var(--shadow-focus), var(--shadow-soft);
+        transform: translateY(-2px);
+
+        .addApplicationArrow {
+          transform: translateX(2px);
+        }
+      }
+
+      &:active {
+        box-shadow: var(--shadow-soft);
+        transform: translateY(0) scale(0.99);
+      }
+    }
+
+    .addApplicationIcon {
+      align-items: center;
+      background: var(--color-surface);
+      border-radius: 10px;
+      color: var(--color-primary-strong);
+      display: flex;
+      height: 32px;
+      justify-content: center;
+      width: 32px;
+
+      svg {
+        fill: none;
+        height: 17px;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-width: 1.9;
+        width: 17px;
+      }
+    }
+
+    .addApplicationArrow {
+      align-items: center;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      display: flex;
+      height: 22px;
+      justify-content: center;
+      opacity: 0.72;
+      transition: transform var(--motion-fast);
+      width: 22px;
+
+      svg {
+        fill: none;
+        height: 13px;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+        width: 13px;
+      }
+    }
   }
 
   .grid {
@@ -119,6 +202,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .pageHeader .addApplicationButton,
+    .pageHeader .addApplicationArrow,
     .grid .applicationCard {
       transition: none;
     }
