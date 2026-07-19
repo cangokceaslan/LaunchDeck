@@ -41,6 +41,7 @@ for (const environmentKey of Object.keys(releaseEnvironment)) {
 delete releaseEnvironment.ELECTRON_RUN_AS_NODE;
 releaseEnvironment.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
 releaseEnvironment.NODE_ENV = 'production';
+releaseEnvironment.npm_config_cache = path.join(runRoot, 'npm-cache');
 
 const resolvePackageScript = (packageName, relativeScriptPath) => {
   const packagePath = require.resolve(`${packageName}/package.json`);
@@ -55,9 +56,9 @@ const electronBuilderCliPath = resolvePackageScript(
   'electron-builder',
   'cli.js',
 );
-const electronBuilderInstallAppDepsPath = resolvePackageScript(
-  'electron-builder',
-  'install-app-deps.js',
+const electronRebuildCliPath = resolvePackageScript(
+  '@electron/rebuild',
+  path.join('lib', 'cli.js'),
 );
 
 const describeCommand = (executablePath, commandArguments) =>
@@ -444,7 +445,21 @@ const restoreHostNativeDependencies = async () => {
   await runCommand(
     'Restoring host-native application dependencies',
     process.execPath,
-    [electronBuilderInstallAppDepsPath],
+    [
+      electronRebuildCliPath,
+      '--version',
+      requiredElectronVersion,
+      '--arch',
+      process.arch,
+      '--platform',
+      process.platform,
+      '--module-dir',
+      projectRoot,
+      '--only',
+      'better-sqlite3',
+      '--force',
+      '--sequential',
+    ],
   );
 };
 
