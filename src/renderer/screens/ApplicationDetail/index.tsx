@@ -141,7 +141,7 @@ export const ApplicationDetail = ({
       <section className={styles.fastActions}>
         <div className={styles.sectionHeader}>
           <div><span className={styles.eyebrow}>Saved release pipelines</span><h2>Fast actions</h2></div>
-          <Button onClick={onCreateFastAction} size="sm" variant="outline-primary">New fast action</Button>
+          <Button onClick={onCreateFastAction} size="sm">New fast action</Button>
         </div>
         {fastActions.length === 0 ? (
           <div className={styles.fastActionsEmpty}>No fast actions yet. Save a reusable pipeline for one-click preflight and confirmation.</div>
