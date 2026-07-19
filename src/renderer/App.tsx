@@ -42,6 +42,7 @@ export const App = (): React.JSX.Element => {
   const [releaseIntent, setReleaseIntent] = useState<ReleasePipelineIntent | null>(null);
   const [startingFastActionId, setStartingFastActionId] = useState<string | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [isChangingApplicationIcon, setIsChangingApplicationIcon] = useState(false);
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -226,6 +227,26 @@ export const App = (): React.JSX.Element => {
     }
   };
 
+  const handleChangeApplicationIcon = async (): Promise<void> => {
+    if (selectedApplication === null || isChangingApplicationIcon) return;
+    setGlobalError(null);
+    setIsChangingApplicationIcon(true);
+    try {
+      const selection = await window.desktopApi.chooseApplicationIcon();
+      if (selection.status === 'cancelled') return;
+      const updatedApplication = await window.desktopApi.updateApplicationIcon({
+        applicationId: selectedApplication.id,
+        iconDataUrl: selection.dataUrl,
+      });
+      setSelectedApplication(updatedApplication);
+      await refreshApplications();
+    } catch (error) {
+      setGlobalError(normalizeErrorMessage(error));
+    } finally {
+      setIsChangingApplicationIcon(false);
+    }
+  };
+
   const handleReleaseFinished = async (): Promise<void> => {
     if (selectedApplication === null) return;
     try {
@@ -365,7 +386,9 @@ export const App = (): React.JSX.Element => {
           application={selectedApplication}
           fastActions={fastActions}
           history={history}
+          isChangingIcon={isChangingApplicationIcon}
           isHistoryLoading={isHistoryLoading}
+          onChangeIcon={() => void handleChangeApplicationIcon()}
           onClearHistory={() => void handleClearHistory()}
           onCreateFastAction={() => { setReleaseIntent({ kind: 'createFastAction' }); setView('release'); }}
           onDelete={() => void handleDelete()}

@@ -11,6 +11,7 @@ import { RunHistoryRepository } from '@main/repositories/RunHistory';
 import { SettingsRepository } from '@main/repositories/Settings';
 import { AndroidBuilder } from '@main/services/AndroidBuilder';
 import { ApplicationService } from '@main/services/Application';
+import { ApplicationIconService } from '@main/services/ApplicationIcon';
 import { CredentialVault } from '@main/services/CredentialVault';
 import { DoctorService } from '@main/services/Doctor';
 import { FastActionService } from '@main/services/FastAction';
@@ -43,6 +44,7 @@ const bootstrap = async (): Promise<void> => {
   );
   registerIpcHandlers({
     applicationRepository,
+    applicationIconService: new ApplicationIconService(),
     applicationService: new ApplicationService(applicationRepository, iosBuilder),
     doctorService: new DoctorService(firebaseCli),
     fastActionService: new FastActionService(applicationRepository, fastActionRepository),

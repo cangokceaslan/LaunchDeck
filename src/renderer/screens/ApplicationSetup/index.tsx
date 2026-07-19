@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Form, InputGroup, Spinner } from 'react-bootstrap';
+import { ApplicationLogo } from '@components/ApplicationLogo';
 import { HookEditor } from '@components/HookEditor';
 import { Select } from '@components/Inputs/Select';
 import { Switch } from '@components/Inputs/Switch';
@@ -109,6 +110,7 @@ const createInitialForm = (application: ApplicationDetail | null): CreateApplica
   },
   firebaseProjectId: application?.firebaseProjectId ?? '',
   hooks: application?.hooks ?? [],
+  iconDataUrl: application?.iconDataUrl ?? null,
   ios:
     application?.ios === undefined
       ? null
@@ -153,6 +155,7 @@ export const ApplicationSetup = ({
   const [groupsText, setGroupsText] = useState(form.distributionGroups.join(', '));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isChoosingIcon, setIsChoosingIcon] = useState(false);
   const {
     error: androidProjectMetadataError,
     isLoading: isLoadingAndroidProjectMetadata,
@@ -195,6 +198,22 @@ export const ApplicationSetup = ({
   ): Promise<void> => {
     const result = await picker();
     if (result.status === 'selected') applyPath(result.path);
+  };
+
+  const chooseApplicationIcon = async (): Promise<void> => {
+    if (isChoosingIcon) return;
+    setErrorMessage(null);
+    setIsChoosingIcon(true);
+    try {
+      const result = await window.desktopApi.chooseApplicationIcon();
+      if (result.status === 'selected') {
+        setForm((current) => ({ ...current, iconDataUrl: result.dataUrl }));
+      }
+    } catch (error) {
+      setErrorMessage(normalizeErrorMessage(error));
+    } finally {
+      setIsChoosingIcon(false);
+    }
   };
 
   const updateAndroid = (patch: Partial<AndroidSetupConfiguration>): void => {
@@ -583,7 +602,36 @@ export const ApplicationSetup = ({
         <section className={styles.section}>
           <header><span>01</span><div><h2>Application and destinations</h2><p>Enable only the release outcomes this project uses</p></div></header>
           <div className={styles.sectionBody}>
-            <Form.Group className={styles.applicationNameField}>
+            <div className={styles.applicationIdentity}>
+              <div className={styles.iconControl}>
+                <button
+                  aria-label="Choose application icon"
+                  className={styles.iconPicker}
+                  disabled={isChoosingIcon}
+                  onClick={() => void chooseApplicationIcon()}
+                  title="Choose PNG, JPEG, or WebP icon"
+                  type="button"
+                >
+                  <ApplicationLogo
+                    className={styles.iconPreview}
+                    iconDataUrl={form.iconDataUrl}
+                    name={form.name || 'Application'}
+                  />
+                  <span className={styles.iconAction}>
+                    {isChoosingIcon ? <Spinner animation="border" size="sm" /> : 'Choose icon'}
+                  </span>
+                </button>
+                {form.iconDataUrl !== null && (
+                  <button
+                    className={styles.removeIconButton}
+                    onClick={() => setForm((current) => ({ ...current, iconDataUrl: null }))}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <Form.Group className={styles.applicationNameField}>
                 <Form.Label>Application name</Form.Label>
                 <Form.Control
                   onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
@@ -592,7 +640,8 @@ export const ApplicationSetup = ({
                   value={form.name}
                 />
                 <Form.Text>Used to identify this saved configuration and its release history.</Form.Text>
-            </Form.Group>
+              </Form.Group>
+            </div>
             <div className={styles.outcomeGrid}>
               <Switch checked={form.artifactGeneration.isEnabled} description="Generate APK, AAB, or IPA output." label="Artifact generation" onChange={(isEnabled) => setForm((current) => ({ ...current, artifactGeneration: { ...current.artifactGeneration, isEnabled } }))} />
               <Switch checked={form.firebaseDistribution.isEnabled} description="Send builds to configured tester groups." label="Firebase App Distribution" onChange={handleFirebaseEnabledChange} />

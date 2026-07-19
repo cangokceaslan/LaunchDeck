@@ -136,6 +136,7 @@ export type CreateApplicationRequest = {
   firebaseProjectId: string;
   googlePlay: GooglePlaySetupConfiguration | null;
   hooks: PipelineHook[];
+  iconDataUrl: string | null;
   ios: IosSetupConfiguration | null;
   iosSigning: IosSigningConfiguration;
   name: string;
@@ -153,9 +154,15 @@ export type UpdateArtifactOutputDirectoryRequest = {
   directoryPath: string;
 };
 
+export type UpdateApplicationIconRequest = {
+  applicationId: string;
+  iconDataUrl: string | null;
+};
+
 export type ApplicationSummary = {
   createdAt: string;
   firebaseProjectId: string;
+  iconDataUrl: string | null;
   id: string;
   lastActivityAt: string;
   name: string;
@@ -198,6 +205,10 @@ export type ApplicationDetail = ApplicationSummary & {
 export type PathSelectionResult =
   | { status: 'cancelled' }
   | { fileName: string; path: string; status: 'selected' };
+
+export type ApplicationIconSelectionResult =
+  | { status: 'cancelled' }
+  | { dataUrl: string; fileName: string; status: 'selected' };
 
 export type IosSchemeListResult = {
   schemes: string[];

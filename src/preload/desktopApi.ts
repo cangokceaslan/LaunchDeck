@@ -8,6 +8,7 @@ export const desktopApi: DesktopApi = {
   chooseAndroidArtifact: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidArtifact),
   chooseAndroidKeystore: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidKeystore),
   chooseAndroidProjectDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseAndroidProject),
+  chooseApplicationIcon: () => ipcRenderer.invoke(IPC_CHANNELS.applicationIconChoose),
   chooseArtifactOutputDirectory: () =>
     ipcRenderer.invoke(IPC_CHANNELS.pathChooseArtifactOutputDirectory),
   chooseGoogleServiceInfoPlist: () =>
@@ -57,6 +58,8 @@ export const desktopApi: DesktopApi = {
   runDoctor: () => ipcRenderer.invoke(IPC_CHANNELS.doctorRun),
   startRelease: (planId) => ipcRenderer.invoke(IPC_CHANNELS.releaseStart, planId),
   updateApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationUpdate, request),
+  updateApplicationIcon: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.applicationUpdateIcon, request),
   updateArtifactOutputDirectory: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.applicationUpdateArtifactOutputDirectory, request),
   updateFastAction: (request) => ipcRenderer.invoke(IPC_CHANNELS.fastActionUpdate, request),

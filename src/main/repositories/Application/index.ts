@@ -63,6 +63,14 @@ const readRequiredString = (record: Record<string, unknown>, key: string): strin
   return value;
 };
 
+const readNullableString = (record: Record<string, unknown>, key: string): string | null => {
+  const value = record[key];
+  if (value !== null && typeof value !== 'string') {
+    throw new Error(`Invalid SQLite application field: ${key}`);
+  }
+  return value;
+};
+
 const parseJson = (serializedValue: string): unknown => {
   const parsedValue: unknown = JSON.parse(serializedValue);
   return parsedValue;
@@ -189,6 +197,7 @@ export class ApplicationRepository {
       googlePlay: releaseConfiguration.googlePlay,
       hasServiceAccount: readRequiredString(row, 'service_account_file_name') !== '',
       hooks: this.getHooks(id),
+      iconDataUrl: readNullableString(row, 'icon_data_url'),
       id,
       ios,
       iosSigning: releaseConfiguration.iosSigning,
@@ -259,8 +268,8 @@ export class ApplicationRepository {
             service_account_file_name, distribution_groups_json, android_json,
             ios_json, artifact_output_directory_path, release_configuration_json,
             android_signing_credentials_encrypted, google_play_credentials_encrypted,
-            app_store_connect_credentials_encrypted, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            app_store_connect_credentials_encrypted, icon_data_url, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           id,
@@ -295,6 +304,7 @@ export class ApplicationRepository {
               : { apiKeyPath: input.appStoreConnect.apiKeyPath },
             this.credentialVault,
           ),
+          input.iconDataUrl,
           timestamp,
           timestamp,
         );
@@ -318,7 +328,7 @@ export class ApplicationRepository {
             distribution_groups_json = ?, android_json = ?, ios_json = ?,
             artifact_output_directory_path = ?, release_configuration_json = ?,
             android_signing_credentials_encrypted = ?, google_play_credentials_encrypted = ?,
-            app_store_connect_credentials_encrypted = ?, updated_at = ?
+            app_store_connect_credentials_encrypted = ?, icon_data_url = ?, updated_at = ?
            WHERE id = ?`,
         )
         .run(
@@ -353,6 +363,7 @@ export class ApplicationRepository {
               : { apiKeyPath: input.appStoreConnect.apiKeyPath },
             this.credentialVault,
           ),
+          input.iconDataUrl,
           timestamp,
           id,
         );
@@ -418,6 +429,20 @@ export class ApplicationRepository {
         'UPDATE applications SET artifact_output_directory_path = ?, updated_at = ? WHERE id = ?',
       )
       .run(artifactOutputDirectoryPath, new Date().toISOString(), id);
+    if (result.changes !== 1) {
+      throw new Error('The application to update was not found.');
+    }
+    const application = this.get(id);
+    if (application === null) {
+      throw new Error('The updated application could not be read.');
+    }
+    return application;
+  }
+
+  public updateIconDataUrl(id: string, iconDataUrl: string | null): ApplicationDetail {
+    const result = this.database
+      .prepare('UPDATE applications SET icon_data_url = ?, updated_at = ? WHERE id = ?')
+      .run(iconDataUrl, new Date().toISOString(), id);
     if (result.changes !== 1) {
       throw new Error('The application to update was not found.');
     }
@@ -506,6 +531,7 @@ export class ApplicationRepository {
       return {
         createdAt: detail.createdAt,
         firebaseProjectId: detail.firebaseProjectId,
+        iconDataUrl: detail.iconDataUrl,
         id: detail.id,
         lastActivityAt,
         name: detail.name,

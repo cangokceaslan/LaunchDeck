@@ -31,6 +31,7 @@ export type PersistApplicationInput = {
   firebaseProjectId: string;
   googlePlay: GooglePlaySetupConfiguration | null;
   hooks: ApplicationDetail['hooks'];
+  iconDataUrl: string | null;
   ios: IosConfiguration | null;
   iosSigning: IosSigningConfiguration;
   name: string;

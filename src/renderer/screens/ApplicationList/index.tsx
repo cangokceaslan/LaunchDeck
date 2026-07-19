@@ -1,4 +1,5 @@
 import { Button } from 'react-bootstrap';
+import { ApplicationLogo } from '@components/ApplicationLogo';
 import { EmptyState } from '@components/EmptyState';
 import { StatusPill } from '@components/StatusPill';
 import { useInfiniteScroll } from '@hooks/useInfiniteScroll';
@@ -47,7 +48,11 @@ export const ApplicationList = ({
               type="button"
             >
               <div className={styles.cardTop}>
-                <span className={styles.initial}>{application.name.slice(0, 1).toLocaleUpperCase('en-US')}</span>
+                <ApplicationLogo
+                  className={styles.initial}
+                  iconDataUrl={application.iconDataUrl}
+                  name={application.name}
+                />
                 <StatusPill label="Setup ready" tone="success" />
               </div>
               <h2>{application.name}</h2>

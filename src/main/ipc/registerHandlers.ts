@@ -4,6 +4,7 @@ import type { ApplicationRepository } from '@main/repositories/Application';
 import type { RunHistoryRepository } from '@main/repositories/RunHistory';
 import type { SettingsRepository } from '@main/repositories/Settings';
 import type { ApplicationService } from '@main/services/Application';
+import type { ApplicationIconService } from '@main/services/ApplicationIcon';
 import type { DoctorService } from '@main/services/Doctor';
 import type { FastActionService } from '@main/services/FastAction';
 import type { FileSystemPermissionService } from '@main/services/FileSystemPermissions';
@@ -27,12 +28,14 @@ import {
   themePreferenceSchema,
   updateArtifactOutputDirectoryRequestSchema,
   updateApplicationRequestSchema,
+  updateApplicationIconRequestSchema,
   updateFastActionRequestSchema,
 } from '@shared/validation';
 import type { PathSelectionResult } from '@shared/contracts/domain';
 
 type HandlerDependencies = {
   applicationRepository: ApplicationRepository;
+  applicationIconService: ApplicationIconService;
   applicationService: ApplicationService;
   doctorService: DoctorService;
   fastActionService: FastActionService;
@@ -100,6 +103,28 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     assertTrustedSender(event);
     return dependencies.applicationRepository.get(applicationIdSchema.parse(payload));
   });
+  ipcMain.handle(IPC_CHANNELS.applicationIconChoose, async (event) => {
+    assertTrustedSender(event);
+    try {
+      const result = await choosePath(
+        BrowserWindow.fromWebContents(event.sender),
+        ['openFile'],
+        'Select application icon',
+        [{ extensions: ['png', 'jpg', 'jpeg', 'webp'], name: 'Images' }],
+        dependencies.settingsRepository.getLastPickerDirectory(
+          IPC_CHANNELS.applicationIconChoose,
+        ) ?? undefined,
+      );
+      if (result.status === 'cancelled') return result;
+      dependencies.settingsRepository.updateLastPickerDirectory(
+        IPC_CHANNELS.applicationIconChoose,
+        path.dirname(result.path),
+      );
+      return await dependencies.applicationIconService.load(result.path);
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
   ipcMain.handle(IPC_CHANNELS.applicationCreate, async (event, payload: unknown) => {
     assertTrustedSender(event);
     try {
@@ -112,6 +137,16 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
     assertTrustedSender(event);
     try {
       return await dependencies.applicationService.update(updateApplicationRequestSchema.parse(payload));
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+  ipcMain.handle(IPC_CHANNELS.applicationUpdateIcon, (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return dependencies.applicationService.updateIcon(
+        updateApplicationIconRequestSchema.parse(payload),
+      );
     } catch (error) {
       throw new Error(toSafeErrorMessage(error));
     }

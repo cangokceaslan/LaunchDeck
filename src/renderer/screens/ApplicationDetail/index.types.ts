@@ -5,8 +5,10 @@ export type ApplicationDetailProps = {
   application: ApplicationDetailModel;
   fastActions: FastAction[];
   history: RunHistorySummary[];
+  isChangingIcon: boolean;
   isHistoryLoading: boolean;
   onClearHistory: () => void;
+  onChangeIcon: () => void;
   onCreateFastAction: () => void;
   onDelete: () => void;
   onDeleteFastAction: (fastActionId: string) => void;

@@ -69,7 +69,14 @@
           font-weight: 800;
           height: 44px;
           justify-content: center;
+          overflow: hidden;
           width: 44px;
+
+          img {
+            height: 100%;
+            object-fit: cover;
+            width: 100%;
+          }
         }
       }
 

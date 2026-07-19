@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button, Modal, Spinner } from 'react-bootstrap';
+import { ApplicationLogo } from '@components/ApplicationLogo';
 import { StatusPill } from '@components/StatusPill';
 import {
   formatDateTime,
@@ -21,8 +22,10 @@ export const ApplicationDetail = ({
   application,
   fastActions,
   history,
+  isChangingIcon,
   isHistoryLoading,
   onClearHistory,
+  onChangeIcon,
   onCreateFastAction,
   onDelete,
   onDeleteFastAction,
@@ -39,7 +42,20 @@ export const ApplicationDetail = ({
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div className={styles.titleGroup}>
-          <span className={styles.initial}>{application.name.slice(0, 1).toLocaleUpperCase('en-US')}</span>
+          <button
+            aria-label="Change application icon"
+            className={styles.logoButton}
+            disabled={isChangingIcon}
+            onClick={onChangeIcon}
+            title={isChangingIcon ? 'Loading application icon' : 'Choose application icon'}
+            type="button"
+          >
+            <ApplicationLogo
+              className={styles.initial}
+              iconDataUrl={application.iconDataUrl}
+              name={application.name}
+            />
+          </button>
           <div>
             <span className={styles.eyebrow}>{application.firebaseProjectId || 'Local and store release configuration'}</span>
             <h1>{application.name}</h1>

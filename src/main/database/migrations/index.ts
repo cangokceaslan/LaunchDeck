@@ -4,6 +4,7 @@ import { pipelineHookCommandsMigration } from '@main/database/migrations/002_pip
 import { artifactOutputDirectoryMigration } from '@main/database/migrations/003_artifact_output_directory';
 import { distributionAndSigningMigration } from '@main/database/migrations/004_distribution_and_signing';
 import { fastActionsMigration } from '@main/database/migrations/005_fast_actions';
+import { applicationIconMigration } from '@main/database/migrations/006_application_icon';
 
 export const schemaMigrations: readonly SchemaMigration[] = [
   initialSchemaMigration,
@@ -11,4 +12,5 @@ export const schemaMigrations: readonly SchemaMigration[] = [
   artifactOutputDirectoryMigration,
   distributionAndSigningMigration,
   fastActionsMigration,
+  applicationIconMigration,
 ];

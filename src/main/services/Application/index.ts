@@ -28,6 +28,7 @@ import type {
   PipelineHook,
   UpdateArtifactOutputDirectoryRequest,
   UpdateApplicationRequest,
+  UpdateApplicationIconRequest,
 } from '@shared/contracts/domain';
 
 type FirebaseFileMetadata = {
@@ -481,6 +482,7 @@ export class ApplicationService {
         ? null
         : { ...googlePlay, packageName: android.packageName ?? googlePlay.packageName },
       hooks,
+      iconDataUrl: request.iconDataUrl,
       ios: ios.configuration,
       iosSigning: {
         ...request.iosSigning,
@@ -514,6 +516,7 @@ export class ApplicationService {
       firebaseProjectId: request.firebaseProjectId,
       googlePlay: request.googlePlay,
       hooks: request.hooks,
+      iconDataUrl: request.iconDataUrl,
       ios: request.ios,
       iosSigning: request.iosSigning,
       name: request.name,
@@ -528,5 +531,9 @@ export class ApplicationService {
   ): Promise<ApplicationDetail> {
     const directoryPath = await resolveWritableDirectory(request.directoryPath);
     return this.repository.updateArtifactOutputDirectory(request.applicationId, directoryPath);
+  }
+
+  public updateIcon(request: UpdateApplicationIconRequest): ApplicationDetail {
+    return this.repository.updateIconDataUrl(request.applicationId, request.iconDataUrl);
   }
 }

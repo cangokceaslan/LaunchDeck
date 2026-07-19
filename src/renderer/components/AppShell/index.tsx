@@ -1,4 +1,5 @@
 import { Button, Dropdown } from 'react-bootstrap';
+import { ApplicationLogo } from '@components/ApplicationLogo';
 import { useInfiniteScroll } from '@hooks/useInfiniteScroll';
 import type { AppShellProps } from '@components/AppShell/index.types';
 import styles from '@components/AppShell/index.module.scss';
@@ -53,7 +54,11 @@ export const AppShell = ({
                 onClick={() => onOpenApplication(application.id)}
                 type="button"
               >
-                <span className={styles.appInitial}>{application.name.slice(0, 1).toLocaleUpperCase('en-US')}</span>
+                <ApplicationLogo
+                  className={styles.appInitial}
+                  iconDataUrl={application.iconDataUrl}
+                  name={application.name}
+                />
                 <span>
                   <strong>{application.name}</strong>
                   <small>{application.platforms.map((platform) => (platform === 'ios' ? 'iOS' : 'Android')).join(' + ')}</small>

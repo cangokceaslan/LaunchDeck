@@ -2,6 +2,7 @@ import type {
   AndroidProjectMetadataRequest,
   AndroidProjectMetadataResult,
   ApplicationDetail,
+  ApplicationIconSelectionResult,
   ApplicationListRequest,
   ApplicationPage,
   CreateApplicationRequest,
@@ -14,6 +15,7 @@ import type {
   ThemePreference,
   UpdateArtifactOutputDirectoryRequest,
   UpdateApplicationRequest,
+  UpdateApplicationIconRequest,
 } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
 import type {
@@ -40,6 +42,7 @@ export type DesktopApi = {
   chooseAndroidArtifact: () => Promise<PathSelectionResult>;
   chooseAndroidKeystore: () => Promise<PathSelectionResult>;
   chooseAndroidProjectDirectory: () => Promise<PathSelectionResult>;
+  chooseApplicationIcon: () => Promise<ApplicationIconSelectionResult>;
   chooseArtifactOutputDirectory: () => Promise<PathSelectionResult>;
   chooseGoogleServiceInfoPlist: () => Promise<PathSelectionResult>;
   chooseGoogleServicesJson: () => Promise<PathSelectionResult>;
@@ -77,6 +80,7 @@ export type DesktopApi = {
   runDoctor: () => Promise<DoctorReport>;
   startRelease: (planId: string) => Promise<StartReleaseResult>;
   updateApplication: (request: UpdateApplicationRequest) => Promise<ApplicationDetail>;
+  updateApplicationIcon: (request: UpdateApplicationIconRequest) => Promise<ApplicationDetail>;
   updateArtifactOutputDirectory: (
     request: UpdateArtifactOutputDirectoryRequest,
   ) => Promise<ApplicationDetail>;

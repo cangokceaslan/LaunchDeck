@@ -82,7 +82,14 @@
           font-weight: 700;
           height: 34px;
           justify-content: center;
+          overflow: hidden;
           width: 34px;
+
+          img {
+            height: 100%;
+            object-fit: cover;
+            width: 100%;
+          }
         }
 
         span:last-child {

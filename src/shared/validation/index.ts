@@ -4,6 +4,11 @@ const nonEmptyPathSchema = z.string().trim().min(1).max(4096);
 const identifierSchema = z.string().trim().min(1).max(256);
 const gradleTaskSchema = z.string().trim().min(1).max(160).regex(/^[:A-Za-z0-9_-]+$/u);
 const optionalPathSchema = z.string().trim().max(4096);
+const applicationIconDataUrlSchema = z
+  .string()
+  .max(600_000)
+  .regex(/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/u)
+  .nullable();
 const packageNameSchema = z
   .string()
   .trim()
@@ -260,6 +265,7 @@ export const createApplicationRequestSchema = z
     firebaseProjectId: z.string().trim().max(256),
     googlePlay: googlePlaySetupConfigurationSchema.nullable(),
     hooks: z.array(pipelineHookSchema).max(24),
+    iconDataUrl: applicationIconDataUrlSchema,
     ios: iosConfigurationSchema.omit({ firebaseAppId: true }).nullable(),
     iosSigning: iosSigningConfigurationSchema,
     name: z.string().trim().min(2).max(80),
@@ -334,6 +340,7 @@ export const updateApplicationRequestSchema = z
     firebaseProjectId: createApplicationRequestSchema.shape.firebaseProjectId,
     googlePlay: retainedGooglePlaySetupConfigurationSchema.nullable(),
     hooks: createApplicationRequestSchema.shape.hooks,
+    iconDataUrl: createApplicationRequestSchema.shape.iconDataUrl,
     id: z.string().uuid(),
     ios: createApplicationRequestSchema.shape.ios,
     iosSigning: createApplicationRequestSchema.shape.iosSigning,
@@ -593,6 +600,11 @@ export const preflightReleaseRequestSchema = releaseConfigurationSchema
 export const updateArtifactOutputDirectoryRequestSchema = z.object({
   applicationId: z.string().uuid(),
   directoryPath: nonEmptyPathSchema,
+});
+
+export const updateApplicationIconRequestSchema = z.object({
+  applicationId: z.string().uuid(),
+  iconDataUrl: applicationIconDataUrlSchema,
 });
 
 export const applicationIdSchema = z.string().uuid();
