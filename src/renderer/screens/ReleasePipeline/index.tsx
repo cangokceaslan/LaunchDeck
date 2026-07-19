@@ -12,8 +12,15 @@ import type {
   ReleaseMode,
   ReleasePlatform,
 } from '@shared/contracts/domain';
-import type { PreflightResult, ResolvedReleasePlan } from '@shared/contracts/release';
-import type { ReleasePipelineProps } from '@screens/ReleasePipeline/index.types';
+import type {
+  FastActionConfiguration,
+  PreflightResult,
+  ResolvedReleasePlan,
+} from '@shared/contracts/release';
+import type {
+  ReleasePipelineIntent,
+  ReleasePipelineProps,
+} from '@screens/ReleasePipeline/index.types';
 import {
   formatResolvedVersion,
   resolveReleaseVersionInput,
@@ -36,46 +43,96 @@ const formatArtifactSummary = (plan: ResolvedReleasePlan): string =>
     )
     .join(' + ');
 
+const formatDestinations = (destinations: DistributionDestination[]): string =>
+  destinations
+    .map((destination) =>
+      destination === 'artifact'
+        ? 'Local artifact'
+        : destination === 'firebase'
+          ? 'Firebase App Distribution'
+          : 'Store Distribution',
+    )
+    .join(' + ');
+
+const getFastAction = (intent: ReleasePipelineIntent) =>
+  'fastAction' in intent ? intent.fastAction : null;
+
+const createVersionForm = (
+  configuration: FastActionConfiguration | null,
+): ReleaseVersionForm => {
+  const versionName = configuration?.version?.versionName.split('.') ?? [];
+  return {
+    androidVersionCode: String(configuration?.version?.androidVersionCode ?? 1),
+    incrementAndroidVersionCode:
+      configuration?.version?.incrementAndroidVersionCode ?? false,
+    incrementIosBuildNumber: configuration?.version?.incrementIosBuildNumber ?? false,
+    incrementPatch: configuration?.version?.incrementPatch ?? false,
+    iosBuildNumber: String(configuration?.version?.iosBuildNumber ?? 1),
+    major: versionName[0] ?? '1',
+    minor: versionName[1] ?? '0',
+    patch: versionName[2] ?? '0',
+  };
+};
+
 export const ReleasePipeline = ({
   application,
+  intent,
   onApplicationUpdated,
   onClose,
+  onFastActionSaved,
   onFinished,
   supportedPlatforms,
 }: ReleasePipelineProps): React.JSX.Element => {
   const availablePlatforms = application.platforms.filter((platform) => supportedPlatforms.includes(platform));
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [source, setSource] = useState<ArtifactSource>('build');
+  const fastAction = getFastAction(intent);
+  const initialConfiguration = fastAction?.configuration ?? null;
+  const isFastActionEditor =
+    intent.kind === 'createFastAction' || intent.kind === 'editFastAction';
+  const [step, setStep] = useState<1 | 2 | 3>(
+    intent.kind === 'runFastAction' ? 3 : 1,
+  );
+  const [source, setSource] = useState<ArtifactSource>(
+    initialConfiguration?.mode === 'uploadOnly' ? 'existing' : 'build',
+  );
   const availableDestinations: DistributionDestination[] = [
     ...(application.artifactGeneration.isEnabled ? ['artifact' as const] : []),
     ...(application.firebaseDistribution.isEnabled ? ['firebase' as const] : []),
     ...(application.googlePlay !== null || application.appStoreConnect !== null ? ['store' as const] : []),
   ];
   const [destinations, setDestinations] = useState<DistributionDestination[]>(
-    availableDestinations.includes('firebase') ? ['firebase'] : availableDestinations.slice(0, 1),
+    initialConfiguration === null ? [] : [...initialConfiguration.destinations],
   );
-  const [platforms, setPlatforms] = useState<ReleasePlatform[]>(availablePlatforms);
+  const [platforms, setPlatforms] = useState<ReleasePlatform[]>(
+    initialConfiguration === null ? [] : [...initialConfiguration.platforms],
+  );
   const [androidArtifactType, setAndroidArtifactType] = useState<AndroidArtifactType>(
-    application.android?.defaultArtifactType ?? 'apk',
+    initialConfiguration?.androidArtifactType ?? application.android?.defaultArtifactType ?? 'apk',
   );
-  const [releaseNotes, setReleaseNotes] = useState(`${application.name} new test release`);
-  const [groupsText, setGroupsText] = useState(application.distributionGroups.join(', '));
-  const [androidArtifactPath, setAndroidArtifactPath] = useState('');
-  const [iosArtifactPath, setIosArtifactPath] = useState('');
+  const [releaseNotes, setReleaseNotes] = useState(
+    initialConfiguration?.releaseNotes ?? `${application.name} new test release`,
+  );
+  const [groupsText, setGroupsText] = useState(
+    initialConfiguration?.distributionGroups.join(', ') ?? application.distributionGroups.join(', '),
+  );
+  const [androidArtifactPath, setAndroidArtifactPath] = useState(
+    initialConfiguration?.androidArtifactPath ?? '',
+  );
+  const [iosArtifactPath, setIosArtifactPath] = useState(
+    initialConfiguration?.iosArtifactPath ?? '',
+  );
   const [artifactOutputDirectoryPath, setArtifactOutputDirectoryPath] = useState(
-    application.artifactOutputDirectoryPath ?? '',
+    initialConfiguration?.artifactOutputDirectoryPath ??
+      application.artifactOutputDirectoryPath ??
+      '',
   );
-  const [versionForm, setVersionForm] = useState<ReleaseVersionForm>({
-    androidVersionCode: '1',
-    incrementAndroidVersionCode: false,
-    incrementIosBuildNumber: false,
-    incrementPatch: false,
-    iosBuildNumber: '1',
-    major: '1',
-    minor: '0',
-    patch: '0',
-  });
-  const [preflight, setPreflight] = useState<PreflightResult | null>(null);
+  const [versionForm, setVersionForm] = useState<ReleaseVersionForm>(() =>
+    createVersionForm(initialConfiguration),
+  );
+  const [fastActionName, setFastActionName] = useState(fastAction?.name ?? '');
+  const [preflight, setPreflight] = useState<PreflightResult | null>(
+    intent.kind === 'runFastAction' ? intent.preflight : null,
+  );
+  const [isSavingFastAction, setIsSavingFastAction] = useState(false);
   const [isSavingOutputDirectory, setIsSavingOutputDirectory] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -94,6 +151,32 @@ export const ReleasePipeline = ({
   const releaseVersion = source === 'build'
     ? resolveReleaseVersionInput(versionForm, platforms)
     : undefined;
+
+  const createConfiguration = (): FastActionConfiguration | null => {
+    if (source === 'build' && releaseVersion === null) return null;
+    return {
+      androidArtifactPath:
+        mode === 'uploadOnly' && platforms.includes('android')
+          ? androidArtifactPath
+          : undefined,
+      androidArtifactType: platforms.includes('android') ? androidArtifactType : undefined,
+      artifactOutputDirectoryPath: isArtifactTarget
+        ? artifactOutputDirectoryPath
+        : undefined,
+      distributionGroups: isFirebaseTarget
+        ? groupsText.split(',').map((group) => group.trim()).filter(Boolean)
+        : [],
+      destinations,
+      iosArtifactPath:
+        mode === 'uploadOnly' && platforms.includes('ios') ? iosArtifactPath : undefined,
+      mode,
+      platforms,
+      releaseNotes: destinations.some((destination) => destination !== 'artifact')
+        ? releaseNotes
+        : '',
+      version: releaseVersion ?? undefined,
+    };
+  };
 
   const togglePlatform = (platform: ReleasePlatform): void => {
     const nextPlatforms = platforms.includes(platform)
@@ -169,26 +252,16 @@ export const ReleasePipeline = ({
 
   const handlePreflight = async (): Promise<void> => {
     setErrorMessage(null);
-    if (source === 'build' && releaseVersion === null) {
+    const configuration = createConfiguration();
+    if (configuration === null) {
       setErrorMessage('Enter valid release version values before validation.');
       return;
     }
     setIsValidating(true);
     try {
       const result = await window.desktopApi.preflightRelease({
-        androidArtifactPath: mode === 'uploadOnly' && platforms.includes('android') ? androidArtifactPath : undefined,
-        androidArtifactType: platforms.includes('android') ? androidArtifactType : undefined,
+        ...configuration,
         applicationId: application.id,
-        artifactOutputDirectoryPath: isArtifactTarget ? artifactOutputDirectoryPath : undefined,
-        distributionGroups: isFirebaseTarget
-          ? groupsText.split(',').map((group) => group.trim()).filter(Boolean)
-          : [],
-        destinations,
-        iosArtifactPath: mode === 'uploadOnly' && platforms.includes('ios') ? iosArtifactPath : undefined,
-        mode,
-        platforms,
-        releaseNotes: destinations.some((destination) => destination !== 'artifact') ? releaseNotes : '',
-        version: releaseVersion ?? undefined,
       });
       if (
         result.isValid === false &&
@@ -210,6 +283,41 @@ export const ReleasePipeline = ({
     }
   };
 
+  const handleSaveFastAction = async (): Promise<void> => {
+    setErrorMessage(null);
+    const configuration = createConfiguration();
+    const name = fastActionName.trim();
+    if (configuration === null) {
+      setErrorMessage('Enter valid release version values before saving.');
+      return;
+    }
+    if (name === '') {
+      setErrorMessage('Enter a fast action name before saving.');
+      return;
+    }
+
+    setIsSavingFastAction(true);
+    try {
+      const savedFastAction = intent.kind === 'editFastAction'
+        ? await window.desktopApi.updateFastAction({
+            applicationId: application.id,
+            configuration,
+            id: intent.fastAction.id,
+            name,
+          })
+        : await window.desktopApi.createFastAction({
+            applicationId: application.id,
+            configuration,
+            name,
+          });
+      onFastActionSaved(savedFastAction);
+    } catch (error) {
+      setErrorMessage(normalizeErrorMessage(error));
+    } finally {
+      setIsSavingFastAction(false);
+    }
+  };
+
   const isRunStarted = releaseRun.status !== 'idle' && releaseRun.status !== 'failedToStart';
   const isExistingArtifactMissing =
     source === 'existing' &&
@@ -217,23 +325,35 @@ export const ReleasePipeline = ({
       (platforms.includes('ios') && iosArtifactPath.trim() === ''));
   const isDetailsIncomplete =
     isValidating ||
+    isSavingFastAction ||
     isSavingOutputDirectory ||
     isExistingArtifactMissing ||
     (source === 'build' && releaseVersion === null) ||
     (isFirebaseTarget && (releaseNotes.trim() === '' || groupsText.trim() === '')) ||
     (destinations.length === 0) ||
+    (isFastActionEditor && fastActionName.trim().length < 2) ||
     (isArtifactTarget && artifactOutputDirectoryPath.trim() === '') ||
     (destinations.includes('store') && releaseNotes.trim() === '');
+  const pageTitle = intent.kind === 'createFastAction'
+    ? 'Create fast action'
+    : intent.kind === 'editFastAction'
+      ? `Edit ${intent.fastAction.name}`
+      : intent.kind === 'runFastAction'
+        ? intent.fastAction.name
+        : 'New release pipeline';
+  const stepLabels = isFastActionEditor
+    ? ['Configure', 'Release details']
+    : ['Configure', 'Release details', 'Pipeline'];
 
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
-        <div><span className={styles.eyebrow}>{application.name}</span><h1>New release pipeline</h1></div>
+        <div><span className={styles.eyebrow}>{application.name}</span><h1>{pageTitle}</h1></div>
         <Button disabled={releaseRun.status === 'running' || releaseRun.status === 'cancelling'} onClick={onClose} variant="outline-secondary">Close</Button>
       </header>
 
-      <ol aria-label="Release steps" className={styles.stepper}>
-        {['Configure', 'Release details', 'Pipeline'].map((label, index) => (
+      <ol aria-label="Release steps" className={`${styles.stepper} ${isFastActionEditor ? styles.twoStepStepper : ''}`}>
+        {stepLabels.map((label, index) => (
           <li aria-current={step === index + 1 ? 'step' : undefined} className={step === index + 1 ? styles.active : step > index + 1 ? styles.complete : ''} key={label}>
             <div className={styles.stepNode}><span aria-hidden="true">{step > index + 1 ? '✓' : index + 1}</span><strong>{label}</strong></div>
           </li>
@@ -290,6 +410,7 @@ export const ReleasePipeline = ({
               <div><span>Platforms</span><strong>{platforms.map(formatPlatform).join(' + ')}</strong></div>
             </div>
             <div className={styles.formGrid}>
+              {isFastActionEditor && <Form.Group><Form.Label>Fast action name</Form.Label><Form.Control autoFocus maxLength={80} minLength={2} onChange={(event) => setFastActionName(event.target.value)} placeholder="e.g. Android internal testing" required value={fastActionName} /><Form.Text>This name appears on the application details page.</Form.Text></Form.Group>}
               {source === 'build' && (
                 <VersionConfiguration
                   form={versionForm}
@@ -304,14 +425,14 @@ export const ReleasePipeline = ({
               {isArtifactTarget && <PathField buttonLabel={isSavingOutputDirectory ? 'Saving…' : artifactOutputDirectoryPath === '' ? 'Select' : 'Change'} disabled={isSavingOutputDirectory} helpText="The selected folder is saved to this application configuration automatically." label="Artifact output directory" onBrowse={() => void chooseOutputDirectory()} required value={artifactOutputDirectoryPath} />}
             </div>
             {errorMessage !== null && <Alert variant="danger">{errorMessage}</Alert>}
-            <footer><Button onClick={() => setStep(1)} variant="outline-secondary">Back</Button><Button disabled={isDetailsIncomplete} onClick={() => void handlePreflight()}>{isValidating && <Spinner animation="border" size="sm" />} {isValidating ? 'Validating…' : 'Review pipeline'}</Button></footer>
+            <footer><Button onClick={() => setStep(1)} variant="outline-secondary">Back</Button>{isFastActionEditor ? <Button disabled={isDetailsIncomplete} onClick={() => void handleSaveFastAction()}>{isSavingFastAction && <Spinner animation="border" size="sm" />} {isSavingFastAction ? 'Saving…' : 'Save fast action'}</Button> : <Button disabled={isDetailsIncomplete} onClick={() => void handlePreflight()}>{isValidating && <Spinner animation="border" size="sm" />} {isValidating ? 'Validating…' : 'Review pipeline'}</Button>}</footer>
           </div>
         )}
 
         {step === 3 && (
           <div className={styles.stepContent}>
             {!isRunStarted && preflight?.isValid === false && <><header><span>Step 3</span><h2>Preflight could not be completed</h2><p>Fix the blocking issues and try again.</p></header><div className={styles.issueList}>{preflight.issues.map((issue) => <Alert key={`${issue.code}-${issue.field ?? ''}`} variant="danger">{issue.message}</Alert>)}</div><footer><Button onClick={() => setStep(2)} variant="outline-secondary">Edit details</Button><Button onClick={() => void handlePreflight()}>Validate again</Button></footer></>}
-            {!isRunStarted && preflight?.isValid === true && <><header><span>Step 3</span><h2>Ready to start</h2><p>Review the execution summary. The plan remains valid for 10 minutes.</p></header><div className={styles.launchSummary}><div className={styles.launchPrimary}><span>{preflight.plan.mode === 'buildOnly' ? 'Local artifact' : 'Firebase distribution'}</span><strong>{formatArtifactSummary(preflight.plan)} · {preflight.plan.platforms.map(formatPlatform).join(' + ')}</strong><small>{preflight.plan.version === undefined ? '' : `${formatResolvedVersion(preflight.plan.version)} · `}{preflight.plan.phaseCount} verified steps will run.</small></div><div className={styles.planSummary}><div><span>Operation</span><strong>{formatMode(preflight.plan.mode)}</strong></div><div><span>Destination</span><strong>{preflight.plan.mode === 'buildOnly' ? 'Local folder' : 'Firebase App Distribution'}</strong></div><div><span>{preflight.plan.mode === 'buildOnly' ? 'Output' : 'Tester groups'}</span><strong>{preflight.plan.mode === 'buildOnly' ? preflight.plan.artifactOutputDirectoryPath : `${preflight.plan.distributionGroups.length} groups`}</strong></div></div></div>{preflight.warnings.map((warning) => <Alert key={warning.message} variant="warning">{warning.message}</Alert>)}{releaseRun.errorMessage !== null && <Alert variant="danger">{releaseRun.errorMessage}</Alert>}<footer><Button onClick={() => setStep(2)} variant="outline-secondary">Back</Button><Button disabled={releaseRun.status === 'starting'} onClick={() => void releaseRun.start(preflight.plan.planId)}>{releaseRun.status === 'starting' ? 'Starting…' : 'Start pipeline'}</Button></footer></>}
+            {!isRunStarted && preflight?.isValid === true && <><header><span>Step 3</span><h2>Ready to start</h2><p>Review the execution summary. The plan remains valid for 10 minutes.</p></header><div className={styles.launchSummary}><div className={styles.launchPrimary}><span>{formatDestinations(preflight.plan.destinations)}</span><strong>{formatArtifactSummary(preflight.plan)} · {preflight.plan.platforms.map(formatPlatform).join(' + ')}</strong><small>{preflight.plan.version === undefined ? '' : `${formatResolvedVersion(preflight.plan.version)} · `}{preflight.plan.phaseCount} verified steps will run.</small></div><div className={styles.planSummary}><div><span>Operation</span><strong>{formatMode(preflight.plan.mode)}</strong></div><div><span>Destination</span><strong>{formatDestinations(preflight.plan.destinations)}</strong></div><div><span>{preflight.plan.destinations.includes('firebase') ? 'Tester groups' : 'Output'}</span><strong>{preflight.plan.destinations.includes('firebase') ? `${preflight.plan.distributionGroups.length} groups` : preflight.plan.artifactOutputDirectoryPath ?? 'Configured store'}</strong></div></div></div>{preflight.warnings.map((warning) => <Alert key={warning.message} variant="warning">{warning.message}</Alert>)}{releaseRun.errorMessage !== null && <Alert variant="danger">{releaseRun.errorMessage}</Alert>}<footer><Button onClick={() => setStep(2)} variant="outline-secondary">Back</Button><Button disabled={releaseRun.status === 'starting'} onClick={() => void releaseRun.start(preflight.plan.planId)}>{releaseRun.status === 'starting' ? 'Starting…' : 'Start pipeline'}</Button></footer></>}
             {isRunStarted && <><PipelineProgress activePhase={releaseRun.activePhase} completedPhases={releaseRun.completedPhases} isCancelling={releaseRun.status === 'cancelling'} logs={releaseRun.logs} mode={preflight?.isValid === true ? preflight.plan.mode : mode} onCancel={() => void releaseRun.cancel()} percent={releaseRun.percent} platform={releaseRun.platform} platforms={preflight?.isValid === true ? preflight.plan.platforms : platforms} progressKind={releaseRun.progressKind} result={releaseRun.result} totalPhases={releaseRun.totalPhases} />{releaseRun.result !== null && <footer><Button onClick={onFinished}>Return to application details</Button></footer>}</>}
           </div>
         )}

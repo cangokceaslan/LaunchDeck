@@ -68,6 +68,32 @@ export type PreflightReleaseRequest = {
   version?: ReleaseVersionInput;
 };
 
+export type FastActionConfiguration = Omit<PreflightReleaseRequest, 'applicationId'>;
+
+export type FastAction = {
+  applicationId: string;
+  configuration: FastActionConfiguration;
+  createdAt: string;
+  id: string;
+  name: string;
+  updatedAt: string;
+};
+
+export type CreateFastActionRequest = {
+  applicationId: string;
+  configuration: FastActionConfiguration;
+  name: string;
+};
+
+export type UpdateFastActionRequest = CreateFastActionRequest & { id: string };
+
+export type DeleteFastActionRequest = {
+  applicationId: string;
+  id: string;
+};
+
+export type DeleteFastActionResult = { deleted: boolean };
+
 export type ResolvedReleasePlan = {
   androidArtifactType?: AndroidArtifactType;
   applicationId: string;

@@ -35,6 +35,10 @@
     overflow: hidden;
     padding: 0;
 
+    &.twoStepStepper {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     li {
       color: var(--color-text-muted);
       min-width: 0;

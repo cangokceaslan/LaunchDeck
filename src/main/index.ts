@@ -6,12 +6,14 @@ import { AppStoreConnectIntegration } from '@main/integrations/AppStoreConnect';
 import { GooglePlayIntegration } from '@main/integrations/GooglePlay';
 import { registerIpcHandlers, removeIpcHandlers } from '@main/ipc/registerHandlers';
 import { ApplicationRepository } from '@main/repositories/Application';
+import { FastActionRepository } from '@main/repositories/FastAction';
 import { RunHistoryRepository } from '@main/repositories/RunHistory';
 import { SettingsRepository } from '@main/repositories/Settings';
 import { AndroidBuilder } from '@main/services/AndroidBuilder';
 import { ApplicationService } from '@main/services/Application';
 import { CredentialVault } from '@main/services/CredentialVault';
 import { DoctorService } from '@main/services/Doctor';
+import { FastActionService } from '@main/services/FastAction';
 import { IosBuilder } from '@main/services/IosBuilder';
 import { ReleaseRunner } from '@main/services/ReleaseRunner';
 import { createMainWindow } from '@main/windows/MainWindow';
@@ -20,6 +22,7 @@ const bootstrap = async (): Promise<void> => {
   const database = await openApplicationDatabase(app.getPath('userData'));
   const credentialVault = new CredentialVault();
   const applicationRepository = new ApplicationRepository(database, credentialVault);
+  const fastActionRepository = new FastActionRepository(database);
   const historyRepository = new RunHistoryRepository(database);
   const settingsRepository = new SettingsRepository(database);
   const firebaseCli = new FirebaseCliIntegration();
@@ -38,6 +41,7 @@ const bootstrap = async (): Promise<void> => {
     applicationRepository,
     applicationService: new ApplicationService(applicationRepository, iosBuilder),
     doctorService: new DoctorService(firebaseCli),
+    fastActionService: new FastActionService(applicationRepository, fastActionRepository),
     historyRepository,
     iosBuilder,
     releaseRunner,

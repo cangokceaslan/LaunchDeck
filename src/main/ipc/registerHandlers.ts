@@ -5,6 +5,7 @@ import type { RunHistoryRepository } from '@main/repositories/RunHistory';
 import type { SettingsRepository } from '@main/repositories/Settings';
 import type { ApplicationService } from '@main/services/Application';
 import type { DoctorService } from '@main/services/Doctor';
+import type { FastActionService } from '@main/services/FastAction';
 import type { IosBuilder } from '@main/services/IosBuilder';
 import type { ReleaseRunner } from '@main/services/ReleaseRunner';
 import { assertTrustedSender, toSafeErrorMessage } from '@main/ipc/index.utils';
@@ -13,6 +14,8 @@ import {
   androidProjectMetadataRequestSchema,
   applicationIdSchema,
   createApplicationRequestSchema,
+  createFastActionRequestSchema,
+  deleteFastActionRequestSchema,
   iosProjectMetadataRequestSchema,
   iosSchemeListRequestSchema,
   planIdSchema,
@@ -20,6 +23,7 @@ import {
   themePreferenceSchema,
   updateArtifactOutputDirectoryRequestSchema,
   updateApplicationRequestSchema,
+  updateFastActionRequestSchema,
 } from '@shared/validation';
 import type { PathSelectionResult } from '@shared/contracts/domain';
 
@@ -27,6 +31,7 @@ type HandlerDependencies = {
   applicationRepository: ApplicationRepository;
   applicationService: ApplicationService;
   doctorService: DoctorService;
+  fastActionService: FastActionService;
   historyRepository: RunHistoryRepository;
   iosBuilder: IosBuilder;
   releaseRunner: ReleaseRunner;
@@ -103,6 +108,43 @@ export const registerIpcHandlers = (dependencies: HandlerDependencies): void => 
   ipcMain.handle(IPC_CHANNELS.applicationDelete, (event, payload: unknown) => {
     assertTrustedSender(event);
     return { deleted: dependencies.applicationRepository.delete(applicationIdSchema.parse(payload)) };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.fastActionList, (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return dependencies.fastActionService.list(applicationIdSchema.parse(payload));
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+  ipcMain.handle(IPC_CHANNELS.fastActionCreate, async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return await dependencies.fastActionService.create(
+        createFastActionRequestSchema.parse(payload),
+      );
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+  ipcMain.handle(IPC_CHANNELS.fastActionUpdate, async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return await dependencies.fastActionService.update(
+        updateFastActionRequestSchema.parse(payload),
+      );
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
+  });
+  ipcMain.handle(IPC_CHANNELS.fastActionDelete, (event, payload: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return dependencies.fastActionService.delete(deleteFastActionRequestSchema.parse(payload));
+    } catch (error) {
+      throw new Error(toSafeErrorMessage(error));
+    }
   });
 
   ipcMain.handle(IPC_CHANNELS.androidProjectMetadataResolve, async (event, payload: unknown) => {

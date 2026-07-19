@@ -365,22 +365,40 @@ export const updateApplicationRequestSchema = z
     }
   });
 
-export const preflightReleaseRequestSchema = z
-  .object({
-    androidArtifactPath: nonEmptyPathSchema.optional(),
-    androidArtifactType: z.enum(['apk', 'aab']).optional(),
-    applicationId: z.string().uuid(),
-    artifactOutputDirectoryPath: nonEmptyPathSchema.optional(),
-    distributionGroups: z.array(identifierSchema).max(50),
-    destinations: z.array(z.enum(['artifact', 'firebase', 'store'])).min(1).max(3),
-    iosArtifactPath: nonEmptyPathSchema.optional(),
-    mode: z.enum(['buildOnly', 'uploadOnly', 'buildAndUpload']),
-    platforms: z.array(z.enum(['android', 'ios'])).min(1).max(2),
-    releaseNotes: z.string().trim().max(5000),
-    version: releaseVersionInputSchema.optional(),
-  })
-  .superRefine((request, context) => {
+const releaseConfigurationSchema = z.object({
+  androidArtifactPath: nonEmptyPathSchema.optional(),
+  androidArtifactType: z.enum(['apk', 'aab']).optional(),
+  artifactOutputDirectoryPath: nonEmptyPathSchema.optional(),
+  distributionGroups: z.array(identifierSchema).max(50),
+  destinations: z.array(z.enum(['artifact', 'firebase', 'store'])).min(1).max(3),
+  iosArtifactPath: nonEmptyPathSchema.optional(),
+  mode: z.enum(['buildOnly', 'uploadOnly', 'buildAndUpload']),
+  platforms: z.array(z.enum(['android', 'ios'])).min(1).max(2),
+  releaseNotes: z.string().trim().max(5000),
+  version: releaseVersionInputSchema.optional(),
+});
+
+type ReleaseConfigurationInput = z.infer<typeof releaseConfigurationSchema>;
+
+const validateReleaseConfiguration = (
+  request: ReleaseConfigurationInput,
+  context: z.RefinementCtx,
+): void => {
     const includesBuild = request.mode === 'buildOnly' || request.mode === 'buildAndUpload';
+    if (new Set(request.platforms).size !== request.platforms.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'The same platform cannot be selected more than once.',
+        path: ['platforms'],
+      });
+    }
+    if (new Set(request.destinations).size !== request.destinations.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'The same destination cannot be selected more than once.',
+        path: ['destinations'],
+      });
+    }
     if (includesBuild && request.version === undefined) {
       context.addIssue({
         code: 'custom',
@@ -454,7 +472,50 @@ export const preflightReleaseRequestSchema = z
         path: ['destinations'],
       });
     }
-  });
+    if (
+      request.mode === 'buildOnly' &&
+      request.destinations.some((destination) => destination !== 'artifact')
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A build-only pipeline can use only the local artifact destination.',
+        path: ['destinations'],
+      });
+    }
+    if (
+      request.mode === 'buildAndUpload' &&
+      request.destinations.every((destination) => destination === 'artifact')
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A build-and-upload pipeline requires an upload destination.',
+        path: ['destinations'],
+      });
+    }
+  };
+
+export const fastActionConfigurationSchema = releaseConfigurationSchema.superRefine(
+  validateReleaseConfiguration,
+);
+
+export const createFastActionRequestSchema = z.object({
+  applicationId: z.string().uuid(),
+  configuration: fastActionConfigurationSchema,
+  name: z.string().trim().min(2).max(80),
+});
+
+export const updateFastActionRequestSchema = createFastActionRequestSchema.extend({
+  id: z.string().uuid(),
+});
+
+export const deleteFastActionRequestSchema = z.object({
+  applicationId: z.string().uuid(),
+  id: z.string().uuid(),
+});
+
+export const preflightReleaseRequestSchema = releaseConfigurationSchema
+  .extend({ applicationId: z.string().uuid() })
+  .superRefine(validateReleaseConfiguration);
 
 export const updateArtifactOutputDirectoryRequestSchema = z.object({
   applicationId: z.string().uuid(),

@@ -83,6 +83,7 @@
   }
 
   .configuration,
+  .fastActions,
   .history {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -100,6 +101,53 @@
         font-size: 1.1rem;
         margin: var(--space-1) 0 0;
       }
+    }
+  }
+
+  .fastActions {
+    .fastActionList {
+      display: grid;
+      gap: var(--space-3);
+
+      article {
+        align-items: center;
+        background: var(--color-surface-subtle);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        display: flex;
+        gap: var(--space-4);
+        justify-content: space-between;
+        padding: var(--space-4);
+      }
+    }
+
+    .fastActionSummary {
+      display: grid;
+      gap: var(--space-1);
+      min-width: 0;
+
+      strong {
+        font-size: 0.9rem;
+      }
+
+      small,
+      span {
+        color: var(--color-text-muted);
+        font-size: 0.72rem;
+      }
+    }
+
+    .fastActionButtons {
+      display: flex;
+      flex-shrink: 0;
+      gap: var(--space-2);
+    }
+
+    .fastActionsEmpty {
+      color: var(--color-text-muted);
+      font-size: 0.75rem;
+      padding: var(--space-6) 0;
+      text-align: center;
     }
   }
 
@@ -195,6 +243,18 @@
         color: var(--color-text-muted);
         font-size: 0.75rem;
       }
+    }
+  }
+
+  @media (max-width: 720px) {
+    .pageHeader,
+    .fastActions .fastActionList article {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .fastActions .fastActionButtons {
+      flex-wrap: wrap;
     }
   }
 

@@ -25,11 +25,15 @@ export const desktopApi: DesktopApi = {
   chooseServiceAccountFile: () => ipcRenderer.invoke(IPC_CHANNELS.pathChooseServiceAccount),
   clearRunHistory: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.historyClear, applicationId),
   createApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationCreate, request),
+  createFastAction: (request) => ipcRenderer.invoke(IPC_CHANNELS.fastActionCreate, request),
   deleteApplication: (applicationId) =>
     ipcRenderer.invoke(IPC_CHANNELS.applicationDelete, applicationId),
+  deleteFastAction: (request) => ipcRenderer.invoke(IPC_CHANNELS.fastActionDelete, request),
   getApplication: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.applicationGet, applicationId),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.settingsGet),
   listApplications: () => ipcRenderer.invoke(IPC_CHANNELS.applicationList),
+  listFastActions: (applicationId) =>
+    ipcRenderer.invoke(IPC_CHANNELS.fastActionList, applicationId),
   listIosSchemes: (workspaceOrProjectPath) =>
     ipcRenderer.invoke(IPC_CHANNELS.iosSchemeList, workspaceOrProjectPath),
   listRunHistory: (applicationId) => ipcRenderer.invoke(IPC_CHANNELS.historyList, applicationId),
@@ -50,6 +54,7 @@ export const desktopApi: DesktopApi = {
   updateApplication: (request) => ipcRenderer.invoke(IPC_CHANNELS.applicationUpdate, request),
   updateArtifactOutputDirectory: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.applicationUpdateArtifactOutputDirectory, request),
+  updateFastAction: (request) => ipcRenderer.invoke(IPC_CHANNELS.fastActionUpdate, request),
   updateTheme: (theme) => ipcRenderer.invoke(IPC_CHANNELS.settingsUpdateTheme, theme),
   windowClose: () => ipcRenderer.invoke(IPC_CHANNELS.windowClose),
   windowMinimize: () => ipcRenderer.invoke(IPC_CHANNELS.windowMinimize),

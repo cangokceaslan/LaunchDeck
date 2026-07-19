@@ -7,6 +7,7 @@ import { ApplicationList } from '@screens/ApplicationList';
 import { ApplicationSetup } from '@screens/ApplicationSetup';
 import { Doctor } from '@screens/Doctor';
 import { ReleasePipeline } from '@screens/ReleasePipeline';
+import type { ReleasePipelineIntent } from '@screens/ReleasePipeline/index.types';
 import { normalizeErrorMessage } from '@renderer/utils/formatting';
 import type {
   ApplicationDetail as ApplicationDetailModel,
@@ -15,7 +16,7 @@ import type {
   ThemePreference,
 } from '@shared/contracts/domain';
 import type { DoctorReport } from '@shared/contracts/doctor';
-import type { RunHistorySummary } from '@shared/contracts/release';
+import type { FastAction, RunHistorySummary } from '@shared/contracts/release';
 import styles from '@renderer/App.module.scss';
 
 type View = 'home' | 'setup' | 'detail' | 'edit' | 'release';
@@ -28,6 +29,9 @@ export const App = (): React.JSX.Element => {
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailModel | null>(null);
   const [history, setHistory] = useState<RunHistorySummary[]>([]);
+  const [fastActions, setFastActions] = useState<FastAction[]>([]);
+  const [releaseIntent, setReleaseIntent] = useState<ReleasePipelineIntent | null>(null);
+  const [startingFastActionId, setStartingFastActionId] = useState<string | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<ThemePreference>('system');
@@ -78,6 +82,10 @@ export const App = (): React.JSX.Element => {
     }
   };
 
+  const loadFastActions = async (applicationId: string): Promise<void> => {
+    setFastActions(await window.desktopApi.listFastActions(applicationId));
+  };
+
   const openApplication = async (applicationId: string): Promise<void> => {
     setGlobalError(null);
     try {
@@ -86,9 +94,11 @@ export const App = (): React.JSX.Element => {
         setGlobalError('Application not found.');
         return;
       }
+      setFastActions([]);
+      setHistory([]);
       setSelectedApplication(application);
       setView('detail');
-      await loadHistory(applicationId);
+      await Promise.all([loadHistory(applicationId), loadFastActions(applicationId)]);
     } catch (error) {
       setGlobalError(normalizeErrorMessage(error));
     }
@@ -132,7 +142,7 @@ export const App = (): React.JSX.Element => {
   const handleSaved = async (application: ApplicationDetailModel): Promise<void> => {
     setSelectedApplication(application);
     await refreshApplications();
-    await loadHistory(application.id);
+    await Promise.all([loadHistory(application.id), loadFastActions(application.id)]);
     setView('detail');
   };
 
@@ -142,6 +152,8 @@ export const App = (): React.JSX.Element => {
       await window.desktopApi.deleteApplication(selectedApplication.id);
       setSelectedApplication(null);
       setHistory([]);
+      setFastActions([]);
+      setReleaseIntent(null);
       await refreshApplications();
       setView('home');
     } catch (error) {
@@ -166,7 +178,56 @@ export const App = (): React.JSX.Element => {
     } catch (error) {
       setGlobalError(normalizeErrorMessage(error));
     }
+    setReleaseIntent(null);
     setView('detail');
+  };
+
+  const handleFastActionSaved = (fastAction: FastAction): void => {
+    setFastActions((currentFastActions) => {
+      const existingIndex = currentFastActions.findIndex((current) => current.id === fastAction.id);
+      if (existingIndex === -1) return [...currentFastActions, fastAction];
+      return currentFastActions.map((current) =>
+        current.id === fastAction.id ? fastAction : current,
+      );
+    });
+    setReleaseIntent(null);
+    setView('detail');
+  };
+
+  const handleDeleteFastAction = async (fastActionId: string): Promise<void> => {
+    if (selectedApplication === null) return;
+    setGlobalError(null);
+    try {
+      const result = await window.desktopApi.deleteFastAction({
+        applicationId: selectedApplication.id,
+        id: fastActionId,
+      });
+      if (result.deleted) {
+        setFastActions((currentFastActions) =>
+          currentFastActions.filter((fastAction) => fastAction.id !== fastActionId),
+        );
+      }
+    } catch (error) {
+      setGlobalError(normalizeErrorMessage(error));
+    }
+  };
+
+  const handleRunFastAction = async (fastAction: FastAction): Promise<void> => {
+    if (selectedApplication === null) return;
+    setGlobalError(null);
+    setStartingFastActionId(fastAction.id);
+    try {
+      const preflight = await window.desktopApi.preflightRelease({
+        ...fastAction.configuration,
+        applicationId: selectedApplication.id,
+      });
+      setReleaseIntent({ fastAction, kind: 'runFastAction', preflight });
+      setView('release');
+    } catch (error) {
+      setGlobalError(normalizeErrorMessage(error));
+    } finally {
+      setStartingFastActionId(null);
+    }
   };
 
   if (
@@ -238,20 +299,28 @@ export const App = (): React.JSX.Element => {
       {view === 'detail' && selectedApplication !== null && (
         <ApplicationDetail
           application={selectedApplication}
+          fastActions={fastActions}
           history={history}
           isHistoryLoading={isHistoryLoading}
           onClearHistory={() => void handleClearHistory()}
+          onCreateFastAction={() => { setReleaseIntent({ kind: 'createFastAction' }); setView('release'); }}
           onDelete={() => void handleDelete()}
+          onDeleteFastAction={(fastActionId) => void handleDeleteFastAction(fastActionId)}
           onEdit={() => setView('edit')}
-          onStartRelease={() => setView('release')}
+          onEditFastAction={(fastAction) => { setReleaseIntent({ fastAction, kind: 'editFastAction' }); setView('release'); }}
+          onRunFastAction={(fastAction) => void handleRunFastAction(fastAction)}
+          onStartRelease={() => { setReleaseIntent({ kind: 'newRelease' }); setView('release'); }}
+          startingFastActionId={startingFastActionId}
         />
       )}
-      {view === 'release' && selectedApplication !== null && (
+      {view === 'release' && selectedApplication !== null && releaseIntent !== null && (
         <ReleasePipeline
           application={selectedApplication}
-          onClose={() => setView('detail')}
+          intent={releaseIntent}
+          onClose={() => { setReleaseIntent(null); setView('detail'); }}
           onFinished={() => void handleReleaseFinished()}
           onApplicationUpdated={setSelectedApplication}
+          onFastActionSaved={handleFastActionSaved}
           supportedPlatforms={supportedPlatforms}
         />
       )}

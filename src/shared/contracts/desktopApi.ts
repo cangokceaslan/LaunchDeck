@@ -16,11 +16,16 @@ import type {
 import type { DoctorReport } from '@shared/contracts/doctor';
 import type {
   CancelReleaseResult,
+  CreateFastActionRequest,
+  DeleteFastActionRequest,
+  DeleteFastActionResult,
+  FastAction,
   PreflightReleaseRequest,
   PreflightResult,
   ReleaseEvent,
   RunHistorySummary,
   StartReleaseResult,
+  UpdateFastActionRequest,
 } from '@shared/contracts/release';
 import type { AppSettings } from '@shared/contracts/settings';
 
@@ -41,10 +46,13 @@ export type DesktopApi = {
   chooseServiceAccountFile: () => Promise<PathSelectionResult>;
   clearRunHistory: (applicationId: string) => Promise<void>;
   createApplication: (request: CreateApplicationRequest) => Promise<ApplicationDetail>;
+  createFastAction: (request: CreateFastActionRequest) => Promise<FastAction>;
   deleteApplication: (applicationId: string) => Promise<DeleteApplicationResult>;
+  deleteFastAction: (request: DeleteFastActionRequest) => Promise<DeleteFastActionResult>;
   getApplication: (applicationId: string) => Promise<ApplicationDetail | null>;
   getSettings: () => Promise<AppSettings>;
   listApplications: () => Promise<ApplicationSummary[]>;
+  listFastActions: (applicationId: string) => Promise<FastAction[]>;
   listIosSchemes: (workspaceOrProjectPath: string) => Promise<IosSchemeListResult>;
   listRunHistory: (applicationId: string) => Promise<RunHistorySummary[]>;
   onReleaseEvent: (listener: (event: ReleaseEvent) => void) => () => void;
@@ -61,6 +69,7 @@ export type DesktopApi = {
   updateArtifactOutputDirectory: (
     request: UpdateArtifactOutputDirectoryRequest,
   ) => Promise<ApplicationDetail>;
+  updateFastAction: (request: UpdateFastActionRequest) => Promise<FastAction>;
   updateTheme: (theme: ThemePreference) => Promise<AppSettings>;
   windowClose: () => Promise<void>;
   windowMinimize: () => Promise<void>;

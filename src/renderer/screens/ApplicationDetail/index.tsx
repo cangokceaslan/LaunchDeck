@@ -19,14 +19,21 @@ const outcomeTone = (outcome: ApplicationDetailProps['history'][number]['outcome
 
 export const ApplicationDetail = ({
   application,
+  fastActions,
   history,
   isHistoryLoading,
   onClearHistory,
+  onCreateFastAction,
   onDelete,
+  onDeleteFastAction,
   onEdit,
+  onEditFastAction,
+  onRunFastAction,
   onStartRelease,
+  startingFastActionId,
 }: ApplicationDetailProps): React.JSX.Element => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [fastActionToDelete, setFastActionToDelete] = useState<ApplicationDetailProps['fastActions'][number] | null>(null);
 
   return (
     <div className={styles.page}>
@@ -117,6 +124,33 @@ export const ApplicationDetail = ({
         </div>
       </section>
 
+      <section className={styles.fastActions}>
+        <div className={styles.sectionHeader}>
+          <div><span className={styles.eyebrow}>Saved release pipelines</span><h2>Fast actions</h2></div>
+          <Button onClick={onCreateFastAction} size="sm" variant="outline-primary">New fast action</Button>
+        </div>
+        {fastActions.length === 0 ? (
+          <div className={styles.fastActionsEmpty}>No fast actions yet. Save a reusable pipeline for one-click preflight and confirmation.</div>
+        ) : (
+          <div className={styles.fastActionList}>
+            {fastActions.map((fastAction) => (
+              <article key={fastAction.id}>
+                <div className={styles.fastActionSummary}>
+                  <strong>{fastAction.name}</strong>
+                  <small>{formatMode(fastAction.configuration.mode)} · {fastAction.configuration.platforms.map(formatPlatform).join(' + ')}</small>
+                  <span>{fastAction.configuration.destinations.map((destination) => destination === 'artifact' ? 'Artifact' : destination === 'firebase' ? 'Firebase' : 'Store').join(' + ')}</span>
+                </div>
+                <div className={styles.fastActionButtons}>
+                  <Button disabled={startingFastActionId !== null} onClick={() => onRunFastAction(fastAction)} size="sm">{startingFastActionId === fastAction.id && <Spinner animation="border" size="sm" />} {startingFastActionId === fastAction.id ? 'Preparing…' : 'Start'}</Button>
+                  <Button disabled={startingFastActionId !== null} onClick={() => onEditFastAction(fastAction)} size="sm" variant="outline-secondary">Edit</Button>
+                  <Button disabled={startingFastActionId !== null} onClick={() => setFastActionToDelete(fastAction)} size="sm" variant="outline-danger">Delete</Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className={styles.history}>
         <div className={styles.sectionHeader}>
           <div><span className={styles.eyebrow}>Up to 10 records</span><h2>Release history</h2></div>
@@ -150,6 +184,15 @@ export const ApplicationDetail = ({
         <Modal.Footer>
           <Button onClick={() => setIsDeleteOpen(false)} variant="outline-secondary">Cancel</Button>
           <Button onClick={onDelete} variant="danger">Delete permanently</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal centered onHide={() => setFastActionToDelete(null)} show={fastActionToDelete !== null}>
+        <Modal.Header closeButton><Modal.Title>Delete fast action</Modal.Title></Modal.Header>
+        <Modal.Body>{fastActionToDelete?.name} will be deleted. Existing release history is not affected.</Modal.Body>
+        <Modal.Footer>
+          <Button onClick={() => setFastActionToDelete(null)} variant="outline-secondary">Cancel</Button>
+          <Button onClick={() => { if (fastActionToDelete !== null) onDeleteFastAction(fastActionToDelete.id); setFastActionToDelete(null); }} variant="danger">Delete fast action</Button>
         </Modal.Footer>
       </Modal>
     </div>
