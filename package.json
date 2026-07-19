@@ -12,6 +12,7 @@
     "build": "electron-vite build",
     "prepreview": "electron-builder install-app-deps",
     "preview": "node scripts/run-electron-vite.cjs preview",
+    "screenshots:dev": "vite --config tools/screenshots/vite.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "postinstall": "node scripts/postinstall.cjs",
     "package": "npm run build && electron-builder --dir",
