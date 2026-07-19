@@ -1,0 +1,223 @@
+.modal {
+  :global(.modal-content) {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text);
+    overflow: hidden;
+  }
+
+  :global(.modal-header) {
+    align-items: flex-start;
+    border-color: var(--color-border);
+    padding: var(--space-6);
+  }
+
+  :global(.modal-body) {
+    background: var(--color-background);
+    padding: var(--space-6);
+  }
+
+  :global(.modal-footer) {
+    border-color: var(--color-border);
+    gap: var(--space-4);
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-6);
+
+    > span {
+      color: var(--color-text-muted);
+      font-size: 0.72rem;
+      max-width: 480px;
+    }
+  }
+
+  .modalHeading {
+    min-width: 0;
+
+    .eyebrow {
+      color: var(--color-primary-strong);
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: var(--space-1);
+      text-transform: uppercase;
+    }
+
+    p {
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+      margin: var(--space-2) 0 0;
+    }
+  }
+
+  .summary {
+    align-items: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    gap: var(--space-4);
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+    padding: var(--space-4);
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      > span {
+        color: var(--color-text-muted);
+        font-size: 0.76rem;
+        margin-top: 2px;
+      }
+    }
+  }
+
+  .workflowList {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .workflow {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+
+    > header {
+      align-items: center;
+      display: grid;
+      gap: var(--space-3);
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      padding: var(--space-4);
+
+      .stepNumber {
+        align-items: center;
+        background: var(--color-primary-soft);
+        border-radius: var(--radius-sm);
+        color: var(--color-primary-strong);
+        display: flex;
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 700;
+        height: 34px;
+        justify-content: center;
+        width: 34px;
+      }
+
+      h2 {
+        font-size: 0.92rem;
+        margin: 0 0 2px;
+      }
+
+      p {
+        color: var(--color-text-muted);
+        font-size: 0.76rem;
+        margin: 0;
+      }
+    }
+  }
+
+  .readyMessage,
+  .requirements {
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-4);
+  }
+
+  .readyMessage {
+    align-items: flex-start;
+    background: var(--color-success-soft);
+    display: flex;
+    gap: var(--space-3);
+
+    > span {
+      color: var(--color-success);
+      font-weight: 800;
+    }
+
+    strong {
+      color: var(--color-success);
+      font-size: 0.78rem;
+    }
+
+    p {
+      color: var(--color-text-muted);
+      font-size: 0.75rem;
+      margin: 2px 0 0;
+    }
+  }
+
+  .requirements {
+    background: var(--color-surface-subtle);
+
+    .requirementsLabel {
+      color: var(--color-text-muted);
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: var(--space-3);
+      text-transform: uppercase;
+    }
+
+    ul {
+      display: grid;
+      gap: var(--space-2);
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    li {
+      align-items: flex-start;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-3);
+
+      > span {
+        align-items: center;
+        background: var(--color-warning-soft);
+        border-radius: 50%;
+        color: var(--color-warning);
+        display: flex;
+        flex: 0 0 auto;
+        font-size: 0.7rem;
+        font-weight: 800;
+        height: 20px;
+        justify-content: center;
+        width: 20px;
+      }
+
+      strong {
+        font-size: 0.78rem;
+      }
+
+      p {
+        color: var(--color-text-muted);
+        font-size: 0.73rem;
+        margin: 2px 0 0;
+      }
+    }
+  }
+
+  @media (max-width: 680px) {
+    .workflow > header {
+      grid-template-columns: auto minmax(0, 1fr);
+
+      > :last-child {
+        grid-column: 2;
+        justify-self: start;
+      }
+    }
+
+    :global(.modal-footer) {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+}
