@@ -51,7 +51,6 @@ export const ApplicationList = ({
                 <ApplicationLogo
                   className={styles.initial}
                   iconDataUrl={application.iconDataUrl}
-                  name={application.name}
                 />
                 <StatusPill label="Setup ready" tone="success" />
               </div>

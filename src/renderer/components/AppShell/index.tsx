@@ -49,7 +49,6 @@ export const AppShell = ({
                 <ApplicationLogo
                   className={styles.appInitial}
                   iconDataUrl={application.iconDataUrl}
-                  name={application.name}
                 />
                 <span>
                   <strong>{application.name}</strong>

@@ -14,6 +14,7 @@ export type ApplicationDetailProps = {
   onDeleteFastAction: (fastActionId: string) => void;
   onEdit: () => void;
   onEditFastAction: (fastAction: FastAction) => void;
+  onRemoveIcon: () => void;
   onRunFastAction: (fastAction: FastAction) => void;
   onStartRelease: () => void;
   startingFastActionId: string | null;

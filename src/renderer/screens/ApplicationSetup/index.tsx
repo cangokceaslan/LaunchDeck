@@ -615,7 +615,6 @@ export const ApplicationSetup = ({
                   <ApplicationLogo
                     className={styles.iconPreview}
                     iconDataUrl={form.iconDataUrl}
-                    name={form.name || 'Application'}
                   />
                   <span className={styles.iconAction}>
                     {isChoosingIcon ? <Spinner animation="border" size="sm" /> : 'Choose icon'}

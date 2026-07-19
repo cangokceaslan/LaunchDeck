@@ -247,6 +247,28 @@ export const App = (): React.JSX.Element => {
     }
   };
 
+  const handleRemoveApplicationIcon = async (): Promise<void> => {
+    if (
+      selectedApplication === null ||
+      selectedApplication.iconDataUrl === null ||
+      isChangingApplicationIcon
+    ) return;
+    setGlobalError(null);
+    setIsChangingApplicationIcon(true);
+    try {
+      const updatedApplication = await window.desktopApi.updateApplicationIcon({
+        applicationId: selectedApplication.id,
+        iconDataUrl: null,
+      });
+      setSelectedApplication(updatedApplication);
+      await refreshApplications();
+    } catch (error) {
+      setGlobalError(normalizeErrorMessage(error));
+    } finally {
+      setIsChangingApplicationIcon(false);
+    }
+  };
+
   const handleReleaseFinished = async (): Promise<void> => {
     if (selectedApplication === null) return;
     try {
@@ -395,6 +417,7 @@ export const App = (): React.JSX.Element => {
           onDeleteFastAction={(fastActionId) => void handleDeleteFastAction(fastActionId)}
           onEdit={() => setView('edit')}
           onEditFastAction={(fastAction) => { setReleaseIntent({ fastAction, kind: 'editFastAction' }); setView('release'); }}
+          onRemoveIcon={() => void handleRemoveApplicationIcon()}
           onRunFastAction={(fastAction) => void handleRunFastAction(fastAction)}
           onStartRelease={() => { setReleaseIntent({ kind: 'newRelease' }); setView('release'); }}
           startingFastActionId={startingFastActionId}

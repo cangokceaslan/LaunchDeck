@@ -31,6 +31,7 @@ export const ApplicationDetail = ({
   onDeleteFastAction,
   onEdit,
   onEditFastAction,
+  onRemoveIcon,
   onRunFastAction,
   onStartRelease,
   startingFastActionId,
@@ -42,20 +43,45 @@ export const ApplicationDetail = ({
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div className={styles.titleGroup}>
-          <button
-            aria-label="Change application icon"
-            className={styles.logoButton}
-            disabled={isChangingIcon}
-            onClick={onChangeIcon}
-            title={isChangingIcon ? 'Loading application icon' : 'Choose application icon'}
-            type="button"
-          >
-            <ApplicationLogo
-              className={styles.initial}
-              iconDataUrl={application.iconDataUrl}
-              name={application.name}
-            />
-          </button>
+          <div className={styles.logoControl}>
+            <button
+              aria-label={
+                application.iconDataUrl === null
+                  ? 'Choose application icon'
+                  : 'Change application icon'
+              }
+              className={styles.logoButton}
+              disabled={isChangingIcon}
+              onClick={onChangeIcon}
+              title={
+                isChangingIcon
+                  ? 'Updating application icon'
+                  : application.iconDataUrl === null
+                    ? 'Choose application icon'
+                    : 'Change application icon'
+              }
+              type="button"
+            >
+              <ApplicationLogo
+                className={styles.initial}
+                iconDataUrl={application.iconDataUrl}
+              />
+            </button>
+            {application.iconDataUrl !== null && (
+              <button
+                aria-label="Remove application icon"
+                className={styles.removeLogoButton}
+                disabled={isChangingIcon}
+                onClick={onRemoveIcon}
+                title="Remove application icon"
+                type="button"
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16">
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            )}
+          </div>
           <div>
             <span className={styles.eyebrow}>{application.firebaseProjectId || 'Local and store release configuration'}</span>
             <h1>{application.name}</h1>

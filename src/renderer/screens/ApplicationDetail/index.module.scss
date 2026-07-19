@@ -14,6 +14,11 @@
       display: flex;
       gap: var(--space-4);
 
+      .logoControl {
+        flex: 0 0 auto;
+        position: relative;
+      }
+
       .logoButton {
         background: transparent;
         border: 0;
@@ -27,6 +32,43 @@
         &:focus-visible {
           box-shadow: var(--shadow-focus);
           outline: 0;
+        }
+      }
+
+      .removeLogoButton {
+        align-items: center;
+        background: var(--color-surface-raised);
+        border: 1px solid var(--color-border-strong);
+        border-radius: 999px;
+        box-shadow: var(--shadow-soft);
+        color: var(--color-text-muted);
+        display: flex;
+        height: 24px;
+        justify-content: center;
+        padding: 0;
+        position: absolute;
+        right: -8px;
+        top: -8px;
+        transition: border-color var(--motion-fast), color var(--motion-fast);
+        width: 24px;
+
+        &:hover:not(:disabled) {
+          border-color: var(--color-danger);
+          color: var(--color-danger);
+        }
+
+        &:focus-visible {
+          box-shadow: var(--shadow-focus);
+          outline: 0;
+        }
+
+        svg {
+          fill: none;
+          height: 10px;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-width: 1.7;
+          width: 10px;
         }
       }
 
