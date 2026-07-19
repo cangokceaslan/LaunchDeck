@@ -210,6 +210,7 @@
 
     .fastActionSummary {
       display: grid;
+      flex: 1;
       gap: var(--space-1);
       min-width: 0;
 
@@ -222,6 +223,44 @@
         color: var(--color-text-muted);
         font-size: 0.72rem;
       }
+    }
+
+    .fastActionVersions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+
+      > span {
+        align-items: center;
+        background: var(--color-surface-raised);
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        display: flex;
+        gap: var(--space-2);
+        padding: 5px 9px;
+
+        b {
+          color: var(--color-text);
+          font-size: 0.68rem;
+          font-weight: 700;
+        }
+
+        code {
+          color: var(--color-primary-strong);
+          font-size: 0.7rem;
+          font-weight: 700;
+        }
+
+        small {
+          border-left: 1px solid var(--color-border);
+          padding-left: var(--space-2);
+        }
+      }
+    }
+
+    .fastActionArtifactVersion {
+      margin-top: var(--space-2);
     }
 
     .fastActionButtons {

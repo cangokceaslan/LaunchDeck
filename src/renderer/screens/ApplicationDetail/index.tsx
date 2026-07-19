@@ -9,6 +9,7 @@ import {
   formatPlatform,
 } from '@renderer/utils/formatting';
 import type { ApplicationDetailProps } from '@screens/ApplicationDetail/index.types';
+import { resolveFastActionVersionSummaries } from '@screens/ApplicationDetail/index.utils';
 import styles from '@screens/ApplicationDetail/index.module.scss';
 
 const outcomeTone = (outcome: ApplicationDetailProps['history'][number]['outcome']) => {
@@ -189,20 +190,40 @@ export const ApplicationDetail = ({
           <div className={styles.fastActionsEmpty}>No fast actions yet. Save a reusable pipeline for one-click preflight and confirmation.</div>
         ) : (
           <div className={styles.fastActionList}>
-            {fastActions.map((fastAction) => (
-              <article key={fastAction.id}>
-                <div className={styles.fastActionSummary}>
-                  <strong>{fastAction.name}</strong>
-                  <small>{formatMode(fastAction.configuration.mode)} · {fastAction.configuration.platforms.map(formatPlatform).join(' + ')}</small>
-                  <span>{fastAction.configuration.destinations.map((destination) => destination === 'artifact' ? 'Artifact' : destination === 'firebase' ? 'Firebase' : 'Store').join(' + ')}</span>
-                </div>
-                <div className={styles.fastActionButtons}>
-                  <Button disabled={startingFastActionId !== null} onClick={() => onRunFastAction(fastAction)} size="sm">{startingFastActionId === fastAction.id && <Spinner animation="border" size="sm" />} {startingFastActionId === fastAction.id ? 'Preparing…' : 'Start'}</Button>
-                  <Button disabled={startingFastActionId !== null} onClick={() => onEditFastAction(fastAction)} size="sm" variant="outline-secondary">Edit</Button>
-                  <Button disabled={startingFastActionId !== null} onClick={() => setFastActionToDelete(fastAction)} size="sm" variant="outline-danger">Delete</Button>
-                </div>
-              </article>
-            ))}
+            {fastActions.map((fastAction) => {
+              const versionSummaries = resolveFastActionVersionSummaries(
+                fastAction.configuration,
+              );
+              return (
+                <article key={fastAction.id}>
+                  <div className={styles.fastActionSummary}>
+                    <strong>{fastAction.name}</strong>
+                    <small>{formatMode(fastAction.configuration.mode)} · {fastAction.configuration.platforms.map(formatPlatform).join(' + ')}</small>
+                    <span>{fastAction.configuration.destinations.map((destination) => destination === 'artifact' ? 'Artifact' : destination === 'firebase' ? 'Firebase' : 'Store').join(' + ')}</span>
+                    {versionSummaries.length === 0 ? (
+                      <small className={styles.fastActionArtifactVersion}>
+                        Uses the version embedded in the selected artifact
+                      </small>
+                    ) : (
+                      <div aria-label="Saved target versions" className={styles.fastActionVersions}>
+                        {versionSummaries.map((version) => (
+                          <span key={version.platform}>
+                            <b>{version.platform} target</b>
+                            <code>{version.versionName}</code>
+                            <small>{version.counterLabel} {version.counterValue}</small>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.fastActionButtons}>
+                    <Button disabled={startingFastActionId !== null} onClick={() => onRunFastAction(fastAction)} size="sm">{startingFastActionId === fastAction.id && <Spinner animation="border" size="sm" />} {startingFastActionId === fastAction.id ? 'Preparing…' : 'Start'}</Button>
+                    <Button disabled={startingFastActionId !== null} onClick={() => onEditFastAction(fastAction)} size="sm" variant="outline-secondary">Edit</Button>
+                    <Button disabled={startingFastActionId !== null} onClick={() => setFastActionToDelete(fastAction)} size="sm" variant="outline-danger">Delete</Button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

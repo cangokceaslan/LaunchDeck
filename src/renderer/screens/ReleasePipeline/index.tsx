@@ -108,7 +108,7 @@ export const ReleasePipeline = ({
   const isFastActionEditor =
     intent.kind === 'createFastAction' || intent.kind === 'editFastAction';
   const [step, setStep] = useState<1 | 2 | 3>(
-    intent.kind === 'runFastAction' ? 3 : 1,
+    intent.kind === 'runFastAction' ? 3 : intent.kind === 'editFastAction' ? 2 : 1,
   );
   const [source, setSource] = useState<ArtifactSource>(
     initialConfiguration?.mode === 'uploadOnly' ? 'existing' : 'build',
