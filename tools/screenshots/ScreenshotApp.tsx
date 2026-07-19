@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AppShell } from '@components/AppShell';
 import { DocumentationCenter } from '@components/DocumentationCenter';
 import { PipelineProgress } from '@components/PipelineProgress';
@@ -111,6 +112,22 @@ const ApplicationDetailFixture = (): React.JSX.Element => (
   />
 );
 
+const DocumentationCenterFixture = (): React.JSX.Element => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <ScreenFrame selectedApplicationId={application.id}>
+      <ApplicationDetailFixture />
+      <DocumentationCenter
+        context="setup"
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        onOpen={() => setIsOpen(true)}
+      />
+    </ScreenFrame>
+  );
+};
+
 export const ScreenshotApp = (): React.JSX.Element => {
   const scenario = resolveScenario();
 
@@ -163,12 +180,7 @@ export const ScreenshotApp = (): React.JSX.Element => {
   }
 
   if (scenario === 'documentation-center') {
-    return (
-      <ScreenFrame selectedApplicationId={application.id}>
-        <ApplicationDetailFixture />
-        <DocumentationCenter context="setup" isOpen onClose={noop} onOpen={noop} />
-      </ScreenFrame>
-    );
+    return <DocumentationCenterFixture />;
   }
 
   if (scenario === 'setup-guide') {
