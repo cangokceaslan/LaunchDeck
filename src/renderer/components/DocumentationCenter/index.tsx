@@ -184,7 +184,15 @@ export const DocumentationCenter = ({
           title="Documentation"
           type="button"
         >
-          <span aria-hidden="true">?</span>
+          <span aria-hidden="true" className={styles.floatingLabel}>
+            Help center
+          </span>
+          <span aria-hidden="true" className={styles.floatingIcon}>
+            <svg viewBox="0 0 24 24">
+              <path d="M8.75 9.15a3.28 3.28 0 0 1 6.47.82c0 2.38-3.22 2.68-3.22 4.8" />
+              <path d="M12 18.05h.01" />
+            </svg>
+          </span>
         </button>
       )}
       <Modal
