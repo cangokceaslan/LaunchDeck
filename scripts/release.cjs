@@ -71,7 +71,7 @@ const runCommand = async (
 ) => {
   process.stdout.write(`\n${label}\n`);
 
-  await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const childProcess = spawn(executablePath, commandArguments, {
       cwd: projectRoot,
       env: releaseEnvironment,
