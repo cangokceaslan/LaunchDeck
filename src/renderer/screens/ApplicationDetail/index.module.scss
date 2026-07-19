@@ -113,59 +113,26 @@
         overflow-wrap: anywhere;
       }
 
-      .editSetupBadge {
-        background: var(--color-primary-soft);
-        border: 1px solid var(--color-primary);
+      .setupBadge {
+        align-items: center;
+        background: var(--color-surface-subtle);
+        border: 1px solid var(--color-border);
         border-radius: 999px;
-        color: var(--color-primary-strong);
+        color: var(--color-text-muted);
         cursor: pointer;
+        display: inline-flex;
         flex: 0 0 auto;
         font-size: 0.7rem;
         font-weight: 700;
+        gap: 6px;
         line-height: 1;
-        padding: 6px 10px;
+        padding: 6px 9px;
         transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
-
-        &:hover {
-          background: var(--color-primary);
-          color: var(--color-on-primary);
-        }
-
-        &:focus-visible {
-          box-shadow: var(--shadow-focus);
-          outline: 0;
-        }
-      }
-
-      .platforms {
-        display: flex;
-        gap: var(--space-2);
-      }
-    }
-
-    .actions {
-      align-items: center;
-      display: flex;
-      gap: var(--space-2);
-
-      .setupButton {
-        align-items: center;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border-strong);
-        border-radius: var(--radius-sm);
-        color: var(--color-text);
-        cursor: pointer;
-        display: flex;
-        font-size: 0.875rem;
-        font-weight: 600;
-        gap: var(--space-2);
-        min-height: 38px;
-        padding: 7px 13px;
-        transition: background var(--motion-fast), border-color var(--motion-fast);
 
         &:hover {
           background: var(--color-primary-soft);
           border-color: var(--color-primary);
+          color: var(--color-primary-strong);
         }
 
         &:focus-visible {
@@ -176,8 +143,8 @@
         > span {
           background: currentColor;
           border-radius: 50%;
-          height: 7px;
-          width: 7px;
+          height: 6px;
+          width: 6px;
         }
 
         &.setupReady > span {
