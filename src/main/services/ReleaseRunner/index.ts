@@ -138,6 +138,46 @@ const countPlatformSteps = (
   return buildSteps + uploadSteps + localSaveSteps + 1;
 };
 
+const PHASE_PROGRESS_WEIGHTS = {
+  build: 60,
+  postBuild: 3,
+  postUpload: 3,
+  preBuild: 3,
+  preUpload: 3,
+  saving: 5,
+  storeUpload: 12,
+  upload: 12,
+  validating: 1,
+  verifying: 5,
+  versioning: 3,
+} as const satisfies Record<ReleasePhase, number>;
+
+const getPlatformProgressWeight = (
+  hooks: PipelineHook[],
+  mode: ReleaseMode,
+  platform: ReleasePlatform,
+  destinations: DistributionDestination[],
+): number => {
+  const buildWeight = includesBuild(mode)
+    ? PHASE_PROGRESS_WEIGHTS.versioning +
+      PHASE_PROGRESS_WEIGHTS.build +
+      hooksFor(hooks, 'preBuild', platform).length * PHASE_PROGRESS_WEIGHTS.preBuild +
+      hooksFor(hooks, 'postBuild', platform).length * PHASE_PROGRESS_WEIGHTS.postBuild
+    : 0;
+  const hasUploadDestination =
+    hasDestination(destinations, 'firebase') || hasDestination(destinations, 'store');
+  const uploadWeight = includesUpload(mode) && hasUploadDestination
+    ? hooksFor(hooks, 'preUpload', platform).length * PHASE_PROGRESS_WEIGHTS.preUpload +
+      hooksFor(hooks, 'postUpload', platform).length * PHASE_PROGRESS_WEIGHTS.postUpload +
+      Number(hasDestination(destinations, 'firebase')) * PHASE_PROGRESS_WEIGHTS.upload +
+      Number(hasDestination(destinations, 'store')) * PHASE_PROGRESS_WEIGHTS.storeUpload
+    : 0;
+  const localSaveWeight = hasDestination(destinations, 'artifact')
+    ? PHASE_PROGRESS_WEIGHTS.saving
+    : 0;
+  return buildWeight + uploadWeight + localSaveWeight + PHASE_PROGRESS_WEIGHTS.verifying;
+};
+
 const safeErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : 'An unexpected operation error occurred.';
 
@@ -164,13 +204,6 @@ const resolveReleaseVersion = (
         : request.version.iosBuildNumber + (request.version.incrementIosBuildNumber ? 1 : 0),
     versionName: `${major}.${minor}.${patch + (request.version.incrementPatch ? 1 : 0)}`,
   };
-};
-
-const readReportedPercent = (line: string): number | null => {
-  const match = /(?:^|[\s[(])(\d{1,3})%(?:[\s\])]|$)/u.exec(line);
-  if (match?.[1] === undefined) return null;
-  const percent = Number(match[1]);
-  return Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : null;
 };
 
 export class ReleaseRunner {
@@ -545,6 +578,18 @@ export class ReleaseRunner {
     ]);
     let sequence = 0;
     let completedPhases = 0;
+    let completedProgressWeight = 0;
+    const totalProgressWeight = plan.request.platforms.reduce(
+      (total, platform) =>
+        total +
+        getPlatformProgressWeight(
+          plan.application.hooks,
+          plan.request.mode,
+          platform,
+          plan.request.destinations,
+        ),
+      0,
+    );
     let lastEmittedPercent = 0;
     let lastProgressKind: ReleaseProgressKind = 'verified';
     let activePhase: ReleasePhase = 'validating';
@@ -574,13 +619,15 @@ export class ReleaseRunner {
       operation: (reportActivity: (line?: string) => void) => Promise<void>,
     ): Promise<void> => {
       activePhase = phase;
+      const stepProgressWeight = PHASE_PROGRESS_WEIGHTS[phase];
       let activityCount = 0;
       let stepFraction = 0;
       const emitProgress = (progressKind: ReleaseProgressKind): void => {
         const calculatedPercent = Math.min(
           99,
           Math.round(
-            ((completedPhases + stepFraction) / plan.publicPlan.phaseCount) * 100,
+            ((completedProgressWeight + stepFraction * stepProgressWeight) /
+              totalProgressWeight) * 100,
           ),
         );
         if (calculatedPercent > lastEmittedPercent) {
@@ -598,16 +645,15 @@ export class ReleaseRunner {
           type: 'phaseChanged',
         });
       };
-      const reportActivity = (line?: string): void => {
+      const reportActivity = (): void => {
         activityCount += 1;
-        const reportedPercent = line === undefined ? null : readReportedPercent(line);
-        const nextFraction =
-          reportedPercent === null
-            ? Math.min(0.9, 0.08 + (1 - Math.exp(-activityCount / 18)) * 0.82)
-            : Math.min(0.95, reportedPercent / 100);
+        const nextFraction = Math.min(
+          0.9,
+          0.08 + (1 - Math.exp(-activityCount / 18)) * 0.82,
+        );
         if (nextFraction <= stepFraction) return;
         stepFraction = nextFraction;
-        emitProgress(reportedPercent === null ? 'estimated' : 'reported');
+        emitProgress('estimated');
       };
       emitProgress('verified');
       emitLog(label, 'info', platform);
@@ -618,9 +664,10 @@ export class ReleaseRunner {
         clearInterval(activityTimer);
       }
       completedPhases += 1;
+      completedProgressWeight += stepProgressWeight;
       stepFraction = 0;
       const verifiedPercent = Math.round(
-        (completedPhases / plan.publicPlan.phaseCount) * 100,
+        (completedProgressWeight / totalProgressWeight) * 100,
       );
       if (verifiedPercent >= lastEmittedPercent) {
         lastEmittedPercent = verifiedPercent;
