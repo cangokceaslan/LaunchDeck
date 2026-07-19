@@ -230,6 +230,34 @@ export const PipelineProgress = ({
         })}
       </ol>
 
+      {result !== null && result.platforms.some(({ errorMessage }) => errorMessage !== undefined) && (
+        <section className={styles.failureDetails}>
+          <header>
+            <h3>Failure details</h3>
+            <span>Review the error before retrying this pipeline</span>
+          </header>
+          <div>
+            {result.platforms.flatMap((platformResult) =>
+              platformResult.errorMessage === undefined
+                ? []
+                : [(
+                    <article key={platformResult.platform}>
+                      <div>
+                        <strong>{formatPlatform(platformResult.platform)}</strong>
+                        <small>
+                          {platformResult.failedPhase === undefined
+                            ? 'Pipeline failure'
+                            : phaseLabels[platformResult.failedPhase] ?? platformResult.failedPhase}
+                        </small>
+                      </div>
+                      <p>{platformResult.errorMessage}</p>
+                    </article>
+                  )],
+            )}
+          </div>
+        </section>
+      )}
+
       {result !== null && (
         <section className={styles.resultArtifacts}>
           <header><h3>Artifacts</h3><span>Verified output from this pipeline</span></header>

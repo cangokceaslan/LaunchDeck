@@ -292,7 +292,7 @@ export const ApplicationDetail = ({
                         <div><span>Source</span><strong>{configuration.mode === 'uploadOnly' ? 'Existing artifact' : 'New build'}</strong></div>
                         <div><span>Destinations</span><strong>{configuration.destinations.map(formatDestination).join(' + ')}</strong></div>
                         <div><span>Platforms</span><strong>{configuration.platforms.map(formatPlatform).join(' + ')}</strong></div>
-                        <div><span>Signing</span><strong>{configuration.artifactSigningPlatforms.length === 0 ? 'Not requested' : configuration.artifactSigningPlatforms.map(formatPlatform).join(' + ')}</strong></div>
+                        <div><span>Optional artifact signing</span><strong>{configuration.artifactSigningPlatforms.length === 0 ? 'Not requested' : configuration.artifactSigningPlatforms.map(formatPlatform).join(' + ')}</strong></div>
                         {configuration.androidArtifactType !== undefined && <div><span>Android artifact</span><strong>{configuration.androidArtifactType.toUpperCase()}</strong></div>}
                         {configuration.destinations.includes('firebase') && <div><span>Tester groups</span><strong>{configuration.distributionGroups.join(', ')}</strong></div>}
                       </div>

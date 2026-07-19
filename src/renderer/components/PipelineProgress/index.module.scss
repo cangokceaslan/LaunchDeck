@@ -309,6 +309,67 @@
     }
   }
 
+  .failureDetails {
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+
+    > header {
+      align-items: center;
+      background: var(--color-danger-soft);
+      border-bottom: 1px solid var(--color-danger);
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+
+      h3 {
+        color: var(--color-danger);
+        font-size: 0.76rem;
+        margin: 0;
+      }
+
+      span {
+        color: var(--color-text-muted);
+        font-size: 0.66rem;
+      }
+    }
+
+    > div {
+      display: grid;
+
+      article {
+        display: grid;
+        gap: var(--space-4);
+        grid-template-columns: 130px minmax(0, 1fr);
+        padding: var(--space-4);
+
+        & + article {
+          border-top: 1px solid var(--color-border);
+        }
+
+        > div {
+          display: flex;
+          flex-direction: column;
+
+          strong {
+            font-size: 0.76rem;
+          }
+
+          small {
+            color: var(--color-danger);
+            font-size: 0.68rem;
+          }
+        }
+
+        p {
+          font-size: 0.72rem;
+          margin: 0;
+          overflow-wrap: anywhere;
+        }
+      }
+    }
+  }
+
   .resultArtifacts {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
