@@ -78,15 +78,25 @@ export const AppShell = ({
           )}
         </nav>
         <div className={styles.sidebarFooter}>
-          <Button className={styles.addButton} onClick={onAddApplication} size="sm">
+          <button className={styles.addButton} onClick={onAddApplication} type="button">
             <span aria-hidden="true" className={styles.addIcon}>
-              <svg viewBox="0 0 18 18">
-                <rect height="13" rx="3.5" width="13" x="2.5" y="2.5" />
-                <path d="M9 5.75v6.5M5.75 9h6.5" />
+              <svg viewBox="0 0 20 20">
+                <rect height="13" rx="3.25" width="13" x="2.5" y="4.5" />
+                <path d="M6.25 8.25h3.5M6.25 11.75h2" />
+                <circle cx="14.25" cy="5.75" r="3.25" />
+                <path d="M14.25 4.25v3M12.75 5.75h3" />
               </svg>
             </span>
-            <span>Add application</span>
-          </Button>
+            <span className={styles.addCopy}>
+              <strong>Add application</strong>
+              <small>Configure a release target</small>
+            </span>
+            <span aria-hidden="true" className={styles.addArrow}>
+              <svg viewBox="0 0 16 16">
+                <path d="m6 3.75 4.25 4.25L6 12.25" />
+              </svg>
+            </span>
+          </button>
         </div>
       </aside>
       <main className={styles.content}>{children}</main>
