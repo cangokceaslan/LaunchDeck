@@ -1,18 +1,7 @@
 import path from 'node:path';
 import { app, BrowserWindow, dialog, shell } from 'electron';
 import type { MainWindowOptions } from '@main/windows/MainWindow/index.types';
-
-const isApprovedExternalUrl = (targetUrl: string): boolean => {
-  try {
-    const parsedUrl = new URL(targetUrl);
-    return (
-      parsedUrl.protocol === 'https:' &&
-      (parsedUrl.hostname === 'firebase.google.com' || parsedUrl.hostname === 'github.com')
-    );
-  } catch {
-    return false;
-  }
-};
+import { isApprovedExternalUrl } from '@shared/contracts/externalLinks';
 
 export const createMainWindow = async (options: MainWindowOptions): Promise<BrowserWindow> => {
   const developmentIconFilename =
