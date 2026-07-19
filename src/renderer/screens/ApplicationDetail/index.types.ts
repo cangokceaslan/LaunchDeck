@@ -17,6 +17,7 @@ export type ApplicationDetailProps = {
   onEdit: () => void;
   onEditFastAction: (fastAction: FastAction) => void;
   onRemoveIcon: () => void;
+  onRepeatHistory: (run: RunHistorySummary) => void;
   onRunFastAction: (fastAction: FastAction) => void;
   onShowSetup: () => void;
   onStartRelease: () => void;

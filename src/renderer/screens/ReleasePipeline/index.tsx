@@ -66,6 +66,13 @@ const formatSigningSummary = (platforms: ReleasePlatform[]): string =>
 const getFastAction = (intent: ReleasePipelineIntent) =>
   'fastAction' in intent ? intent.fastAction : null;
 
+const getInitialConfiguration = (
+  intent: ReleasePipelineIntent,
+): FastActionConfiguration | null =>
+  intent.kind === 'repeatRelease'
+    ? intent.configuration
+    : getFastAction(intent)?.configuration ?? null;
+
 const createVersionForm = (
   configuration: FastActionConfiguration | null,
 ): ReleaseVersionForm => {
@@ -104,11 +111,15 @@ export const ReleasePipeline = ({
 }: ReleasePipelineProps): React.JSX.Element => {
   const availablePlatforms = application.platforms.filter((platform) => supportedPlatforms.includes(platform));
   const fastAction = getFastAction(intent);
-  const initialConfiguration = fastAction?.configuration ?? null;
+  const initialConfiguration = getInitialConfiguration(intent);
   const isFastActionEditor =
     intent.kind === 'createFastAction' || intent.kind === 'editFastAction';
   const [step, setStep] = useState<1 | 2 | 3>(
-    intent.kind === 'runFastAction' ? 3 : intent.kind === 'editFastAction' ? 2 : 1,
+    intent.kind === 'runFastAction'
+      ? 3
+      : intent.kind === 'editFastAction' || intent.kind === 'repeatRelease'
+        ? 2
+        : 1,
   );
   const [source, setSource] = useState<ArtifactSource>(
     initialConfiguration?.mode === 'uploadOnly' ? 'existing' : 'build',
@@ -334,6 +345,12 @@ export const ReleasePipeline = ({
     }
   };
 
+  const handleRetry = async (): Promise<void> => {
+    releaseRun.reset();
+    setPreflight(null);
+    await handlePreflight();
+  };
+
   const handleSaveFastAction = async (): Promise<void> => {
     setErrorMessage(null);
     const configuration = createConfiguration();
@@ -392,6 +409,8 @@ export const ReleasePipeline = ({
       ? `Edit ${intent.fastAction.name}`
       : intent.kind === 'runFastAction'
         ? intent.fastAction.name
+        : intent.kind === 'repeatRelease'
+          ? 'Repeat release'
         : 'New release pipeline';
   const stepLabels = isFastActionEditor
     ? ['Configure', 'Release details']
@@ -535,7 +554,7 @@ export const ReleasePipeline = ({
           <div className={styles.stepContent}>
             {!isRunStarted && preflight?.isValid === false && <><header><span>Step 3</span><h2>Preflight could not be completed</h2><p>Fix the blocking issues and try again.</p></header><div className={styles.issueList}>{preflight.issues.map((issue) => <Alert key={`${issue.code}-${issue.field ?? ''}`} variant="danger">{issue.message}</Alert>)}</div><footer><Button onClick={() => setStep(2)} variant="outline-secondary">Edit details</Button><Button onClick={() => void handlePreflight()}>Validate again</Button></footer></>}
             {!isRunStarted && preflight?.isValid === true && <><header><span>Step 3</span><h2>Ready to start</h2><p>Review the execution summary. The plan remains valid for 10 minutes.</p></header><div className={styles.launchSummary}><div className={styles.launchPrimary}><span>{formatDestinations(preflight.plan.destinations)}</span><strong>{formatArtifactSummary(preflight.plan)} · {preflight.plan.platforms.map(formatPlatform).join(' + ')}</strong><small>{preflight.plan.version === undefined ? '' : `${formatResolvedVersion(preflight.plan.version)} · `}{preflight.plan.phaseCount} verified steps will run.</small></div><div className={styles.planSummary}><div><span>Operation</span><strong>{formatMode(preflight.plan.mode)}</strong></div><div><span>Destination</span><strong>{formatDestinations(preflight.plan.destinations)}</strong></div><div><span>Signing</span><strong>{formatSigningSummary(preflight.plan.signingPlatforms)}</strong></div><div><span>{preflight.plan.destinations.includes('firebase') ? 'Tester groups' : 'Output'}</span><strong>{preflight.plan.destinations.includes('firebase') ? `${preflight.plan.distributionGroups.length} groups` : preflight.plan.artifactOutputDirectoryPath ?? 'Configured store'}</strong></div></div></div>{preflight.warnings.map((warning) => <Alert key={warning.message} variant="warning">{warning.message}</Alert>)}{releaseRun.errorMessage !== null && <Alert variant="danger">{releaseRun.errorMessage}</Alert>}<footer><Button onClick={() => setStep(2)} variant="outline-secondary">Back</Button><Button disabled={releaseRun.status === 'starting'} onClick={() => void releaseRun.start(preflight.plan.planId)}>{releaseRun.status === 'starting' ? 'Starting…' : 'Start pipeline'}</Button></footer></>}
-            {isRunStarted && <><PipelineProgress activePhase={releaseRun.activePhase} completedPhases={releaseRun.completedPhases} isCancelling={releaseRun.status === 'cancelling'} logs={releaseRun.logs} mode={preflight?.isValid === true ? preflight.plan.mode : mode} onCancel={() => void releaseRun.cancel()} percent={releaseRun.percent} platform={releaseRun.platform} platforms={preflight?.isValid === true ? preflight.plan.platforms : platforms} progressKind={releaseRun.progressKind} result={releaseRun.result} totalPhases={releaseRun.totalPhases} />{releaseRun.result !== null && <footer><Button onClick={onFinished}>Return to application details</Button></footer>}</>}
+            {isRunStarted && <><PipelineProgress activePhase={releaseRun.activePhase} completedPhases={releaseRun.completedPhases} isCancelling={releaseRun.status === 'cancelling'} logs={releaseRun.logs} mode={preflight?.isValid === true ? preflight.plan.mode : mode} onCancel={() => void releaseRun.cancel()} percent={releaseRun.percent} platform={releaseRun.platform} platforms={preflight?.isValid === true ? preflight.plan.platforms : platforms} progressKind={releaseRun.progressKind} result={releaseRun.result} totalPhases={releaseRun.totalPhases} />{releaseRun.result !== null && <footer>{(releaseRun.result.outcome === 'failed' || releaseRun.result.outcome === 'partiallySucceeded') && <Button disabled={isValidating} onClick={() => void handleRetry()}>{isValidating ? 'Validating…' : 'Retry pipeline'}</Button>}<Button onClick={onFinished} variant="outline-secondary">Return to application details</Button></footer>}</>}
           </div>
         )}
       </section>

@@ -347,6 +347,12 @@ export const App = (): React.JSX.Element => {
     }
   };
 
+  const handleRepeatHistory = (run: RunHistorySummary): void => {
+    if (run.configuration === null) return;
+    setReleaseIntent({ configuration: run.configuration, kind: 'repeatRelease' });
+    setView('release');
+  };
+
   const supportedPlatforms: ReleasePlatform[] = doctorReport?.supportedPlatforms ?? ['android'];
   const applicationSetupWorkflows = resolveSetupWorkflows(doctorReport, selectedApplication);
   const needsPermissionConfirmation =
@@ -451,6 +457,7 @@ export const App = (): React.JSX.Element => {
           onEdit={() => { setIsApplicationSetupGuideOpen(false); setView('edit'); }}
           onEditFastAction={(fastAction) => { setReleaseIntent({ fastAction, kind: 'editFastAction' }); setView('release'); }}
           onRemoveIcon={() => void handleRemoveApplicationIcon()}
+          onRepeatHistory={handleRepeatHistory}
           onRunFastAction={(fastAction) => void handleRunFastAction(fastAction)}
           onShowSetup={() => setIsApplicationSetupGuideOpen(true)}
           onStartRelease={() => { setReleaseIntent({ kind: 'newRelease' }); setView('release'); }}

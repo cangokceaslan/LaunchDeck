@@ -1,7 +1,12 @@
 import type { ApplicationDatabase } from '@main/database';
 import { isRecord } from '@main/utils/FileSystem';
 import type { ReleaseMode, ReleasePlatform } from '@shared/contracts/domain';
-import type { ReleaseResult, RunHistorySummary } from '@shared/contracts/release';
+import type {
+  FastActionConfiguration,
+  ReleaseResult,
+  RunHistorySummary,
+} from '@shared/contracts/release';
+import { fastActionConfigurationSchema } from '@shared/validation';
 
 const parsePlatforms = (serializedPlatforms: string): ReleasePlatform[] => {
   const platforms: unknown = JSON.parse(serializedPlatforms);
@@ -23,16 +28,29 @@ const isReleaseOutcome = (outcome: string): outcome is ReleaseResult['outcome'] 
   outcome === 'failed' ||
   outcome === 'cancelled';
 
+const parseConfiguration = (serializedConfiguration: unknown): FastActionConfiguration | null => {
+  if (serializedConfiguration === null) return null;
+  if (typeof serializedConfiguration !== 'string') {
+    throw new Error('Invalid release history configuration data.');
+  }
+  const parsedConfiguration: unknown = JSON.parse(serializedConfiguration);
+  const result = fastActionConfigurationSchema.safeParse(parsedConfiguration);
+  if (!result.success) {
+    throw new Error('Invalid release history configuration snapshot.');
+  }
+  return result.data;
+};
+
 export class RunHistoryRepository {
   public constructor(private readonly database: ApplicationDatabase) {}
 
-  public add(result: ReleaseResult): void {
+  public add(result: ReleaseResult, configuration: FastActionConfiguration): void {
     this.database
       .prepare(
         `INSERT INTO release_runs (
           id, application_id, mode, platforms_json, outcome,
-          started_at, finished_at, result_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          started_at, finished_at, result_json, configuration_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         result.runId,
@@ -43,13 +61,15 @@ export class RunHistoryRepository {
         result.startedAt,
         result.finishedAt,
         JSON.stringify(result),
+        JSON.stringify(configuration),
       );
   }
 
   public list(applicationId: string): RunHistorySummary[] {
     const rows: unknown[] = this.database
       .prepare(
-        `SELECT id, application_id, mode, platforms_json, outcome, started_at, finished_at
+        `SELECT id, application_id, mode, platforms_json, outcome, started_at, finished_at,
+          configuration_json
          FROM release_runs WHERE application_id = ? ORDER BY finished_at DESC LIMIT 10`,
       )
       .all(applicationId);
@@ -74,6 +94,7 @@ export class RunHistoryRepository {
       }
       return {
         applicationId: read('application_id'),
+        configuration: parseConfiguration(row.configuration_json),
         finishedAt: read('finished_at'),
         id: read('id'),
         mode,

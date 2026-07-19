@@ -20,5 +20,6 @@ export type ReleaseRunViewState = {
 export type UseReleaseRunResult = ReleaseRunViewState & {
   cancel: () => Promise<void>;
   errorMessage: string | null;
+  reset: () => void;
   start: (planId: string) => Promise<void>;
 };

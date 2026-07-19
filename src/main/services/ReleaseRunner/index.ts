@@ -1021,7 +1021,8 @@ export class ReleaseRunner {
         startedAt,
       };
       try {
-        this.history.add(result);
+        const { applicationId: _applicationId, ...configuration } = plan.request;
+        this.history.add(result, configuration);
         onEvent({ result, runId, type: 'releaseFinished' });
         if (plan.application.shouldNotifyWhenFinished) {
           try {

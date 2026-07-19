@@ -1,10 +1,15 @@
 import type { ApplicationDetail, ReleasePlatform } from '@shared/contracts/domain';
-import type { FastAction, PreflightResult } from '@shared/contracts/release';
+import type {
+  FastAction,
+  FastActionConfiguration,
+  PreflightResult,
+} from '@shared/contracts/release';
 
 export type ReleasePipelineIntent =
   | { kind: 'newRelease' }
   | { kind: 'createFastAction' }
   | { fastAction: FastAction; kind: 'editFastAction' }
+  | { configuration: FastActionConfiguration; kind: 'repeatRelease' }
   | { fastAction: FastAction; kind: 'runFastAction'; preflight: PreflightResult };
 
 export type ReleasePipelineProps = {

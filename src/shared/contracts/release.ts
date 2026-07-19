@@ -206,6 +206,7 @@ export type ReleaseEvent =
 
 export type RunHistorySummary = {
   applicationId: string;
+  configuration: FastActionConfiguration | null;
   finishedAt: string;
   id: string;
   mode: ReleaseMode;

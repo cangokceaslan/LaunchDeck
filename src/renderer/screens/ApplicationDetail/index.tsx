@@ -10,6 +10,7 @@ import {
 } from '@renderer/utils/formatting';
 import type { ApplicationDetailProps } from '@screens/ApplicationDetail/index.types';
 import { resolveFastActionVersionSummaries } from '@screens/ApplicationDetail/index.utils';
+import type { DistributionDestination } from '@shared/contracts/domain';
 import styles from '@screens/ApplicationDetail/index.module.scss';
 
 const outcomeTone = (outcome: ApplicationDetailProps['history'][number]['outcome']) => {
@@ -18,6 +19,13 @@ const outcomeTone = (outcome: ApplicationDetailProps['history'][number]['outcome
   if (outcome === 'cancelled') return 'neutral' as const;
   return 'danger' as const;
 };
+
+const formatDestination = (destination: DistributionDestination): string =>
+  destination === 'artifact'
+    ? 'Artifact'
+    : destination === 'firebase'
+      ? 'Firebase'
+      : 'Store';
 
 export const ApplicationDetail = ({
   application,
@@ -35,6 +43,7 @@ export const ApplicationDetail = ({
   onEdit,
   onEditFastAction,
   onRemoveIcon,
+  onRepeatHistory,
   onRunFastAction,
   onShowSetup,
   onStartRelease,
@@ -237,8 +246,8 @@ export const ApplicationDetail = ({
                   </div>
                   <div className={styles.fastActionButtons}>
                     <Button disabled={startingFastActionId !== null} onClick={() => onRunFastAction(fastAction)} size="sm">{startingFastActionId === fastAction.id && <Spinner animation="border" size="sm" />} {startingFastActionId === fastAction.id ? 'Preparing…' : 'Start'}</Button>
-                    <Button disabled={startingFastActionId !== null} onClick={() => onEditFastAction(fastAction)} size="sm" variant="outline-secondary">Edit</Button>
-                    <Button disabled={startingFastActionId !== null} onClick={() => setFastActionToDelete(fastAction)} size="sm" variant="outline-danger">Delete</Button>
+                    <Button disabled={startingFastActionId !== null} onClick={() => onEditFastAction(fastAction)} size="sm" variant="secondary">Edit</Button>
+                    <Button disabled={startingFastActionId !== null} onClick={() => setFastActionToDelete(fastAction)} size="sm" variant="danger">Delete</Button>
                   </div>
                 </article>
               );
@@ -258,20 +267,64 @@ export const ApplicationDetail = ({
           <div className={styles.historyEmpty}>No releases have been run for this application yet.</div>
         ) : (
           <div className={styles.historyList}>
-            {history.map((run) => (
-              <article key={run.id}>
-                <StatusPill label={formatOutcome(run.outcome)} tone={outcomeTone(run.outcome)} />
-                <div><strong>{formatMode(run.mode)}</strong><small>{run.platforms.map(formatPlatform).join(' + ')}</small></div>
-                <time>{formatDateTime(run.finishedAt)}</time>
-              </article>
-            ))}
+            {history.map((run) => {
+              const configuration = run.configuration;
+              const versionSummaries = configuration === null
+                ? []
+                : resolveFastActionVersionSummaries(configuration);
+              return (
+                <article className={styles.historyCard} key={run.id}>
+                  <div className={styles.historyHeader}>
+                    <StatusPill label={formatOutcome(run.outcome)} tone={outcomeTone(run.outcome)} />
+                    <div><strong>{formatMode(run.mode)}</strong><small>{run.platforms.map(formatPlatform).join(' + ')}</small></div>
+                    <time>{formatDateTime(run.finishedAt)}</time>
+                    <Button disabled={configuration === null} onClick={() => onRepeatHistory(run)} size="sm">
+                      {run.outcome === 'failed' || run.outcome === 'partiallySucceeded'
+                        ? 'Retry'
+                        : 'Repeat'}
+                    </Button>
+                  </div>
+                  {configuration === null ? (
+                    <p className={styles.legacyHistoryMessage}>Full selections are unavailable for releases created before history snapshots.</p>
+                  ) : (
+                    <>
+                      <div className={styles.historySelections}>
+                        <div><span>Source</span><strong>{configuration.mode === 'uploadOnly' ? 'Existing artifact' : 'New build'}</strong></div>
+                        <div><span>Destinations</span><strong>{configuration.destinations.map(formatDestination).join(' + ')}</strong></div>
+                        <div><span>Platforms</span><strong>{configuration.platforms.map(formatPlatform).join(' + ')}</strong></div>
+                        <div><span>Signing</span><strong>{configuration.artifactSigningPlatforms.length === 0 ? 'Not requested' : configuration.artifactSigningPlatforms.map(formatPlatform).join(' + ')}</strong></div>
+                        {configuration.androidArtifactType !== undefined && <div><span>Android artifact</span><strong>{configuration.androidArtifactType.toUpperCase()}</strong></div>}
+                        {configuration.destinations.includes('firebase') && <div><span>Tester groups</span><strong>{configuration.distributionGroups.join(', ')}</strong></div>}
+                      </div>
+                      {versionSummaries.length > 0 && (
+                        <div aria-label="Release versions" className={styles.historyVersions}>
+                          {versionSummaries.map((version) => (
+                            <span key={version.platform}>
+                              <b>{version.platform}</b>
+                              <code>{version.versionName}</code>
+                              <small>{version.counterLabel} {version.counterValue}</small>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className={styles.historyDetails}>
+                        {configuration.artifactOutputDirectoryPath !== undefined && <div><span>Output directory</span><code>{configuration.artifactOutputDirectoryPath}</code></div>}
+                        {configuration.androidArtifactPath !== undefined && <div><span>Android source</span><code>{configuration.androidArtifactPath}</code></div>}
+                        {configuration.iosArtifactPath !== undefined && <div><span>iOS source</span><code>{configuration.iosArtifactPath}</code></div>}
+                        {configuration.releaseNotes !== '' && <div><span>Release notes</span><p>{configuration.releaseNotes}</p></div>}
+                      </div>
+                    </>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
 
       <footer className={styles.dangerZone}>
         <div><strong>Remove application</strong><span>The setup and release history will be deleted permanently.</span></div>
-        <Button onClick={() => setIsDeleteOpen(true)} variant="outline-danger">Delete application</Button>
+        <Button onClick={() => setIsDeleteOpen(true)} variant="danger">Delete application</Button>
       </footer>
 
       <Modal centered onHide={() => setIsDeleteOpen(false)} show={isDeleteOpen}>

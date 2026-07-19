@@ -5,6 +5,7 @@ import { artifactOutputDirectoryMigration } from '@main/database/migrations/003_
 import { distributionAndSigningMigration } from '@main/database/migrations/004_distribution_and_signing';
 import { fastActionsMigration } from '@main/database/migrations/005_fast_actions';
 import { applicationIconMigration } from '@main/database/migrations/006_application_icon';
+import { releaseHistoryConfigurationMigration } from '@main/database/migrations/007_release_history_configuration';
 
 export const schemaMigrations: readonly SchemaMigration[] = [
   initialSchemaMigration,
@@ -13,4 +14,5 @@ export const schemaMigrations: readonly SchemaMigration[] = [
   distributionAndSigningMigration,
   fastActionsMigration,
   applicationIconMigration,
+  releaseHistoryConfigurationMigration,
 ];

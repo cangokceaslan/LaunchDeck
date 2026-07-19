@@ -104,5 +104,13 @@ export const useReleaseRun = (): UseReleaseRunResult => {
     }
   };
 
-  return { ...state, cancel, errorMessage, start };
+  const reset = (): void => {
+    activeRunId.current = null;
+    isStarting.current = false;
+    pendingEvents.current = [];
+    setErrorMessage(null);
+    setState(initialState);
+  };
+
+  return { ...state, cancel, errorMessage, reset, start };
 };
