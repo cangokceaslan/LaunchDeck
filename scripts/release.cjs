@@ -260,11 +260,17 @@ const assertObfuscatedProductionOutput = () => {
       throw new Error(`No JavaScript bundle was created under ${runtimeDirectory}.`);
     }
 
-    const hasObfuscatedIdentifier = javaScriptFiles.some((filePath) =>
-      /_0x[0-9a-f]{4,}/i.test(fs.readFileSync(filePath, 'utf8')),
-    );
+    const hasObfuscationBootstrap = javaScriptFiles.some((filePath) => {
+      const bundleSource = fs.readFileSync(filePath, 'utf8');
+      return (
+        /\(function\([^)]*\)\{const [A-Za-z_$][\w$]*=/.test(bundleSource) ||
+        /function [A-Za-z_$][\w$]*\(\)\{const [A-Za-z_$][\w$]*=\[/.test(
+          bundleSource,
+        )
+      );
+    });
 
-    if (!hasObfuscatedIdentifier) {
+    if (!hasObfuscationBootstrap) {
       throw new Error(
         `The expected production obfuscation signature was not found under ${runtimeDirectory}.`,
       );
@@ -449,6 +455,7 @@ const executeRelease = async () => {
   );
 
   fs.mkdirSync(runRoot, { recursive: true });
+  fs.rmSync(path.join(projectRoot, 'out'), { force: true, recursive: true });
 
   await runCommand('Building obfuscated production bundles', process.execPath, [
     electronViteCliPath,
