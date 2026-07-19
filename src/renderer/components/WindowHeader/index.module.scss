@@ -5,8 +5,8 @@
   box-shadow: var(--shadow-header);
   color: var(--color-on-header);
   display: flex;
-  flex: 0 0 52px;
-  height: 52px;
+  flex: 0 0 56px;
+  height: 56px;
   justify-content: space-between;
   position: relative;
   user-select: none;
@@ -19,14 +19,14 @@
     flex: 1;
     gap: var(--space-3);
     min-width: 0;
-    padding-left: var(--space-4);
+    padding-left: var(--space-5);
 
     .productIcon {
       border: 1px solid var(--color-header-divider);
-      border-radius: var(--radius-sm);
-      height: 29px;
+      border-radius: 9px;
+      height: 32px;
       object-fit: cover;
-      width: 29px;
+      width: 32px;
     }
 
     .productTitle {
@@ -36,28 +36,29 @@
       min-width: 0;
 
       strong {
-        font-size: 0.82rem;
+        font-size: 0.86rem;
         letter-spacing: -0.01em;
       }
 
       > span {
         color: var(--color-header-muted);
-        font-size: 0.66rem;
+        font-size: 0.65rem;
       }
     }
 
     .context {
       align-items: center;
+      border-left: 1px solid var(--color-header-divider);
       color: var(--color-header-muted);
       display: flex;
       font-size: 0.7rem;
       font-weight: 600;
       gap: var(--space-2);
-      margin-left: auto;
-      padding-right: var(--space-3);
+      margin-left: var(--space-1);
+      padding-left: var(--space-4);
 
       .statusDot {
-        background: var(--color-window-maximize);
+        background: var(--color-primary);
         border-radius: 50%;
         height: 6px;
         width: 6px;
@@ -69,7 +70,7 @@
     -webkit-app-region: no-drag;
     align-items: center;
     align-self: center;
-    background: var(--color-header-hover);
+    background: var(--color-surface);
     border: 1px solid var(--color-header-divider);
     border-radius: 999px;
     color: var(--color-on-header);
@@ -79,13 +80,14 @@
     font-size: 0.7rem;
     font-weight: 700;
     gap: 6px;
-    margin-right: var(--space-2);
-    padding: 6px 10px;
+    margin-right: var(--space-3);
+    padding: 7px 11px;
     transition: background var(--motion-fast), border-color var(--motion-fast);
 
     &:hover {
       background: var(--color-header-accent-soft);
       border-color: var(--color-header-accent-border);
+      color: var(--color-header-accent);
     }
 
     .setupStatusDot {

@@ -10,6 +10,9 @@ if (rootElement === null) {
   throw new Error('LaunchDeck renderer root was not found.');
 }
 
+document.documentElement.dataset.theme = 'light';
+document.documentElement.dataset.bsTheme = 'light';
+
 createRoot(rootElement).render(
   <StrictMode>
     <App />

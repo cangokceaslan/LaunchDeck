@@ -2,7 +2,7 @@
   background: var(--color-background);
   color: var(--color-text);
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: 252px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -17,7 +17,7 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    padding: var(--space-4) var(--space-3) var(--space-3);
+    padding: var(--space-3) var(--space-3) var(--space-3);
     position: relative;
     z-index: 1;
 
@@ -32,10 +32,12 @@
       .navigationHeader {
         align-items: center;
         background: var(--color-sidebar);
+        border-bottom: 1px solid var(--color-sidebar-divider);
         color: var(--color-sidebar-muted);
         display: flex;
         justify-content: space-between;
-        padding: 0 var(--space-2) var(--space-4);
+        margin: 0 var(--space-1) var(--space-2);
+        padding: var(--space-1) var(--space-1) var(--space-3);
         position: sticky;
         top: 0;
         z-index: 2;
@@ -47,7 +49,7 @@
           color: var(--color-on-sidebar);
           cursor: pointer;
           display: flex;
-          font-size: 0.78rem;
+          font-size: 0.76rem;
           font-weight: 700;
           gap: var(--space-2);
           letter-spacing: 0.01em;
@@ -57,13 +59,13 @@
             align-items: center;
             background: var(--color-sidebar-hover);
             border: 1px solid var(--color-sidebar-divider);
-            border-radius: var(--radius-sm);
+            border-radius: 9px;
             color: var(--color-sidebar-accent);
             display: flex;
-            height: 28px;
+            height: 30px;
             justify-content: center;
             transition: background var(--motion-fast), border-color var(--motion-fast);
-            width: 28px;
+            width: 30px;
 
             svg {
               fill: currentColor;
@@ -79,7 +81,7 @@
         }
 
         .applicationCount {
-          background: var(--color-sidebar-hover);
+          background: var(--color-surface);
           border: 1px solid var(--color-sidebar-divider);
           border-radius: 999px;
           color: var(--color-sidebar-muted);
@@ -96,14 +98,14 @@
         align-items: center;
         background: transparent;
         border: 1px solid transparent;
-        border-radius: 10px;
+        border-radius: var(--radius-sm);
         color: var(--color-on-sidebar);
         cursor: pointer;
         display: flex;
         gap: var(--space-3);
-        margin-bottom: 3px;
-        min-height: 50px;
-        padding: 7px 9px;
+        margin-bottom: 2px;
+        min-height: 52px;
+        padding: 8px 10px;
         position: relative;
         text-align: left;
         transition: background var(--motion-fast), border-color var(--motion-fast);
@@ -111,19 +113,19 @@
 
         &:hover {
           background: var(--color-sidebar-hover);
-          border-color: var(--color-sidebar-divider);
+          border-color: transparent;
         }
 
         &.appLinkActive {
           background: var(--color-sidebar-accent-soft);
-          border-color: var(--color-sidebar-accent-border);
+          border-color: transparent;
 
           &::before {
             background: var(--color-sidebar-accent);
             border-radius: 999px;
             content: '';
-            height: 22px;
-            left: -5px;
+            height: 26px;
+            left: -4px;
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
@@ -133,9 +135,9 @@
 
         .appInitial {
           align-items: center;
-          background: var(--color-sidebar-accent-soft);
-          border: 1px solid var(--color-sidebar-accent-border);
-          border-radius: 10px;
+          background: var(--color-surface);
+          border: 1px solid var(--color-sidebar-divider);
+          border-radius: 9px;
           color: var(--color-sidebar-accent);
           display: flex;
           flex: 0 0 auto;
@@ -150,6 +152,14 @@
             object-fit: cover;
             width: 100%;
           }
+        }
+
+        &.appLinkActive .appInitial {
+          border-color: var(--color-sidebar-accent-border);
+        }
+
+        &.appLinkActive .appCopy strong {
+          color: var(--color-sidebar-accent);
         }
 
         .appCopy {
@@ -201,21 +211,21 @@
 
       .addButton {
         align-items: center;
-        background: var(--color-sidebar-accent-soft);
-        border-color: var(--color-sidebar-accent-border);
-        color: var(--color-sidebar-accent);
+        background: var(--color-sidebar-accent);
+        border-color: var(--color-sidebar-accent);
+        color: var(--color-on-sidebar-action);
         display: flex;
         font-weight: 650;
         gap: var(--space-2);
         justify-content: center;
-        min-height: 38px;
+        min-height: 40px;
         width: 100%;
 
         &:hover,
         &:focus-visible {
-          background: var(--color-sidebar-accent);
-          border-color: var(--color-sidebar-accent);
-          color: var(--color-on-primary);
+          background: var(--color-sidebar-action-hover);
+          border-color: var(--color-sidebar-action-hover);
+          color: var(--color-on-sidebar-action);
         }
 
         svg {
