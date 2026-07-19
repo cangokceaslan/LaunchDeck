@@ -62,6 +62,7 @@
         .initial {
           align-items: center;
           background: var(--color-primary-soft);
+          border: 1px solid var(--color-border-strong);
           border-radius: var(--radius-md);
           color: var(--color-primary-strong);
           display: flex;
