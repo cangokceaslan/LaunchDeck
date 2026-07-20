@@ -81,10 +81,7 @@ export const AppShell = ({
           <button className={styles.addButton} onClick={onAddApplication} type="button">
             <span aria-hidden="true" className={styles.addIcon}>
               <svg viewBox="0 0 20 20">
-                <rect height="13" rx="3.25" width="13" x="2.5" y="4.5" />
-                <path d="M6.25 8.25h3.5M6.25 11.75h2" />
-                <circle cx="14.25" cy="5.75" r="3.25" />
-                <path d="M14.25 4.25v3M12.75 5.75h3" />
+                <path d="M10 4.25v11.5M4.25 10h11.5" />
               </svg>
             </span>
             <span className={styles.addCopy}>

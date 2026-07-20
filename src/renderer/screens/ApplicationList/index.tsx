@@ -1,4 +1,3 @@
-import { Button } from 'react-bootstrap';
 import { ApplicationLogo } from '@components/ApplicationLogo';
 import { EmptyState } from '@components/EmptyState';
 import { StatusPill } from '@components/StatusPill';
@@ -29,19 +28,26 @@ export const ApplicationList = ({
           <h1>Applications</h1>
           <p>Manage configured mobile applications and their latest release status.</p>
         </div>
-        <Button className={styles.addApplicationButton} onClick={onAddApplication}>
+        <button
+          className={styles.addApplicationButton}
+          onClick={onAddApplication}
+          type="button"
+        >
           <span aria-hidden="true" className={styles.addApplicationIcon}>
             <svg viewBox="0 0 20 20">
               <path d="M10 4.25v11.5M4.25 10h11.5" />
             </svg>
           </span>
-          <span>Add application</span>
+          <span className={styles.addApplicationCopy}>
+            <strong>Add application</strong>
+            <small>Create a release target</small>
+          </span>
           <span aria-hidden="true" className={styles.addApplicationArrow}>
             <svg viewBox="0 0 16 16">
               <path d="m6 3.75 4.25 4.25L6 12.25" />
             </svg>
           </span>
-        </Button>
+        </button>
       </header>
       {applications.length === 0 ? (
         <EmptyState
