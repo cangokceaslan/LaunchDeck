@@ -5,7 +5,7 @@ node_modules/
 out/
 dist/
 release/
-releases/
+releases/*
 releases/.builder/
 releases/.staging/
 releases/*.backup-*/
