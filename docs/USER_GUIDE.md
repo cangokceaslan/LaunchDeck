@@ -106,7 +106,7 @@ Markdown raw HTML is ignored. Images render only when they resolve to bundled `d
 
 | Host operating system | Android workflow | iOS workflow | Packaged target |
 | --- | --- | --- | --- |
-| macOS | Supported | Supported | Signed and notarized universal DMG |
+| macOS | Supported | Supported | Ad-hoc signed, non-notarized universal DMG |
 | Windows | Supported | Not supported | Unsigned x64 NSIS installer |
 | Linux | Supported from source | Not supported | No installer from `yarn release` |
 
@@ -397,8 +397,6 @@ Electron is pinned to exact version `42.2.0`, and `better-sqlite3` is pinned to 
 
 - Rosetta 2 when Wine or one of its components needs Intel translation on Apple silicon. macOS normally offers installation when an Intel-only component opens. See [Using Intel-based apps on a Mac with Apple silicon](https://support.apple.com/en-us/102527). Confirm Rosetta is permitted by organizational policy before installing it.
 - Git LFS for cloning or pushing the tracked installer payloads. Follow [Install Git Large File Storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage), then run `git lfs install` once for the current user.
-- A Developer ID Application certificate available through the macOS keychain or `CSC_LINK` and `CSC_KEY_PASSWORD`. Direct distribution must not use an ad-hoc signature.
-- Notarization credentials accepted by electron-builder, such as `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`, or an App Store Connect API key/keychain profile. Keep every value outside source control.
 
 The [electron-builder multi-platform guide](https://www.electron.build/docs/features/multi-platform-build/) explains the limits of cross-platform packaging. This repository can package Windows from macOS because `better-sqlite3` publishes the exact Windows prebuild required by Electron ABI 146; the release script does not attempt unsupported native source cross-compilation.
 
@@ -413,11 +411,11 @@ yarn release
 
 The release orchestrator:
 
-1. Checks the host, Node version, Electron/SQLite versions, Wine, and required macOS signing/verification tools before packaging.
+1. Checks the host, Node version, Electron/SQLite versions, Wine, and required macOS packaging tools before packaging.
 2. Removes stale generated `out` assets and runs the production `electron-vite` build once.
 3. Verifies that the main, preload, and renderer bundles are obfuscated and that production source maps are absent.
-4. Uses electron-builder to create a Developer ID-signed and notarized universal macOS DMG plus an unsigned Windows x64 NSIS EXE in an isolated staging directory.
-5. Verifies the macOS executable and SQLite binding contain both `arm64` and `x86_64` slices, rejects unsigned/ad-hoc macOS applications, and validates the Gatekeeper assessment and stapled notarization ticket. Windows executable and binding checks remain PE x64-specific.
+4. Uses electron-builder to create an ad-hoc signed, non-notarized universal macOS DMG plus an unsigned Windows x64 NSIS EXE in an isolated staging directory.
+5. Verifies the macOS executable and SQLite binding contain both `arm64` and `x86_64` slices and confirms the configured ad-hoc signature. Windows executable and binding checks remain PE x64-specific.
 6. Runs `hdiutil verify`, calculates SHA-256 manifests, and promotes both platform directories only after every check succeeds.
 7. Restores the host-native SQLite binding even after failure or cancellation and removes the run staging directory.
 
@@ -452,17 +450,17 @@ On Windows, calculate the EXE hash in PowerShell and compare the lowercase value
 Get-Content .\releases\windows\LaunchDeck-Setup-1.0.0-windows-x64.exe.sha256
 ```
 
-A matching checksum proves the bytes match the published manifest; it does not establish publisher identity by itself. Verify the macOS Developer ID/notarization result separately, and remember that the Windows installer remains unsigned.
+A matching checksum proves the bytes match the published manifest; it does not establish publisher identity. The macOS application uses an ad-hoc signature without notarization, and the Windows installer remains unsigned.
 
 ### Git LFS and platform signing
 
 `.gitattributes` routes `releases/**/*.dmg` and `releases/**/*.exe` through Git LFS. Their `.sha256` files remain ordinary Git text. After cloning, run `git lfs pull` if installer files are still small text pointers. Review GitHub's [large-file limits and distribution guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github) before changing binary retention or publishing additional versions.
 
-- macOS packaging requires a non-ad-hoc Developer ID Application identity, hardened runtime entitlements, notarization, Gatekeeper acceptance, and a stapled ticket. The release fails instead of promoting an unsigned or untrusted macOS application.
-- Apple/CSC credentials are available only to the macOS electron-builder step. Other release child processes receive a signing-stripped environment.
+- macOS packaging uses a deterministic ad-hoc signature with hardened runtime compatibility entitlements. It does not require or perform Developer ID signing or notarization.
+- Signing-related `APPLE_*`, `CSC_*`, and `WIN_CSC_*` variables are removed from release child processes so ambient credentials cannot silently change the configured artifact identity.
 - Windows packaging keeps `signExecutable: false`. Microsoft Defender SmartScreen may warn because the EXE has no Authenticode publisher identity or reputation.
 
-Do not instruct users to bypass an operating-system warning without first verifying the source and SHA-256 value. Protect signing and notarization credentials in the build environment and rotate them according to organizational policy.
+Do not instruct users to bypass an operating-system warning without first verifying the source and SHA-256 value. Ad-hoc signing validates bundle integrity but does not establish a trusted publisher identity.
 
 Production JavaScript for Electron main, preload, and renderer is minified and obfuscated. Obfuscation raises the cost of casual inspection but is **not** a security boundary and does not protect embedded secrets. Process isolation, typed IPC, validation, credential encryption, and main-process ownership remain the security boundaries.
 
@@ -495,7 +493,7 @@ If a picker succeeds but later access fails:
 
 Apple explains both controls in [Change Privacy & Security settings on Mac](https://support.apple.com/guide/mac-help/change-privacy-security-settings-on-mac-mchl211c911f/mac). Full Disk Access is broad; it should not be the first troubleshooting step.
 
-Install only the signed and notarized macOS release. macOS associates privacy decisions with the application's code signature; unsigned or ad-hoc development packages do not provide the stable production identity required for reliable permission retention.
+The macOS release is ad-hoc signed and not notarized. Its code-signing identity can change when the application is rebuilt, so macOS may require file-access approval again after installing a different build. Reliable permission retention across separately built releases requires a stable Developer ID signature.
 
 Also verify ordinary POSIX permissions and ownership. LaunchDeck needs read access to project/configuration/credential inputs and write access to version files, Gradle/Xcode outputs, temporary locations, and the selected local artifact directory.
 
@@ -1255,7 +1253,7 @@ Before the first real release:
 - Release history is local to the workstation and retained until manually cleared; it is not a shared audit service.
 - `safeStorage` encryption is tied to the local OS credential context and is not a cross-machine secret vault.
 - `yarn release` must run on macOS and creates only the universal macOS DMG and Windows x64 NSIS installer; it does not create Linux packages.
-- The tracked macOS installer requires Developer ID signing and notarization; the Windows installer remains unsigned. Auto-update distribution is not implemented.
+- The tracked macOS installer is ad-hoc signed and not notarized; the Windows installer remains unsigned. Auto-update distribution is not implemented.
 
 ## Screenshot renderer
 
