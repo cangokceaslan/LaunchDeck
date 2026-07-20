@@ -25,18 +25,6 @@
     transform var(--motion-fast);
   z-index: 1020;
 
-  &::before {
-    background: var(--color-help-accent);
-    border-radius: 999px;
-    content: '';
-    height: 22px;
-    left: -1px;
-    pointer-events: none;
-    position: absolute;
-    top: 19px;
-    width: 3px;
-  }
-
   &:hover {
     background: var(--color-help-surface-hover);
     border-color: var(--color-help-accent);
