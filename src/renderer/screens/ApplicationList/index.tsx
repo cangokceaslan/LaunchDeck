@@ -38,15 +38,7 @@ export const ApplicationList = ({
               <path d="M10 4.25v11.5M4.25 10h11.5" />
             </svg>
           </span>
-          <span className={styles.addApplicationCopy}>
-            <strong>Add application</strong>
-            <small>Create a release target</small>
-          </span>
-          <span aria-hidden="true" className={styles.addApplicationArrow}>
-            <svg viewBox="0 0 16 16">
-              <path d="m6 3.75 4.25 4.25L6 12.25" />
-            </svg>
-          </span>
+          <span>Add application</span>
         </button>
       </header>
       {applications.length === 0 ? (

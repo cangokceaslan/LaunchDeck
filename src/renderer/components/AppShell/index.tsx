@@ -84,15 +84,7 @@ export const AppShell = ({
                 <path d="M10 4.25v11.5M4.25 10h11.5" />
               </svg>
             </span>
-            <span className={styles.addCopy}>
-              <strong>Add application</strong>
-              <small>Configure a release target</small>
-            </span>
-            <span aria-hidden="true" className={styles.addArrow}>
-              <svg viewBox="0 0 16 16">
-                <path d="m6 3.75 4.25 4.25L6 12.25" />
-              </svg>
-            </span>
+            <span>Add application</span>
           </button>
         </div>
       </aside>

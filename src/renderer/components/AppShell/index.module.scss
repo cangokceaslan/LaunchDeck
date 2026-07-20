@@ -228,12 +228,14 @@
         box-shadow: var(--shadow-soft);
         color: var(--color-on-primary);
         cursor: pointer;
-        display: grid;
-        gap: var(--space-3);
-        grid-template-columns: 36px minmax(0, 1fr) 18px;
-        min-height: 60px;
-        padding: 9px 12px 9px 9px;
-        text-align: left;
+        display: flex;
+        font-family: var(--font-sans);
+        font-size: 0.76rem;
+        font-weight: 700;
+        gap: var(--space-2);
+        justify-content: center;
+        min-height: 44px;
+        padding: 9px 14px;
         transition:
           background var(--motion-fast),
           border-color var(--motion-fast),
@@ -245,7 +247,7 @@
           background: var(--color-primary-strong);
           border-color: var(--color-primary-strong);
           box-shadow: var(--shadow-soft);
-          transform: translateY(-2px);
+          transform: translateY(-1px);
         }
 
         &:focus-visible {
@@ -254,21 +256,17 @@
 
         &:active {
           box-shadow: var(--shadow-soft);
-          transform: translateY(0) scale(0.99);
+          transform: translateY(0);
         }
 
         .addIcon {
           align-items: center;
-          background: var(--color-primary-soft);
-          border: 1px solid var(--color-primary-strong);
-          border-radius: 10px;
-          color: var(--color-primary-strong);
+          color: currentColor;
           display: flex;
           flex: 0 0 auto;
-          height: 36px;
+          height: 18px;
           justify-content: center;
-          transition: transform var(--motion-fast);
-          width: 36px;
+          width: 18px;
         }
 
         .addIcon svg {
@@ -279,61 +277,6 @@
           stroke-linejoin: round;
           stroke-width: 2;
           width: 18px;
-        }
-
-        .addCopy {
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-
-          strong {
-            color: var(--color-on-primary);
-            font-size: 0.8rem;
-            font-weight: 720;
-            letter-spacing: -0.01em;
-            line-height: 1.2;
-          }
-
-          small {
-            color: var(--color-on-primary);
-            font-size: 0.64rem;
-            font-weight: 520;
-            line-height: 1.25;
-            margin-top: 3px;
-            opacity: 0.72;
-          }
-        }
-
-        .addArrow {
-          align-items: center;
-          color: var(--color-on-primary);
-          display: flex;
-          height: 18px;
-          justify-content: center;
-          opacity: 0.68;
-          transition:
-            opacity var(--motion-fast),
-            transform var(--motion-fast);
-          width: 18px;
-
-          svg {
-            fill: none;
-            height: 15px;
-            stroke: currentColor;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            stroke-width: 2;
-            width: 15px;
-          }
-        }
-
-        &:hover .addIcon {
-          transform: scale(1.05);
-        }
-
-        &:hover .addArrow {
-          opacity: 1;
-          transform: translateX(3px);
         }
       }
     }
