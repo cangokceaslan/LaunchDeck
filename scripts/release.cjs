@@ -26,7 +26,8 @@ const requiredBetterSqliteVersion = '12.11.1';
 let activeChild = null;
 let receivedSignal = null;
 
-const releaseEnvironment = { ...process.env };
+const macReleaseEnvironment = { ...process.env };
+const releaseEnvironment = { ...macReleaseEnvironment };
 
 for (const environmentKey of Object.keys(releaseEnvironment)) {
   if (
@@ -42,6 +43,9 @@ delete releaseEnvironment.ELECTRON_RUN_AS_NODE;
 releaseEnvironment.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
 releaseEnvironment.NODE_ENV = 'production';
 releaseEnvironment.npm_config_cache = path.join(runRoot, 'npm-cache');
+delete macReleaseEnvironment.ELECTRON_RUN_AS_NODE;
+macReleaseEnvironment.NODE_ENV = 'production';
+macReleaseEnvironment.npm_config_cache = releaseEnvironment.npm_config_cache;
 
 const resolvePackageScript = (packageName, relativeScriptPath) => {
   const packagePath = require.resolve(`${packageName}/package.json`);
@@ -75,7 +79,7 @@ const runCommand = async (
   return new Promise((resolve, reject) => {
     const childProcess = spawn(executablePath, commandArguments, {
       cwd: projectRoot,
-      env: releaseEnvironment,
+      env: options.environment ?? releaseEnvironment,
       shell: false,
       stdio: options.captureOutput ? ['ignore', 'pipe', 'pipe'] : 'inherit',
     });
@@ -192,7 +196,13 @@ const assertReleasePrerequisites = () => {
 
   assertSupportedNodeVersion();
 
-  for (const requiredExecutable of ['/usr/bin/hdiutil', '/usr/bin/lipo']) {
+  for (const requiredExecutable of [
+    '/usr/bin/codesign',
+    '/usr/bin/hdiutil',
+    '/usr/bin/lipo',
+    '/usr/bin/xcrun',
+    '/usr/sbin/spctl',
+  ]) {
     fs.accessSync(requiredExecutable, fs.constants.X_OK);
   }
 
@@ -347,19 +357,46 @@ const assertUniversalMachO = async (filePath, label) => {
   }
 };
 
-const assertUnsignedMacApplication = async (applicationPath) => {
-  try {
-    await runCommand(
-      'Checking that the macOS application is unsigned',
-      '/usr/bin/codesign',
-      ['--verify', '--deep', '--strict', applicationPath],
-      { captureOutput: true },
+const assertTrustedMacApplication = async (applicationPath) => {
+  await runCommand(
+    'Verifying the macOS application signature',
+    '/usr/bin/codesign',
+    ['--verify', '--deep', '--strict', '--verbose=2', applicationPath],
+    { captureOutput: true },
+  );
+  const signature = await runCommand(
+    'Reading the macOS signing identity',
+    '/usr/bin/codesign',
+    ['--display', '--verbose=4', applicationPath],
+    { captureOutput: true },
+  );
+  const signatureDetails = `${signature.standardOutput}\n${signature.standardError}`;
+  if (
+    !/^Authority=Developer ID Application:/mu.test(signatureDetails) ||
+    /^Signature=adhoc$/mu.test(signatureDetails) ||
+    /^TeamIdentifier=not set$/mu.test(signatureDetails)
+  ) {
+    throw new Error(
+      'The macOS application must have a non-ad-hoc Developer ID Application signature.',
     );
-  } catch {
-    return;
   }
-
-  throw new Error('The macOS application is signed, but releases must be unsigned.');
+  const gatekeeperAssessment = await runCommand(
+    'Assessing the notarized macOS application',
+    '/usr/sbin/spctl',
+    ['--assess', '--type', 'execute', '--verbose=2', applicationPath],
+    { captureOutput: true },
+  );
+  const gatekeeperDetails =
+    `${gatekeeperAssessment.standardOutput}\n${gatekeeperAssessment.standardError}`;
+  if (!/source=Notarized Developer ID/mu.test(gatekeeperDetails)) {
+    throw new Error('Gatekeeper did not identify a notarized Developer ID application.');
+  }
+  await runCommand(
+    'Validating the stapled macOS notarization ticket',
+    '/usr/bin/xcrun',
+    ['stapler', 'validate', applicationPath],
+    { captureOutput: true },
+  );
 };
 
 const calculateSha256 = (filePath) => {
@@ -466,7 +503,7 @@ const restoreHostNativeDependencies = async () => {
 const executeRelease = async () => {
   const wineExecutablePath = assertReleasePrerequisites();
   process.stdout.write(
-    `Creating unsigned installers with ${path.basename(wineExecutablePath)}.\n`,
+    `Creating a signed macOS installer and unsigned Windows installer with ${path.basename(wineExecutablePath)}.\n`,
   );
 
   fs.mkdirSync(runRoot, { recursive: true });
@@ -486,7 +523,7 @@ const executeRelease = async () => {
     `--config.directories.output=${macBuilderOutput}`,
     '--publish',
     'never',
-  ]);
+  ], { environment: macReleaseEnvironment });
 
   const macApplicationPath = path.join(
     macBuilderOutput,
@@ -517,7 +554,7 @@ const executeRelease = async () => {
   assertRegularFile(macArtifactPath, 'macOS DMG');
   await assertUniversalMachO(macExecutablePath, 'macOS application');
   await assertUniversalMachO(macNativeBindingPath, 'macOS better-sqlite3 binding');
-  await assertUnsignedMacApplication(macApplicationPath);
+  await assertTrustedMacApplication(macApplicationPath);
   await runCommand('Verifying macOS DMG', '/usr/bin/hdiutil', [
     'verify',
     macArtifactPath,
