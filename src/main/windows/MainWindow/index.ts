@@ -20,7 +20,7 @@ export const createMainWindow = async (options: MainWindowOptions): Promise<Brow
     height: 820,
     ...(!app.isPackaged && process.platform !== 'darwin' ? { icon: developmentIconPath } : {}),
     minHeight: 680,
-    minWidth: 1280,
+    minWidth: 1040,
     show: false,
     title: 'LaunchDeck',
     width: 1280,
