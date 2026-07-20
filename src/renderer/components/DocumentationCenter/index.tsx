@@ -192,8 +192,8 @@ export const DocumentationCenter = ({
             </svg>
           </span>
           <span className={styles.floatingCopy}>
-            <strong>Need help?</strong>
-            <small>Browse the guide</small>
+            <strong>Help center</strong>
+            <small>Guides &amp; troubleshooting</small>
           </span>
           <span aria-hidden="true" className={styles.floatingArrow}>
             <svg viewBox="0 0 16 16">
