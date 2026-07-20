@@ -121,12 +121,12 @@
 
     &.runningWizardCard {
       display: flex;
-      flex: 1;
+      flex: 0 0 auto;
       min-height: 0;
 
       .stepContent {
         display: flex;
-        flex: 1;
+        flex: 0 0 auto;
         flex-direction: column;
         min-height: 0;
       }
