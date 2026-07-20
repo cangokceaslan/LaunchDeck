@@ -26,8 +26,7 @@ const requiredBetterSqliteVersion = '12.11.1';
 let activeChild = null;
 let receivedSignal = null;
 
-const macReleaseEnvironment = { ...process.env };
-const releaseEnvironment = { ...macReleaseEnvironment };
+const releaseEnvironment = { ...process.env };
 
 for (const environmentKey of Object.keys(releaseEnvironment)) {
   if (
@@ -43,9 +42,6 @@ delete releaseEnvironment.ELECTRON_RUN_AS_NODE;
 releaseEnvironment.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
 releaseEnvironment.NODE_ENV = 'production';
 releaseEnvironment.npm_config_cache = path.join(runRoot, 'npm-cache');
-delete macReleaseEnvironment.ELECTRON_RUN_AS_NODE;
-macReleaseEnvironment.NODE_ENV = 'production';
-macReleaseEnvironment.npm_config_cache = releaseEnvironment.npm_config_cache;
 
 const resolvePackageScript = (packageName, relativeScriptPath) => {
   const packagePath = require.resolve(`${packageName}/package.json`);
@@ -200,8 +196,6 @@ const assertReleasePrerequisites = () => {
     '/usr/bin/codesign',
     '/usr/bin/hdiutil',
     '/usr/bin/lipo',
-    '/usr/bin/xcrun',
-    '/usr/sbin/spctl',
   ]) {
     fs.accessSync(requiredExecutable, fs.constants.X_OK);
   }
@@ -357,7 +351,7 @@ const assertUniversalMachO = async (filePath, label) => {
   }
 };
 
-const assertTrustedMacApplication = async (applicationPath) => {
+const assertAdHocSignedMacApplication = async (applicationPath) => {
   await runCommand(
     'Verifying the macOS application signature',
     '/usr/bin/codesign',
@@ -372,31 +366,11 @@ const assertTrustedMacApplication = async (applicationPath) => {
   );
   const signatureDetails = `${signature.standardOutput}\n${signature.standardError}`;
   if (
-    !/^Authority=Developer ID Application:/mu.test(signatureDetails) ||
-    /^Signature=adhoc$/mu.test(signatureDetails) ||
-    /^TeamIdentifier=not set$/mu.test(signatureDetails)
+    !/^Signature=adhoc$/mu.test(signatureDetails) ||
+    !/^TeamIdentifier=not set$/mu.test(signatureDetails)
   ) {
-    throw new Error(
-      'The macOS application must have a non-ad-hoc Developer ID Application signature.',
-    );
+    throw new Error('The macOS application must have the configured ad-hoc signature.');
   }
-  const gatekeeperAssessment = await runCommand(
-    'Assessing the notarized macOS application',
-    '/usr/sbin/spctl',
-    ['--assess', '--type', 'execute', '--verbose=2', applicationPath],
-    { captureOutput: true },
-  );
-  const gatekeeperDetails =
-    `${gatekeeperAssessment.standardOutput}\n${gatekeeperAssessment.standardError}`;
-  if (!/source=Notarized Developer ID/mu.test(gatekeeperDetails)) {
-    throw new Error('Gatekeeper did not identify a notarized Developer ID application.');
-  }
-  await runCommand(
-    'Validating the stapled macOS notarization ticket',
-    '/usr/bin/xcrun',
-    ['stapler', 'validate', applicationPath],
-    { captureOutput: true },
-  );
 };
 
 const calculateSha256 = (filePath) => {
@@ -503,7 +477,7 @@ const restoreHostNativeDependencies = async () => {
 const executeRelease = async () => {
   const wineExecutablePath = assertReleasePrerequisites();
   process.stdout.write(
-    `Creating a signed macOS installer and unsigned Windows installer with ${path.basename(wineExecutablePath)}.\n`,
+    `Creating an ad-hoc signed macOS installer and unsigned Windows installer with ${path.basename(wineExecutablePath)}.\n`,
   );
 
   fs.mkdirSync(runRoot, { recursive: true });
@@ -523,7 +497,7 @@ const executeRelease = async () => {
     `--config.directories.output=${macBuilderOutput}`,
     '--publish',
     'never',
-  ], { environment: macReleaseEnvironment });
+  ]);
 
   const macApplicationPath = path.join(
     macBuilderOutput,
@@ -554,7 +528,7 @@ const executeRelease = async () => {
   assertRegularFile(macArtifactPath, 'macOS DMG');
   await assertUniversalMachO(macExecutablePath, 'macOS application');
   await assertUniversalMachO(macNativeBindingPath, 'macOS better-sqlite3 binding');
-  await assertTrustedMacApplication(macApplicationPath);
+  await assertAdHocSignedMacApplication(macApplicationPath);
   await runCommand('Verifying macOS DMG', '/usr/bin/hdiutil', [
     'verify',
     macArtifactPath,

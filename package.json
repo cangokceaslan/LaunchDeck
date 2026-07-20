@@ -87,7 +87,8 @@
       },
       "hardenedRuntime": true,
       "icon": "resources/launch-icon-macos.png",
-      "notarize": true,
+      "identity": "-",
+      "notarize": false,
       "target": [
         {
           "target": "dmg",
